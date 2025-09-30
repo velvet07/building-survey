@@ -1,0 +1,41 @@
+{
+  "name": "building-survey",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.58.0",
+    "@types/node": "^24.6.0",
+    "@types/react": "^19.1.15",
+    "clsx": "^2.1.1",
+    "jspdf": "^3.0.3",
+    "konva": "^9.3.14",
+    "next": "^14.2.33",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.6.0",
+    "react-konva": "^18.2.10",
+    "tailwind-merge": "^3.3.1",
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17"
+  }
+}

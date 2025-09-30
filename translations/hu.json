@@ -1,0 +1,336 @@
+{
+  "auth": {
+    "login": {
+      "title": "Bejelentkezés",
+      "emailLabel": "Email cím",
+      "emailPlaceholder": "pelda@email.com",
+      "passwordLabel": "Jelszó",
+      "passwordPlaceholder": "Jelszó",
+      "loginButton": "Bejelentkezés",
+      "noAccountYet": "Nincs még fiókod?",
+      "registerLink": "Regisztrálj",
+      "forgotPassword": "Elfelejtett jelszó?"
+    },
+    "register": {
+      "title": "Regisztráció",
+      "emailLabel": "Email cím",
+      "emailPlaceholder": "pelda@email.com",
+      "passwordLabel": "Jelszó",
+      "passwordPlaceholder": "Minimum 8 karakter",
+      "passwordConfirmLabel": "Jelszó megerősítése",
+      "passwordConfirmPlaceholder": "Írdd be újra a jelszót",
+      "termsLabel": "Elfogadom az Általános Szerződési Feltételeket",
+      "registerButton": "Regisztráció",
+      "alreadyHaveAccount": "Van már fiókod?",
+      "loginLink": "Jelentkezz be"
+    },
+    "logout": {
+      "button": "Kijelentkezés"
+    },
+    "confirmation": {
+      "title": "Email megerősítés",
+      "successMessage": "Email cím sikeresen megerősítve!",
+      "checkEmailMessage": "Kérlek, ellenőrizd az email fiókodat és kattints a megerősítő linkre.",
+      "redirectingMessage": "Átirányítás a bejelentkezési oldalra..."
+    },
+    "errors": {
+      "invalidCredentials": "Hibás email cím vagy jelszó",
+      "emailRequired": "Email cím megadása kötelező",
+      "emailInvalid": "Hibás email formátum",
+      "passwordRequired": "Jelszó megadása kötelező",
+      "passwordTooShort": "A jelszónak legalább 8 karakter hosszúnak kell lennie",
+      "passwordsDoNotMatch": "A jelszavak nem egyeznek",
+      "termsRequired": "Az Általános Szerződési Feltételek elfogadása kötelező",
+      "userAlreadyExists": "Ezzel az email címmel már regisztráltak",
+      "genericError": "Hiba történt. Kérlek, próbáld újra később."
+    }
+  },
+  "dashboard": {
+    "welcome": "Üdvözöllek, {userName}!",
+    "projectCount": "Összesen {count} projekted van",
+    "noProjects": "Még nincs projekted",
+    "createFirstProject": "Hozd létre az első projektedet!",
+    "navigation": {
+      "projects": "Projektek",
+      "modules": "Modulok",
+      "settings": "Beállítások"
+    },
+    "roles": {
+      "admin": "Admin",
+      "user": "User",
+      "viewer": "Viewer"
+    }
+  },
+  "projects": {
+    "title": "Projektek",
+    "newProjectButton": "Új projekt",
+    "emptyState": {
+      "title": "Nincs még projekted",
+      "description": "Kezdj el egy új projektet a gombra kattintva",
+      "actionButton": "Új projekt létrehozása"
+    },
+    "table": {
+      "nameColumn": "Projekt név",
+      "autoIdColumn": "Azonosító",
+      "createdAtColumn": "Létrehozva",
+      "actionsColumn": "Műveletek"
+    },
+    "create": {
+      "modalTitle": "Új projekt létrehozása",
+      "nameLabel": "Projekt név",
+      "namePlaceholder": "Add meg a projekt nevét",
+      "autoIdPreview": "Azonosító előnézet",
+      "autoIdFormat": "PROJ-ÉÉÉÉHHNN-XXX",
+      "createButton": "Létrehozás",
+      "cancelButton": "Mégse",
+      "errors": {
+        "nameRequired": "Projekt név megadása kötelező",
+        "nameTooShort": "A projekt névnek legalább 3 karakter hosszúnak kell lennie",
+        "nameTooLong": "A projekt név maximum 100 karakter hosszú lehet"
+      }
+    },
+    "edit": {
+      "modalTitle": "Projekt szerkesztése",
+      "nameLabel": "Projekt név",
+      "autoIdLabel": "Azonosító",
+      "autoIdReadOnly": "(nem szerkeszthető)",
+      "saveButton": "Mentés",
+      "cancelButton": "Mégse",
+      "errors": {
+        "nameRequired": "Projekt név megadása kötelező",
+        "nameTooShort": "A projekt névnek legalább 3 karakter hosszúnak kell lennie",
+        "nameTooLong": "A projekt név maximum 100 karakter hosszú lehet"
+      }
+    },
+    "delete": {
+      "modalTitle": "Projekt törlése",
+      "confirmationMessage": "Biztosan törölni szeretnéd ezt a projektet?",
+      "projectName": "Projekt név:",
+      "warningMessage": "Ez a művelet visszavonhatatlan!",
+      "deleteButton": "Törlés",
+      "cancelButton": "Mégse"
+    },
+    "actions": {
+      "edit": "Szerkesztés",
+      "delete": "Törlés",
+      "view": "Megtekintés"
+    }
+  },
+  "notifications": {
+    "success": {
+      "projectCreated": "Projekt sikeresen létrehozva",
+      "projectUpdated": "Projekt sikeresen frissítve",
+      "projectDeleted": "Projekt törölve",
+      "loginSuccess": "Sikeres bejelentkezés",
+      "logoutSuccess": "Sikeres kijelentkezés",
+      "registrationSuccess": "Sikeres regisztráció! Ellenőrizd az email fiókodat."
+    },
+    "error": {
+      "projectCreateFailed": "Projekt létrehozása sikertelen",
+      "projectUpdateFailed": "Projekt frissítése sikertelen",
+      "projectDeleteFailed": "Projekt törlése sikertelen",
+      "loadProjectsFailed": "Projektek betöltése sikertelen",
+      "unauthorizedAction": "Nincs jogosultságod ehhez a művelethez",
+      "networkError": "Hálózati hiba történt. Kérlek, próbáld újra később.",
+      "genericError": "Hiba történt. Kérlek, próbáld újra."
+    },
+    "info": {
+      "loading": "Betöltés...",
+      "saving": "Mentés...",
+      "deleting": "Törlés..."
+    }
+  },
+  "validation": {
+    "required": "Ez a mező kötelező",
+    "emailInvalid": "Hibás email formátum",
+    "minLength": "Minimum {min} karakter szükséges",
+    "maxLength": "Maximum {max} karakter megengedett",
+    "passwordTooShort": "A jelszónak legalább {min} karakter hosszúnak kell lennie",
+    "passwordsDoNotMatch": "A jelszavak nem egyeznek"
+  },
+  "common": {
+    "buttons": {
+      "save": "Mentés",
+      "cancel": "Mégse",
+      "delete": "Törlés",
+      "edit": "Szerkesztés",
+      "create": "Létrehozás",
+      "close": "Bezárás",
+      "back": "Vissza",
+      "next": "Következő",
+      "submit": "Küldés",
+      "confirm": "Megerősítés"
+    },
+    "labels": {
+      "name": "Név",
+      "email": "Email",
+      "password": "Jelszó",
+      "createdAt": "Létrehozva",
+      "updatedAt": "Frissítve",
+      "actions": "Műveletek",
+      "status": "Státusz"
+    },
+    "messages": {
+      "loading": "Betöltés...",
+      "noData": "Nincs megjeleníthető adat",
+      "error": "Hiba történt",
+      "success": "Sikeres művelet",
+      "confirmAction": "Biztosan folytatod?"
+    },
+    "placeholders": {
+      "search": "Keresés...",
+      "selectOption": "Válassz..."
+    }
+  },
+  "errors": {
+    "unauthorized": "Nincs jogosultságod ehhez az oldalhoz",
+    "notFound": "Az oldal nem található",
+    "serverError": "Szerverhiba történt",
+    "redirecting": "Átirányítás..."
+  },
+  "modules": {
+    "title": "Modulok",
+    "description": "Aktiválható modulok kezelése",
+    "comingSoon": "Hamarosan elérhető"
+  },
+  "drawings": {
+    "title": "Rajzok",
+    "newDrawingButton": "Új rajz",
+    "emptyState": {
+      "title": "Nincs még rajzod",
+      "description": "Kezdj el rajzolni és dokumentáld a felméréseidet. Készíts alaprajzokat, vázlatokat és jegyzeteket."
+    },
+    "canvas": {
+      "toolbar": {
+        "backButton": "Vissza",
+        "toolsLabel": "Eszköz",
+        "tools": {
+          "pen": "Toll",
+          "eraser": "Radír",
+          "pan": "Mozgatás"
+        },
+        "colorPickerLabel": "Szín",
+        "strokeWidthLabel": "Vonalvastagság",
+        "paperSizeLabel": "Papír",
+        "zoomLabel": "Zoom",
+        "zoomIn": "+",
+        "zoomOut": "-",
+        "fitToScreen": "Képernyőhöz igazítás",
+        "zoomPercentage": "{percent}%",
+        "actions": {
+          "undo": "Visszavonás",
+          "clear": "Összes törlése",
+          "save": "Mentés",
+          "saving": "Mentés..."
+        },
+        "confirmClear": "Biztosan törölni szeretnéd az összes rajzelemet?"
+      },
+      "info": {
+        "paperOrientation": {
+          "portrait": "Álló",
+          "landscape": "Fekvő"
+        },
+        "strokeCount": "{count} rajzelem"
+      }
+    },
+    "card": {
+      "actions": {
+        "edit": "Szerkesztés",
+        "export": "PDF Export",
+        "delete": "Törlés"
+      },
+      "metadata": {
+        "createdAt": "Létrehozva",
+        "strokeCount": "{count} rajzelem"
+      },
+      "editName": {
+        "placeholder": "Rajz neve",
+        "tooltip": "Kattints a szerkesztéshez"
+      },
+      "hoverOverlay": "Megnyitás"
+    },
+    "colorPicker": {
+      "label": "Szín választása",
+      "colors": {
+        "black": "Fekete",
+        "red": "Piros",
+        "blue": "Kék",
+        "green": "Zöld",
+        "yellow": "Sárga",
+        "gray": "Szürke",
+        "brown": "Barna",
+        "purple": "Lila"
+      }
+    },
+    "paperSize": {
+      "label": "Papír méret",
+      "sizes": {
+        "a4": "A4",
+        "a3": "A3"
+      },
+      "orientation": {
+        "portrait": "Álló",
+        "landscape": "Fekvő"
+      },
+      "dimensions": {
+        "a4Portrait": "210 × 297 mm",
+        "a4Landscape": "297 × 210 mm",
+        "a3Portrait": "297 × 420 mm",
+        "a3Landscape": "420 × 297 mm"
+      }
+    },
+    "strokeWidth": {
+      "label": "Vonalvastagság",
+      "thin": "Vékony",
+      "medium": "Közepes",
+      "thick": "Vastag",
+      "value": "{width}px"
+    },
+    "pdfExport": {
+      "modalTitle": "PDF Exportálás",
+      "description": "Válaszd ki a kívánt papír méretet és tájolást",
+      "paperSizeLabel": "Papír méret",
+      "orientationLabel": "Tájolás",
+      "exportButton": "Exportálás",
+      "cancelButton": "Mégse",
+      "exporting": "Exportálás...",
+      "success": "PDF sikeresen elkészítve!",
+      "autoClose": "Az ablak automatikusan bezáródik..."
+    },
+    "deleteModal": {
+      "title": "Rajz törlése",
+      "confirmationMessage": "Biztosan törölni szeretnéd ezt a rajzot?",
+      "drawingName": "Rajz neve:",
+      "warningMessage": "Ez a művelet visszavonhatatlan!",
+      "deleteButton": "Törlés",
+      "cancelButton": "Mégse",
+      "deleting": "Törlés..."
+    },
+    "notifications": {
+      "success": {
+        "created": "Rajz sikeresen létrehozva",
+        "updated": "Rajz sikeresen frissítve",
+        "saved": "Rajz elmentve",
+        "deleted": "Rajz törölve",
+        "nameUpdated": "Név módosítva",
+        "exported": "PDF exportálva"
+      },
+      "error": {
+        "createFailed": "Rajz létrehozása sikertelen",
+        "updateFailed": "Rajz frissítése sikertelen",
+        "saveFailed": "Mentés sikertelen",
+        "deleteFailed": "Törlés sikertelen",
+        "loadFailed": "Rajzok betöltése sikertelen",
+        "exportFailed": "PDF generálása sikertelen",
+        "nameEmpty": "A rajz neve nem lehet üres",
+        "canvasError": "Canvas inicializálása sikertelen"
+      }
+    },
+    "loading": {
+      "drawings": "Rajzok betöltése...",
+      "drawing": "Rajz betöltése...",
+      "saving": "Mentés...",
+      "canvas": "Canvas betöltése..."
+    }
+  }
+}
