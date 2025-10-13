@@ -25,6 +25,8 @@ NEXT_PUBLIC_SUPABASE_URL=<supabase_project_url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase_anon_key>
 ```
 
+> ℹ️ **Megjegyzés:** kompatibilitás miatt a build elfogadja a `SUPABASE_URL` és `SUPABASE_ANON_KEY` (vagy `SUPABASE_KEY`) neveket is, de erősen javasolt a `NEXT_PUBLIC_*` előtag használata, hogy a Netlify kliens-oldalra is elérhetővé tegye az értékeket.
+
 Hol találod ezeket:
 - Supabase Dashboard → Project Settings → API
 - URL: `https://<project-ref>.supabase.co`
