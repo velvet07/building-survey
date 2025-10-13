@@ -22,6 +22,7 @@ import {
   calculateCanvasScale,
   calculateCenterPosition,
   clampZoom,
+  clampPointToCanvas,
   GRID_SIZE_PX,
 } from '@/lib/drawings/canvas-utils';
 import { CompactColorPicker } from './ColorPicker';
@@ -75,6 +76,7 @@ export default function DrawingCanvas({
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const currentStrokeRef = useRef<Stroke | null>(null);
 
   // Canvas dimensions
   const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
@@ -132,21 +134,23 @@ export default function DrawingCanvas({
     if (!inverted) return;
 
     const canvasPos = inverted.invert().point(pos);
+    const clampedPos = clampPointToCanvas(canvasPos, canvasWidth, canvasHeight);
 
     const newStroke: Stroke = {
       id: `stroke-${Date.now()}-${Math.random()}`,
-      points: [canvasPos.x, canvasPos.y],
+      points: [clampedPos.x, clampedPos.y],
       color: tool === 'eraser' ? '#FFFFFF' : color,
       width: tool === 'eraser' ? width * 3 : width,
       timestamp: new Date().toISOString(),
     };
 
     setCurrentStroke(newStroke);
+    currentStrokeRef.current = newStroke;
   };
 
   // Handle mouse/touch move
   const handleMouseMove = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (!isDrawing.current || !currentStroke || tool === 'pan') return;
+    if (!isDrawing.current || tool === 'pan') return;
 
     const stage = e.target.getStage();
     if (!stage) return;
@@ -161,26 +165,45 @@ export default function DrawingCanvas({
     if (!inverted) return;
 
     const canvasPos = inverted.invert().point(pos);
+    const clampedPos = clampPointToCanvas(canvasPos, canvasWidth, canvasHeight);
 
-    const newPoints = [...currentStroke.points, canvasPos.x, canvasPos.y];
-    setCurrentStroke({ ...currentStroke, points: newPoints });
+    setCurrentStroke((prev) => {
+      if (!prev) return prev;
+
+      const lastX = prev.points[prev.points.length - 2];
+      const lastY = prev.points[prev.points.length - 1];
+      if (lastX === clampedPos.x && lastY === clampedPos.y) {
+        return prev;
+      }
+
+      const updatedStroke: Stroke = {
+        ...prev,
+        points: [...prev.points, clampedPos.x, clampedPos.y],
+      };
+
+      currentStrokeRef.current = updatedStroke;
+      return updatedStroke;
+    });
   };
 
   // Handle mouse/touch up
   const handleMouseUp = () => {
-    if (!isDrawing.current || !currentStroke) {
+    const activeStroke = currentStrokeRef.current;
+
+    if (!isDrawing.current || !activeStroke) {
       isDrawing.current = false;
       return;
     }
 
     isDrawing.current = false;
 
-    if (currentStroke.points.length >= 4) {
-      setStrokes((prev) => [...prev, currentStroke]);
+    if (activeStroke.points.length >= 4) {
+      setStrokes((prev) => [...prev, activeStroke]);
       onChange?.();
     }
 
     setCurrentStroke(null);
+    currentStrokeRef.current = null;
   };
 
   // Handle save
