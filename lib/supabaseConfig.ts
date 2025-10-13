@@ -1,81 +1,32 @@
-const SUPABASE_URL_ENV_KEYS = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_URL'] as const;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const SUPABASE_ANON_KEY_ENV_KEYS = [
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'SUPABASE_ANON_KEY',
-  'SUPABASE_KEY',
-] as const;
+if (!supabaseUrl) {
+  throw new Error(
+    '[supabase-config] Hiányzik a Supabase URL. Állítsd be a NEXT_PUBLIC_SUPABASE_URL környezeti változót a Netlify felületén.'
+  );
+}
 
-type SupabaseEnvKeys =
-  | (typeof SUPABASE_URL_ENV_KEYS)[number]
-  | (typeof SUPABASE_ANON_KEY_ENV_KEYS)[number];
+if (!supabaseAnonKey) {
+  throw new Error(
+    '[supabase-config] Hiányzik a Supabase anon kulcs. Állítsd be a NEXT_PUBLIC_SUPABASE_ANON_KEY környezeti változót a Netlify felületén.'
+  );
+}
 
-type SupabaseConfig = {
+export type SupabaseConfig = {
   url: string;
   anonKey: string;
 };
 
-declare global {
-  interface Window {
-    __SUPABASE_CONFIG__?: SupabaseConfig;
-  }
-}
+const sharedConfig: SupabaseConfig = {
+  url: supabaseUrl,
+  anonKey: supabaseAnonKey,
+};
 
-function readProcessEnvValue(possibleKeys: readonly SupabaseEnvKeys[], label: string) {
-  for (const key of possibleKeys) {
-    const value = typeof process !== 'undefined' ? process.env?.[key as keyof NodeJS.ProcessEnv] : undefined;
-    if (value) {
-      if (
-        typeof window === 'undefined' &&
-        process.env.NODE_ENV !== 'production' &&
-        !key.startsWith('NEXT_PUBLIC_')
-      ) {
-        console.warn(
-          `[supabase-config] A(z) ${label} a ${key} változóból lett kiolvasva. ` +
-            'Javasolt átnevezni NEXT_PUBLIC_* előtagra a kliens oldali használathoz.'
-        );
-      }
-
-      return value;
-    }
-  }
-
-  throw new Error(
-    `[supabase-config] Hiányzik a(z) ${label}. Állítsd be a következő változók valamelyikét: ${possibleKeys
-      .map((key) => `\`${key}\``)
-      .join(', ')}.`
-  );
-}
-
-function readConfigFromProcessEnv(): SupabaseConfig {
-  const url = readProcessEnvValue(SUPABASE_URL_ENV_KEYS, 'Supabase URL');
-  const anonKey = readProcessEnvValue(SUPABASE_ANON_KEY_ENV_KEYS, 'Supabase anon kulcs');
-
-  return { url, anonKey };
-}
-
-function readConfigFromWindow(): SupabaseConfig | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const config = window.__SUPABASE_CONFIG__;
-  if (config?.url && config?.anonKey) {
-    return config;
-  }
-
-  return null;
+export function getSupabaseClientConfig(): SupabaseConfig {
+  return sharedConfig;
 }
 
 export function getSupabaseServerConfig(): SupabaseConfig {
-  return readConfigFromProcessEnv();
-}
-
-export function getSupabaseClientConfig(): SupabaseConfig {
-  const browserConfig = readConfigFromWindow();
-  if (browserConfig) {
-    return browserConfig;
-  }
-
-  return readConfigFromProcessEnv();
+  return sharedConfig;
 }

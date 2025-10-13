@@ -1,7 +1,7 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr';
 import type { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies';
 
-import { getSupabaseClientConfig } from './supabaseConfig';
+import { getSupabaseClientConfig, getSupabaseServerConfig } from './supabaseConfig';
 
 export function createClient() {
   const { url, anonKey } = getSupabaseClientConfig();
@@ -10,7 +10,7 @@ export function createClient() {
 }
 
 export function createServerSupabaseClient(cookieStore: ReadonlyRequestCookies) {
-  const { url, anonKey } = getSupabaseClientConfig();
+  const { url, anonKey } = getSupabaseServerConfig();
 
   return createServerClient(url, anonKey, {
     cookies: {
