@@ -24,6 +24,7 @@ import {
   clampZoom,
   clampPointToCanvas,
   GRID_SIZE_PX,
+  GRID_MAJOR_INTERVAL,
 } from '@/lib/drawings/canvas-utils';
 import { CompactColorPicker } from './ColorPicker';
 import StrokeWidthSlider from './StrokeWidthSlider';
