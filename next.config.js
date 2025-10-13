@@ -1,15 +1,16 @@
 const resolveEnvValue = (primaryKey, fallbackKeys = []) => {
-  const keys = [primaryKey, ...fallbackKeys];
+  if (process.env[primaryKey]) {
+    return process.env[primaryKey];
+  }
 
-  for (const key of keys) {
+  for (const key of fallbackKeys) {
     const value = process.env[key];
     if (value) {
-      if (key !== primaryKey) {
-        console.warn(
-          `[supabase-env] A(z) ${primaryKey} nincs beállítva. A rendszer a(z) ${key} értékét fogja használni. ` +
-            'Állítsd be a NEXT_PUBLIC_* változókat a biztonságos kliens-oldali eléréshez.'
-        );
-      }
+      console.warn(
+        `[supabase-env] A(z) ${primaryKey} nincs beállítva. A rendszer a(z) ${key} értékét fogja használni. ` +
+          'Állítsd be a NEXT_PUBLIC_* változókat a biztonságos kliens-oldali eléréshez.'
+      );
+      process.env[primaryKey] = value;
       return value;
     }
   }
