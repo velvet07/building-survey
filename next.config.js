@@ -1,10 +1,27 @@
+const sanitize = (value, key) => {
+  if (!value) {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed !== value) {
+    console.warn(
+      `[supabase-env] A(z) ${key} változó körülbelül szóközöket tartalmazott, ezeket automatikusan eltávolítottuk.`
+    );
+  }
+
+  return trimmed;
+};
+
 const resolveEnvValue = (primaryKey, fallbackKeys = []) => {
-  if (process.env[primaryKey]) {
-    return process.env[primaryKey];
+  const directValue = sanitize(process.env[primaryKey], primaryKey);
+  if (directValue) {
+    process.env[primaryKey] = directValue;
+    return directValue;
   }
 
   for (const key of fallbackKeys) {
-    const value = process.env[key];
+    const value = sanitize(process.env[key], key);
     if (value) {
       console.warn(
         `[supabase-env] A(z) ${primaryKey} nincs beállítva. A rendszer a(z) ${key} értékét fogja használni. ` +
