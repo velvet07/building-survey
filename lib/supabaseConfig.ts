@@ -1,17 +1,28 @@
 const SUPABASE_URL_ENV_KEYS = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'SUPABASE_URL',
-];
+] as const;
 
 const SUPABASE_ANON_KEY_ENV_KEYS = [
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_ANON_KEY',
   'SUPABASE_KEY',
-];
+] as const;
 
-function readEnvValue(possibleKeys: string[], label: string) {
+const ENV_SOURCE: Record<
+  (typeof SUPABASE_URL_ENV_KEYS)[number] | (typeof SUPABASE_ANON_KEY_ENV_KEYS)[number],
+  string | undefined
+> = {
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+  SUPABASE_KEY: process.env.SUPABASE_KEY,
+};
+
+function readEnvValue<K extends keyof typeof ENV_SOURCE>(possibleKeys: readonly K[], label: string) {
   for (const key of possibleKeys) {
-    const value = process.env[key];
+    const value = ENV_SOURCE[key];
     if (value) {
       if (process.env.NODE_ENV !== 'production' && !key.startsWith('NEXT_PUBLIC_')) {
         console.warn(
