@@ -1,31 +1,9 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import Script from 'next/script';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-
-const sanitizeEnv = (value?: string | null) => {
-  if (!value) {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const runtimeSupabaseConfig = {
-  NEXT_PUBLIC_SUPABASE_URL: sanitizeEnv(process.env.NEXT_PUBLIC_SUPABASE_URL),
-  SUPABASE_URL: sanitizeEnv(process.env.SUPABASE_URL),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: sanitizeEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-  SUPABASE_ANON_KEY: sanitizeEnv(process.env.SUPABASE_ANON_KEY),
-  SUPABASE_KEY: sanitizeEnv(process.env.SUPABASE_KEY),
-};
-
-const supabaseRuntimeConfigScript = `window.__SUPABASE_RUNTIME_CONFIG__ = ${JSON.stringify(
-  runtimeSupabaseConfig
-)};`;
 
 export const metadata: Metadata = {
   title: 'Épületfelmérő Rendszer',
@@ -40,11 +18,6 @@ export default function RootLayout({
   return (
     <html lang="hu">
       <body className={inter.variable}>
-        <Script
-          id="supabase-runtime-config"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: supabaseRuntimeConfigScript }}
-        />
         {children}
         <Toaster
           position="top-right"
