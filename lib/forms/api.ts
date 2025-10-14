@@ -1,6 +1,26 @@
 import { createClient } from '@/lib/supabase';
 import type { FormValues, ProjectFormResponse } from './types';
 
+function isMissingTableError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as { code?: string; message?: string };
+  const code = candidate.code?.toUpperCase();
+  const message = candidate.message?.toLowerCase() ?? '';
+
+  return (
+    code === 'PGRST116' ||
+    code === '42P01' ||
+    message.includes('could not find the table') ||
+    (message.includes('relation') && message.includes('does not exist'))
+  );
+}
+
+const MISSING_TABLE_MESSAGE =
+  'Az Aquapol űrlaphoz szükséges tárolótábla nem található. Kérjük futtasd a legfrissebb Supabase migrációkat.';
+
 export async function getProjectFormResponse(
   projectId: string,
   formSlug: string
@@ -15,6 +35,11 @@ export async function getProjectFormResponse(
     .maybeSingle();
 
   if (error) {
+    if (isMissingTableError(error)) {
+      console.warn('project_form_responses table is missing. Returning empty form.');
+      return null;
+    }
+
     console.error('Error fetching project form response:', error);
     throw new Error(
       `Űrlap betöltése sikertelen: ${error.message}`,
@@ -57,6 +82,11 @@ export async function saveProjectFormResponse(
     .maybeSingle();
 
   if (fetchError) {
+    if (isMissingTableError(fetchError)) {
+      console.error('project_form_responses table missing when checking existing response.');
+      throw new Error(MISSING_TABLE_MESSAGE, { cause: fetchError });
+    }
+
     console.error('Error checking existing form response:', fetchError);
     throw new Error(
       `Űrlap ellenőrzése sikertelen: ${fetchError.message}`,
@@ -77,6 +107,11 @@ export async function saveProjectFormResponse(
       .single();
 
     if (error) {
+      if (isMissingTableError(error)) {
+        console.error('project_form_responses table missing when updating response.');
+        throw new Error(MISSING_TABLE_MESSAGE, { cause: error });
+      }
+
       console.error('Error updating project form response:', error);
       throw new Error(
         `Űrlap mentése sikertelen: ${error.message}`,
@@ -101,6 +136,11 @@ export async function saveProjectFormResponse(
     .single();
 
   if (error) {
+    if (isMissingTableError(error)) {
+      console.error('project_form_responses table missing when creating response.');
+      throw new Error(MISSING_TABLE_MESSAGE, { cause: error });
+    }
+
     console.error('Error creating project form response:', error);
     throw new Error(
       `Űrlap létrehozása sikertelen: ${error.message}`,
