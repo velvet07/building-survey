@@ -1,6 +1,8 @@
 import jsPDF from 'jspdf';
 import { ensureHungarianFont, setFont } from '@/lib/pdf/font-utils';
 import type { FormDefinition, FormField, FormValues } from './types';
+import { renderAquapolFormPDF } from './pdf-templates/aquapol';
+import { formatFormValue } from './pdf/utils';
 
 export const FORM_PAGE_CONFIG = {
   marginLeft: 18,
@@ -8,24 +10,6 @@ export const FORM_PAGE_CONFIG = {
   contentWidth: 174,
   lineHeight: 6,
 } as const;
-
-function formatFormValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') {
-    return '-';
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'Igen' : 'Nem';
-  }
-
-  if (typeof value === 'string') {
-    if (value === 'yes') return 'Igen';
-    if (value === 'no') return 'Nem';
-    return value;
-  }
-
-  return String(value);
-}
 
 function isFieldVisible(field: FormField, values: FormValues): boolean {
   if (!field.visibleWhen) {
@@ -136,8 +120,12 @@ export function exportFormToPDF(definition: FormDefinition, values: FormValues):
   const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
   ensureHungarianFont(pdf);
 
-  const cursor = { current: FORM_PAGE_CONFIG.marginTop };
-  renderFormDefinition(pdf, definition, values, cursor);
+  if (definition.pdf?.template === 'aquapol') {
+    renderAquapolFormPDF(pdf, definition, values);
+  } else {
+    const cursor = { current: FORM_PAGE_CONFIG.marginTop };
+    renderFormDefinition(pdf, definition, values, cursor);
+  }
 
   pdf.setProperties({
     title: definition.title,

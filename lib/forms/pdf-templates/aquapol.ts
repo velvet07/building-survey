@@ -1,0 +1,370 @@
+import jsPDF from 'jspdf';
+import { setFont } from '@/lib/pdf/font-utils';
+import { formatFormValue } from '../pdf/utils';
+import type { FormDefinition, FormValues } from '../types';
+
+const BRAND_GREEN = { r: 0, g: 132, b: 70 } as const;
+const HEADER_FILL = { r: 232, g: 246, b: 238 } as const;
+
+type ColumnWidth = number; // 0-1 ratio of the available width
+
+interface LayoutColumn {
+  label: string;
+  fieldId: string;
+  width?: ColumnWidth;
+}
+
+type LayoutEntry =
+  | { type: 'section'; title: string }
+  | { type: 'row'; columns: LayoutColumn[] };
+
+const AQUAPOL_LAYOUT: LayoutEntry[] = [
+  { type: 'section', title: 'Személyes adatok' },
+  {
+    type: 'row',
+    columns: [
+      { label: 'Megrendelő neve', fieldId: 'customer_name', width: 0.5 },
+      { label: 'Lakcím / Irányítószám', fieldId: 'customer_address', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: 'Telefon', fieldId: 'customer_phone', width: 0.5 },
+      { label: 'Mobil', fieldId: 'customer_mobile', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: 'E-mail', fieldId: 'customer_email', width: 0.5 },
+      { label: 'Kapcsolattartó', fieldId: 'contact_person', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [{ label: 'Telefon (kapcsolattartó)', fieldId: 'contact_person_phone' }],
+  },
+  { type: 'section', title: 'Ahová az AQUAPOL® készüléket telepíteni kívánja' },
+  {
+    type: 'row',
+    columns: [
+      { label: 'Név', fieldId: 'installation_name', width: 0.5 },
+      { label: 'Telefon', fieldId: 'installation_phone', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [{ label: 'Cím / Irányítószám', fieldId: 'installation_address' }],
+  },
+  { type: 'section', title: 'Az épületről' },
+  {
+    type: 'row',
+    columns: [
+      { label: '12. Mikor épült a ház', fieldId: 'house_built_year', width: 0.5 },
+      { label: '13. Mekkora az alapterülete', fieldId: 'house_floor_area', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '14. Főfalak vastagsága', fieldId: 'main_wall_thickness', width: 0.5 },
+      { label: '15. Közfalak vastagsága', fieldId: 'partition_wall_thickness', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '16. Van-e pince a ház alatt?', fieldId: 'basement_exists', width: 0.5 },
+      { label: '17. Hány m² alapterületű a pince', fieldId: 'basement_area', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '18. A pince mélysége a föld szintjéhez képest', fieldId: 'basement_depth', width: 0.5 },
+      {
+        label: '19. A föld szintje feletti pincemagasság',
+        fieldId: 'basement_height_above_ground',
+        width: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      {
+        label: '20. Van-e oldalirányú nedvesedésre utaló jel a pincében?',
+        fieldId: 'basement_lateral_moisture',
+        width: 0.5,
+      },
+      {
+        label:
+          '21. Ha nincs pince az épület alatt, mekkora a padlószint magassága a járdaszinthez képest',
+        fieldId: 'floor_height_without_basement',
+        width: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '22. Milyen építőanyagból készült a ház', fieldId: 'house_material', width: 0.5 },
+      { label: '23. Mikor volt utoljára tatarozva', fieldId: 'last_renovation', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '24. Festve', fieldId: 'last_paint', width: 0.5 },
+      {
+        label: '25. Mennyi időt múlva jelentkezett a nedvesedés',
+        fieldId: 'dampness_after_time',
+        width: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '26. Festés után', fieldId: 'dampness_after_paint', width: 0.5 },
+      { label: '27. Látható-e sókicsapódás a falon?', fieldId: 'salt_efflorescence', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '28. Penész?', fieldId: 'mold_present', width: 0.5 },
+      { label: '30. Csak a bútorok mögött', fieldId: 'mold_behind_furniture', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      {
+        label: '29. A penész a falak alsó felén vagy a mennyezeti részen jelentkezik',
+        fieldId: 'mold_location',
+      },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '31. Dohos, nyirkos a levegő a lakásban', fieldId: 'air_musty', width: 0.5 },
+      { label: '32. Az építmény terepviszonyai', fieldId: 'terrain_type', width: 0.5 },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '33. Esőcsatorna állapota', fieldId: 'gutter_condition', width: 0.5 },
+      {
+        label:
+          '34. Épül-e járda az épület köré, ami a fal tövéről indul és elvezeti a felcsapódó vizeket?',
+        fieldId: 'sidewalk_building',
+        width: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      {
+        label: '35. Megoldódott-e az esővíz kifolyónyílásánál a vízelvezetés a falakról?',
+        fieldId: 'rainwater_drainage_resolved',
+        width: 0.5,
+      },
+      {
+        label: '36. Télen intenzív fűtés mellett páralecsapódást észlel-e a falakon?',
+        fieldId: 'winter_condensation',
+        width: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      {
+        label: '37. A falakon látható falnedvesség magassága (cm a főfalon)',
+        fieldId: 'wall_moisture_height_main',
+        width: 0.5,
+      },
+      {
+        label: '37. A falakon látható falnedvesség magassága (cm a közbenső falon)',
+        fieldId: 'wall_moisture_height_partition',
+        width: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '38. Deformálódik-e a padlózat a nedvesség hatására?', fieldId: 'floor_deformation', width: 0.5 },
+      {
+        label:
+          '39. Helytelen kivitelezésből adódó nedvesedés, eresz, WC, fürdőszoba, konyha, egyéb',
+        fieldId: 'incorrect_execution_dampness',
+        width: 0.5,
+      },
+    ],
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '39. Részletek (ha Igen)', fieldId: 'incorrect_execution_details' },
+    ],
+  },
+  { type: 'row', columns: [{ label: '40. Egyéb észrevételei amit lényegesnek tart', fieldId: 'additional_observations' }] },
+  { type: 'row', columns: [{ label: '41. Kalkuláció', fieldId: 'calculation_notes' }] },
+];
+
+function resolveValue(fieldId: string, values: FormValues): string {
+  if (fieldId === 'terrain_type') {
+    const terrainValue = values[fieldId];
+    switch (terrainValue) {
+      case 'plain':
+        return 'Síkság';
+      case 'riverside':
+        return 'Folyópart';
+      case 'slope':
+        return 'Lejtő';
+      default:
+        return formatFormValue(terrainValue ?? null);
+    }
+  }
+
+  return formatFormValue(values[fieldId] ?? null);
+}
+
+export function renderAquapolFormPDF(
+  pdf: jsPDF,
+  definition: FormDefinition,
+  values: FormValues
+): void {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const marginX = 14;
+  const marginTop = 20;
+  const marginBottom = 18;
+  const columnGap = 0;
+  const contentWidth = pageWidth - marginX * 2;
+  const labelFontSize = 9;
+  const valueFontSize = 10;
+  const valueLineHeight = 4.2;
+  const verticalPadding = 2.5;
+  const minRowHeight = 13;
+
+  let cursorY = marginTop;
+
+  setFont(pdf, 'bold');
+  pdf.setFontSize(20);
+  pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+  pdf.text('FELMÉRŐLAP', pageWidth / 2, cursorY, { align: 'center' });
+  cursorY += 8;
+
+  setFont(pdf, 'normal');
+  pdf.setFontSize(11);
+  pdf.setTextColor(60, 60, 60);
+  pdf.text(definition.title, pageWidth / 2, cursorY, { align: 'center' });
+  cursorY += 10;
+
+  pdf.setTextColor(0, 0, 0);
+
+  const ensureSpace = (height: number) => {
+    if (cursorY + height > pageHeight - marginBottom) {
+      pdf.addPage('a4', 'portrait');
+      cursorY = marginTop;
+    }
+  };
+
+  const drawSectionHeader = (title: string) => {
+    const headerHeight = 7.5;
+    ensureSpace(headerHeight);
+    pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+    pdf.setFillColor(HEADER_FILL.r, HEADER_FILL.g, HEADER_FILL.b);
+    pdf.rect(marginX, cursorY, contentWidth, headerHeight, 'FD');
+    setFont(pdf, 'bold');
+    pdf.setFontSize(11);
+    pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+    pdf.text(title, marginX + 3, cursorY + headerHeight - 2.2);
+    cursorY += headerHeight + 2;
+    pdf.setTextColor(0, 0, 0);
+  };
+
+  const drawRow = (columns: LayoutColumn[]) => {
+    const availableWidth = contentWidth;
+    const columnDescriptors = columns.map((column) => {
+      const widthRatio = column.width ?? 1 / columns.length;
+      const colWidth = availableWidth * widthRatio;
+      const textWidth = colWidth - 6;
+      const value = resolveValue(column.fieldId, values);
+      setFont(pdf, 'normal');
+      pdf.setFontSize(valueFontSize);
+      const lines = pdf.splitTextToSize(value, textWidth);
+      const contentHeight =
+        verticalPadding * 2 + 4.4 + Math.max(lines.length, 1) * valueLineHeight;
+      return {
+        column,
+        width: colWidth,
+        lines,
+        contentHeight,
+        value,
+      };
+    });
+
+    const rowHeight = Math.max(minRowHeight, ...columnDescriptors.map((item) => item.contentHeight));
+    ensureSpace(rowHeight);
+
+    pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+    pdf.setLineWidth(0.35);
+    pdf.rect(marginX, cursorY, contentWidth, rowHeight);
+
+    let x = marginX;
+    columnDescriptors.forEach((descriptor, index) => {
+      const { column, width, lines } = descriptor;
+
+      const labelX = x + 3;
+      const labelY = cursorY + verticalPadding + 4.2;
+      setFont(pdf, 'bold');
+      pdf.setFontSize(labelFontSize);
+      pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+      pdf.text(`${column.label}:`, labelX, labelY);
+
+      setFont(pdf, 'normal');
+      pdf.setFontSize(valueFontSize);
+      pdf.setTextColor(0, 0, 0);
+      let valueY = labelY + 2.6;
+      if (lines.length === 0) {
+        pdf.text('-', labelX, valueY);
+      } else {
+        lines.forEach((line: string) => {
+          pdf.text(line, labelX, valueY);
+          valueY += valueLineHeight;
+        });
+      }
+
+      if (index < columnDescriptors.length - 1) {
+        const dividerX = x + width;
+        pdf.line(dividerX, cursorY, dividerX, cursorY + rowHeight);
+      }
+
+      x += width;
+    });
+
+    cursorY += rowHeight + 2;
+  };
+
+  AQUAPOL_LAYOUT.forEach((entry) => {
+    if (entry.type === 'section') {
+      drawSectionHeader(entry.title);
+    } else {
+      drawRow(entry.columns);
+    }
+  });
+
+  setFont(pdf, 'normal');
+  pdf.setFontSize(8);
+  pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+  const footerText = 'A dátumozás rendszeres és megfelelő elvégzése javasolt.';
+  pdf.text(footerText, marginX, pageHeight - marginBottom + 6);
+}

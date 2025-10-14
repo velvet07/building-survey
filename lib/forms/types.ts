@@ -63,6 +63,7 @@ export interface FormDefinition {
   sections: FormSection[];
   pdf?: {
     fileName?: string;
+    template?: 'default' | 'aquapol';
   };
 }
 

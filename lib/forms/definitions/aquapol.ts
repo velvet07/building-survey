@@ -12,6 +12,7 @@ export const aquapolFormDefinition: FormDefinition = {
     'Az Aquapol nedvességcsökkentő rendszer telepítéséhez szükséges alapinformációk összegyűjtése.',
   pdf: {
     fileName: 'aquapol-felmeres',
+    template: 'aquapol',
   },
   sections: [
     {
