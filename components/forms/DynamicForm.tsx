@@ -25,11 +25,11 @@ function isFieldVisible(field: FormField, values: FormValues): boolean {
 function getFieldWidth(field: FormField): string {
   switch (field.width) {
     case 'half':
-      return 'md:col-span-1';
+      return 'md:col-span-6';
     case 'third':
-      return 'md:col-span-1 lg:col-span-1 xl:col-span-1';
+      return 'md:col-span-4';
     default:
-      return 'md:col-span-2';
+      return 'md:col-span-12';
   }
 }
 
@@ -60,7 +60,7 @@ export default function DynamicForm({
       {visibleSections.map((section) => (
         <section
           key={section.id}
-          className="bg-white border border-gray-200 rounded-xl shadow-sm p-6"
+          className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
         >
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
@@ -71,12 +71,15 @@ export default function DynamicForm({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-12">
             {section.fields.map((field) => (
-              <div key={field.id} className={getFieldWidth(field)}>
+              <div
+                key={field.id}
+                className={`col-span-1 ${getFieldWidth(field)} flex flex-col gap-2`}
+              >
                 <label
                   htmlFor={field.id}
-                  className="block text-sm font-medium text-gray-700 mb-2"
+                  className="block text-sm font-medium text-gray-700"
                 >
                   {field.label}
                   {field.required && <span className="text-red-500"> *</span>}
@@ -100,7 +103,7 @@ export default function DynamicForm({
                           : event.target.value
                       )
                     }
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-gray-900 transition-shadow focus:border-blue-500 focus:ring focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 ) : null}
 
@@ -113,16 +116,16 @@ export default function DynamicForm({
                     value={(values[field.id] as string) ?? ''}
                     onChange={(event) => onChange(field.id, event.target.value)}
                     rows={4}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-gray-900 transition-shadow focus:border-blue-500 focus:ring focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 ) : null}
 
                 {field.type === 'radio' ? (
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
                     {field.options.map((option) => (
                       <label
                         key={option.value}
-                        className="inline-flex items-center gap-2 text-sm text-gray-700"
+                        className="inline-flex items-center gap-2 rounded-lg border border-transparent px-3 py-1.5 text-sm text-gray-700 transition-colors hover:border-blue-200 hover:bg-blue-50"
                       >
                         <input
                           type="radio"
@@ -146,7 +149,7 @@ export default function DynamicForm({
                     disabled={disabled || isSubmitting}
                     value={(values[field.id] as string | number | '') ?? ''}
                     onChange={(event) => onChange(field.id, event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-gray-900 transition-shadow focus:border-blue-500 focus:ring focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
                   >
                     <option value="">Válassz...</option>
                     {field.options?.map((option) => (
@@ -180,7 +183,9 @@ export default function DynamicForm({
         </section>
       ))}
 
-      {actions && <div className="flex justify-end gap-4">{actions}</div>}
+      {actions && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">{actions}</div>
+      )}
     </form>
   );
 }

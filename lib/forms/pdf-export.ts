@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { ensureHungarianFont, setFont } from '@/lib/pdf/font-utils';
 import type { FormDefinition, FormValues } from './types';
 
 function formatValue(value: unknown): string {
@@ -27,6 +28,7 @@ export function exportFormToPDF(
   }
 ): void {
   const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  ensureHungarianFont(pdf);
 
   const marginLeft = 20;
   const marginTop = 25;
@@ -37,13 +39,13 @@ export function exportFormToPDF(
     ? `${definition.title} – ${options.projectName}`
     : definition.title;
 
-  pdf.setFont('helvetica', 'bold');
+  setFont(pdf, 'bold');
   pdf.setFontSize(18);
   pdf.text(title, marginLeft, cursorY);
   cursorY += lineHeight + 3;
 
   if (definition.description) {
-    pdf.setFont('helvetica', 'normal');
+    setFont(pdf, 'normal');
     pdf.setFontSize(11);
     const lines = pdf.splitTextToSize(definition.description, 170);
     pdf.text(lines, marginLeft, cursorY);
@@ -61,14 +63,14 @@ export function exportFormToPDF(
     }
 
     if (section.title) {
-      pdf.setFont('helvetica', 'bold');
+      setFont(pdf, 'bold');
       pdf.setFontSize(14);
       pdf.text(section.title, marginLeft, cursorY);
       cursorY += lineHeight;
     }
 
     if (section.description) {
-      pdf.setFont('helvetica', 'normal');
+      setFont(pdf, 'normal');
       pdf.setFontSize(11);
       const lines = pdf.splitTextToSize(section.description, 170);
       pdf.text(lines, marginLeft, cursorY);
@@ -78,11 +80,11 @@ export function exportFormToPDF(
     section.fields.forEach((field) => {
       const fieldValue = values[field.id];
 
-      pdf.setFont('helvetica', 'bold');
+      setFont(pdf, 'bold');
       pdf.setFontSize(11);
       pdf.text(`${field.label}:`, marginLeft, cursorY);
 
-      pdf.setFont('helvetica', 'normal');
+      setFont(pdf, 'normal');
       pdf.setFontSize(11);
 
       const formatted = formatValue(fieldValue);

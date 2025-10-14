@@ -176,24 +176,26 @@ export default function ProjectDashboardPage() {
             Vissza a projektekhez
           </button>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{project.name}</h1>
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{project.name}</h1>
                 <p className="text-gray-600">
-                  Azonosító: <span className="font-mono font-medium">{project.auto_identifier}</span>
+                  Azonosító:{' '}
+                  <span className="font-mono text-sm font-medium sm:text-base">{project.auto_identifier}</span>
                 </p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
                 <button
                   onClick={() => setIsExportModalOpen(true)}
-                  className="px-4 py-2 border border-blue-200 rounded-lg text-blue-600 font-medium hover:bg-blue-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 px-4 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
                 >
-                  📄 Modul PDF export
+                  <span aria-hidden className="text-lg">📄</span>
+                  Modul PDF export
                 </button>
                 <button
                   onClick={() => router.push('/dashboard/projects')}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Bezárás
                 </button>

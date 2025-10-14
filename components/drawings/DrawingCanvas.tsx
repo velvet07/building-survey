@@ -563,11 +563,20 @@ export default function DrawingCanvas({
   return (
     <div className="flex h-full flex-col bg-emerald-50/40">
       <div className="border-b border-emerald-100 bg-white shadow-sm">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 lg:gap-4">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 md:justify-between lg:flex-nowrap lg:gap-4">
           {projectUrl && (
             <Link
               href={projectUrl}
-              className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 lg:hidden"
+            >
+              <span aria-hidden className="text-base">←</span>
+              <span>Vissza a projekthez</span>
+            </Link>
+          )}
+          {projectUrl && (
+            <Link
+              href={projectUrl}
+              className="hidden items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 lg:flex"
             >
               <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
                 Projekt
@@ -576,7 +585,7 @@ export default function DrawingCanvas({
             </Link>
           )}
 
-          <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-2 py-2 shadow-inner">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-2 py-2 shadow-inner">
             {TOOLBAR_TOOLS.map((toolOption) => (
               <button
                 key={toolOption.id}
@@ -624,11 +633,11 @@ export default function DrawingCanvas({
             </div>
           )}
 
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:w-auto">
             <ColorPicker
               selectedColor={color}
               onChange={setColor}
-              className="w-48 min-w-[12rem]"
+              className="w-full min-w-[10rem] sm:w-48"
             />
 
             <div className="relative" ref={widthDropdownRef}>
@@ -690,7 +699,7 @@ export default function DrawingCanvas({
             orientation={orientation}
             onPaperSizeChange={handlePaperSizeChange}
             onOrientationChange={handleOrientationChange}
-            className="ml-auto flex items-center gap-3"
+            className="flex w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:flex-nowrap lg:gap-3"
           />
 
           <div className="flex flex-wrap items-center gap-3">
