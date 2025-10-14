@@ -7,6 +7,27 @@ import jsPDF from 'jspdf';
 import type { Drawing, PaperSize, PaperOrientation } from './types';
 import { getCanvasSize, GRID_SIZE_PX } from './canvas-utils';
 
+const PAPER_DIMENSIONS_MM: Record<
+  PaperSize,
+  Record<PaperOrientation, { width: number; height: number }>
+> = {
+  a4: {
+    portrait: { width: 210, height: 297 },
+    landscape: { width: 297, height: 210 },
+  },
+  a3: {
+    portrait: { width: 297, height: 420 },
+    landscape: { width: 420, height: 297 },
+  },
+};
+
+export function getPaperDimensionsInMillimeters(
+  paperSize: PaperSize,
+  orientation: PaperOrientation
+): { width: number; height: number } {
+  return PAPER_DIMENSIONS_MM[paperSize][orientation];
+}
+
 /**
  * Export drawing to PDF
  * Rajz exportálása PDF-be
@@ -21,7 +42,8 @@ export async function exportDrawingToPDF(
 
     // Create jsPDF instance
     // Paper sizes in mm: A4 = 210x297, A3 = 297x420
-    const paperSizeMM = paperSize === 'a4' ? [210, 297] : [297, 420];
+    const { width, height } = getPaperDimensionsInMillimeters(paperSize, orientation);
+    const paperSizeMM: [number, number] = [width, height];
     const orientationFormat = orientation === 'portrait' ? 'p' : 'l';
 
     const pdf = new jsPDF({

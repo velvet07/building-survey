@@ -149,9 +149,7 @@ export default function AquapolFormPage() {
 
     try {
       setExporting(true);
-      exportFormToPDF(aquapolFormDefinition, formValues, {
-        projectName: project.name,
-      });
+      exportFormToPDF(aquapolFormDefinition, formValues);
       setStatusMessage('PDF export sikeresen elindítva.');
       setStatusType('success');
     } catch (error) {

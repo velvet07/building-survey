@@ -1,8 +1,15 @@
 import jsPDF from 'jspdf';
 import { ensureHungarianFont, setFont } from '@/lib/pdf/font-utils';
-import type { FormDefinition, FormValues } from './types';
+import type { FormDefinition, FormField, FormValues } from './types';
 
-function formatValue(value: unknown): string {
+export const FORM_PAGE_CONFIG = {
+  marginLeft: 18,
+  marginTop: 20,
+  contentWidth: 174,
+  lineHeight: 6,
+} as const;
+
+function formatFormValue(value: unknown): string {
   if (value === null || value === undefined || value === '') {
     return '-';
   }
@@ -20,89 +27,121 @@ function formatValue(value: unknown): string {
   return String(value);
 }
 
-export function exportFormToPDF(
+function isFieldVisible(field: FormField, values: FormValues): boolean {
+  if (!field.visibleWhen) {
+    return true;
+  }
+
+  const dependentValue = values[field.visibleWhen.fieldId];
+  let candidate: string | boolean | undefined;
+
+  if (typeof dependentValue === 'number') {
+    candidate = dependentValue.toString();
+  } else if (typeof dependentValue === 'string' || typeof dependentValue === 'boolean') {
+    candidate = dependentValue;
+  }
+
+  return candidate !== undefined && field.visibleWhen.equals.includes(candidate);
+}
+
+function ensureFormPageSpace(
+  pdf: jsPDF,
+  cursor: { current: number },
+  requiredHeight: number
+) {
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const bottomLimit = pageHeight - FORM_PAGE_CONFIG.marginTop;
+
+  if (cursor.current + requiredHeight > bottomLimit) {
+    pdf.addPage('a4', 'portrait');
+    cursor.current = FORM_PAGE_CONFIG.marginTop;
+  }
+}
+
+export function renderFormDefinition(
+  pdf: jsPDF,
   definition: FormDefinition,
   values: FormValues,
-  options?: {
-    projectName?: string;
-  }
+  cursor: { current: number }
 ): void {
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-  ensureHungarianFont(pdf);
+  const { marginLeft, contentWidth, lineHeight } = FORM_PAGE_CONFIG;
 
-  const marginLeft = 20;
-  const marginTop = 25;
-  const lineHeight = 7;
-  let cursorY = marginTop;
-
-  const title = options?.projectName
-    ? `${definition.title} – ${options.projectName}`
-    : definition.title;
-
+  ensureFormPageSpace(pdf, cursor, lineHeight);
   setFont(pdf, 'bold');
-  pdf.setFontSize(18);
-  pdf.text(title, marginLeft, cursorY);
-  cursorY += lineHeight + 3;
+  pdf.setFontSize(14);
+  pdf.text(definition.title, marginLeft, cursor.current);
+  cursor.current += lineHeight + 2;
 
   if (definition.description) {
+    const lines = pdf.splitTextToSize(definition.description, contentWidth);
+    const descriptionHeight = lines.length * (lineHeight - 1) + 2;
+    ensureFormPageSpace(pdf, cursor, descriptionHeight);
     setFont(pdf, 'normal');
-    pdf.setFontSize(11);
-    const lines = pdf.splitTextToSize(definition.description, 170);
-    pdf.text(lines, marginLeft, cursorY);
-    cursorY += lines.length * lineHeight + 4;
+    pdf.setFontSize(10);
+    pdf.text(lines, marginLeft, cursor.current);
+    cursor.current += descriptionHeight;
   }
 
-  definition.sections.forEach((section, sectionIndex) => {
-    if (sectionIndex > 0) {
-      cursorY += 4;
-    }
+  definition.sections.forEach((section) => {
+    const visibleFields = section.fields.filter((field) => isFieldVisible(field, values));
 
-    if (cursorY >= 270) {
-      pdf.addPage();
-      cursorY = marginTop;
+    if (visibleFields.length === 0) {
+      return;
     }
 
     if (section.title) {
+      ensureFormPageSpace(pdf, cursor, lineHeight + 1);
       setFont(pdf, 'bold');
-      pdf.setFontSize(14);
-      pdf.text(section.title, marginLeft, cursorY);
-      cursorY += lineHeight;
+      pdf.setFontSize(12);
+      pdf.text(section.title, marginLeft, cursor.current);
+      cursor.current += lineHeight + 1;
     }
 
     if (section.description) {
+      const sectionLines = pdf.splitTextToSize(section.description, contentWidth);
+      const sectionHeight = sectionLines.length * (lineHeight - 1) + 2;
+      ensureFormPageSpace(pdf, cursor, sectionHeight);
       setFont(pdf, 'normal');
-      pdf.setFontSize(11);
-      const lines = pdf.splitTextToSize(section.description, 170);
-      pdf.text(lines, marginLeft, cursorY);
-      cursorY += lines.length * lineHeight;
+      pdf.setFontSize(10);
+      pdf.text(sectionLines, marginLeft, cursor.current);
+      cursor.current += sectionHeight;
     }
 
-    section.fields.forEach((field) => {
-      const fieldValue = values[field.id];
+    visibleFields.forEach((field) => {
+      const formattedValue = formatFormValue(values[field.id]);
+      const fieldLines = pdf.splitTextToSize(formattedValue, contentWidth);
+      const valueLineHeight = lineHeight - 1;
+      const blockHeight = lineHeight + fieldLines.length * valueLineHeight + 2;
+
+      ensureFormPageSpace(pdf, cursor, blockHeight);
 
       setFont(pdf, 'bold');
-      pdf.setFontSize(11);
-      pdf.text(`${field.label}:`, marginLeft, cursorY);
+      pdf.setFontSize(10);
+      pdf.text(`${field.label}:`, marginLeft, cursor.current);
+      cursor.current += lineHeight;
 
       setFont(pdf, 'normal');
-      pdf.setFontSize(11);
+      pdf.setFontSize(10);
+      fieldLines.forEach((line: string) => {
+        pdf.text(line, marginLeft + 2, cursor.current);
+        cursor.current += valueLineHeight;
+      });
 
-      const formatted = formatValue(fieldValue);
-      const fieldLines = pdf.splitTextToSize(formatted, 170);
-
-      pdf.text(fieldLines, marginLeft + 2, cursorY + lineHeight);
-      cursorY += lineHeight * (fieldLines.length + 1);
-
-      if (cursorY >= 270) {
-        pdf.addPage();
-        cursorY = marginTop;
-      }
+      cursor.current += 2;
     });
   });
+}
+
+export function exportFormToPDF(definition: FormDefinition, values: FormValues): void {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  ensureHungarianFont(pdf);
+
+  const cursor = { current: FORM_PAGE_CONFIG.marginTop };
+  renderFormDefinition(pdf, definition, values, cursor);
 
   pdf.setProperties({
     title: definition.title,
-    subject: 'Aquapol felmérési űrlap',
+    subject: definition.title,
     author: 'Building Survey App',
     creator: 'Building Survey App',
   });
