@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { createProjectAction } from '@/app/actions/projects';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
@@ -17,6 +18,15 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const isPostgrestError = (value: unknown): value is PostgrestError => {
+    return Boolean(
+      value &&
+      typeof value === 'object' &&
+      'code' in value &&
+      typeof (value as Record<string, unknown>).code === 'string'
+    );
+  };
 
   const validate = () => {
     if (!name.trim()) {
@@ -49,13 +59,16 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
         console.error('Create error:', createError);
 
         // Handle specific error codes
-        if (createError.code === '23505') {
+        if (isPostgrestError(createError) && createError.code === '23505') {
           // Unique constraint violation
           toast.error('Már létezik projekt ezzel a névvel!');
-        } else if (createError.message?.includes('duplicate')) {
+        } else if ('message' in createError && typeof createError.message === 'string' && createError.message.includes('duplicate')) {
           toast.error('Már létezik projekt ezzel a névvel!');
         } else {
-          toast.error(`Hiba történt: ${createError.message || 'Ismeretlen hiba'}`);
+          const message = 'message' in createError && typeof createError.message === 'string'
+            ? createError.message
+            : 'Ismeretlen hiba';
+          toast.error(`Hiba történt: ${message}`);
         }
       } else {
         toast.success('Projekt sikeresen létrehozva!');

@@ -13,7 +13,7 @@ export async function POST() {
     // 1. Drop old auto_identifier constraint
     const { error: error1 } = await supabase.rpc('exec_sql', {
       sql: 'ALTER TABLE public.projects DROP CONSTRAINT IF EXISTS projects_auto_identifier_key;'
-    }).catch(() => ({ error: { message: 'RPC not available, using alternative method' } }));
+    });
 
     // 2. Create unique index for project names
     const { error: error2 } = await supabase.rpc('exec_sql', {
@@ -22,7 +22,7 @@ export async function POST() {
         ON public.projects (owner_id, name)
         WHERE deleted_at IS NULL;
       `
-    }).catch(() => ({ error: { message: 'RPC not available' } }));
+    });
 
     // 3. Update the generate_project_identifier function
     const { error: error3 } = await supabase.rpc('exec_sql', {
@@ -62,7 +62,7 @@ export async function POST() {
         END;
         $$ LANGUAGE plpgsql;
       `
-    }).catch(() => ({ error: { message: 'RPC not available' } }));
+    });
 
     return NextResponse.json({
       success: true,
