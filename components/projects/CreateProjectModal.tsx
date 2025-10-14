@@ -49,7 +49,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
         console.error('Create error:', createError);
 
         // Handle specific error codes
-        if ('code' in createError && createError.code === '23505') {
+        if (createError.code === '23505') {
           // Unique constraint violation
           toast.error('Már létezik projekt ezzel a névvel!');
         } else if (createError.message?.includes('duplicate')) {

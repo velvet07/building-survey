@@ -1,70 +1,6 @@
-const sanitize = (value, key) => {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-
-  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') {
-    console.warn(
-      `[supabase-env] A(z) ${key} változó értéke ('${value}') érvénytelen, ezért figyelmen kívül hagyjuk. ` +
-        'Állíts be egy valós Supabase URL-t vagy anon kulcsot a Netlify környezeti változók között.'
-    );
-    return undefined;
-  }
-
-  if (trimmed !== value) {
-    console.warn(
-      `[supabase-env] A(z) ${key} változó körülbelül szóközöket tartalmazott, ezeket automatikusan eltávolítottuk.`
-    );
-  }
-
-  return trimmed;
-};
-
-const resolveEnvValue = (primaryKey, fallbackKeys = []) => {
-  const directValue = sanitize(process.env[primaryKey], primaryKey);
-  if (directValue) {
-    process.env[primaryKey] = directValue;
-    return directValue;
-  }
-
-  for (const key of fallbackKeys) {
-    const value = sanitize(process.env[key], key);
-    if (value) {
-      console.warn(
-        `[supabase-env] A(z) ${primaryKey} nincs beállítva. A rendszer a(z) ${key} értékét fogja használni. ` +
-          'Állítsd be a NEXT_PUBLIC_* változókat a biztonságos kliens-oldali eléréshez.'
-      );
-      process.env[primaryKey] = value;
-      return value;
-    }
-  }
-
-  return undefined;
-};
-
-const supabaseUrl = resolveEnvValue('NEXT_PUBLIC_SUPABASE_URL', ['SUPABASE_URL']);
-const supabaseAnonKey = resolveEnvValue('NEXT_PUBLIC_SUPABASE_ANON_KEY', [
-  'SUPABASE_ANON_KEY',
-  'SUPABASE_KEY',
-]);
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    '[supabase-env] Hiányoznak a Supabase környezeti változók. Ellenőrizd a Netlify beállításokat: NEXT_PUBLIC_SUPABASE_URL és NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-  );
-}
-
-const publicEnv = {
-  ...(supabaseUrl ? { NEXT_PUBLIC_SUPABASE_URL: supabaseUrl } : {}),
-  ...(supabaseAnonKey ? { NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey } : {}),
-};
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  env: publicEnv,
   webpack: (config, { isServer }) => {
     // Exclude canvas and konva from server-side bundling
     if (isServer) {
@@ -72,6 +8,6 @@ const nextConfig = {
     }
     return config;
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

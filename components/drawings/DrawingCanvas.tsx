@@ -22,9 +22,7 @@ import {
   calculateCanvasScale,
   calculateCenterPosition,
   clampZoom,
-  clampPointToCanvas,
   GRID_SIZE_PX,
-  GRID_MAJOR_INTERVAL,
 } from '@/lib/drawings/canvas-utils';
 import { CompactColorPicker } from './ColorPicker';
 import StrokeWidthSlider from './StrokeWidthSlider';
@@ -64,58 +62,57 @@ export default function DrawingCanvas({
   const [stageScale, setStageScale] = useState(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
 
-  // Stage container measurements for responsive layout
-  const [containerSize, setContainerSize] = useState({
+  // UI state
+  const [isToolbarOpen, setIsToolbarOpen] = useState(true);
+
+  // Window size state for responsive canvas
+  const [windowSize, setWindowSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1920,
-    height: typeof window !== 'undefined' ? window.innerHeight - 200 : 1080,
+    height: typeof window !== 'undefined' ? window.innerHeight : 1080,
   });
 
   // Refs
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const currentStrokeRef = useRef<Stroke | null>(null);
 
   // Canvas dimensions
   const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
 
-  // Observe container size to keep canvas centered and scaled
+  // Window resize listener
   useEffect(() => {
-    const updateSize = () => {
-      if (!containerRef.current) return;
-      setContainerSize({
-        width: containerRef.current.clientWidth,
-        height: containerRef.current.clientHeight,
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
       });
     };
 
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Initialize canvas - center and fit to screen
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const container = containerRef.current;
-    const scale = calculateCanvasScale(
-      canvasWidth,
-      canvasHeight,
-      container.clientWidth,
-      container.clientHeight
-    );
-    const pos = calculateCenterPosition(
-      canvasWidth,
-      canvasHeight,
-      container.clientWidth,
-      container.clientHeight,
-      scale
-    );
-
-    setStageScale(scale);
-    setStagePos(pos);
-  }, [canvasWidth, canvasHeight, containerSize]);
+    if (containerRef.current) {
+      const container = containerRef.current;
+      const scale = calculateCanvasScale(
+        canvasWidth,
+        canvasHeight,
+        container.clientWidth,
+        container.clientHeight
+      );
+      const pos = calculateCenterPosition(
+        canvasWidth,
+        canvasHeight,
+        container.clientWidth,
+        container.clientHeight,
+        scale
+      );
+      setStageScale(scale);
+      setStagePos(pos);
+    }
+  }, [canvasWidth, canvasHeight, windowSize]);
 
   // Handle mouse/touch down
   const handleMouseDown = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -135,23 +132,21 @@ export default function DrawingCanvas({
     if (!inverted) return;
 
     const canvasPos = inverted.invert().point(pos);
-    const clampedPos = clampPointToCanvas(canvasPos, canvasWidth, canvasHeight);
 
     const newStroke: Stroke = {
       id: `stroke-${Date.now()}-${Math.random()}`,
-      points: [clampedPos.x, clampedPos.y],
+      points: [canvasPos.x, canvasPos.y],
       color: tool === 'eraser' ? '#FFFFFF' : color,
       width: tool === 'eraser' ? width * 3 : width,
       timestamp: new Date().toISOString(),
     };
 
     setCurrentStroke(newStroke);
-    currentStrokeRef.current = newStroke;
   };
 
   // Handle mouse/touch move
   const handleMouseMove = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (!isDrawing.current || tool === 'pan') return;
+    if (!isDrawing.current || !currentStroke || tool === 'pan') return;
 
     const stage = e.target.getStage();
     if (!stage) return;
@@ -166,45 +161,26 @@ export default function DrawingCanvas({
     if (!inverted) return;
 
     const canvasPos = inverted.invert().point(pos);
-    const clampedPos = clampPointToCanvas(canvasPos, canvasWidth, canvasHeight);
 
-    setCurrentStroke((prev) => {
-      if (!prev) return prev;
-
-      const lastX = prev.points[prev.points.length - 2];
-      const lastY = prev.points[prev.points.length - 1];
-      if (lastX === clampedPos.x && lastY === clampedPos.y) {
-        return prev;
-      }
-
-      const updatedStroke: Stroke = {
-        ...prev,
-        points: [...prev.points, clampedPos.x, clampedPos.y],
-      };
-
-      currentStrokeRef.current = updatedStroke;
-      return updatedStroke;
-    });
+    const newPoints = [...currentStroke.points, canvasPos.x, canvasPos.y];
+    setCurrentStroke({ ...currentStroke, points: newPoints });
   };
 
   // Handle mouse/touch up
   const handleMouseUp = () => {
-    const activeStroke = currentStrokeRef.current;
-
-    if (!isDrawing.current || !activeStroke) {
+    if (!isDrawing.current || !currentStroke) {
       isDrawing.current = false;
       return;
     }
 
     isDrawing.current = false;
 
-    if (activeStroke.points.length >= 4) {
-      setStrokes((prev) => [...prev, activeStroke]);
+    if (currentStroke.points.length >= 4) {
+      setStrokes((prev) => [...prev, currentStroke]);
       onChange?.();
     }
 
     setCurrentStroke(null);
-    currentStrokeRef.current = null;
   };
 
   // Handle save
@@ -231,25 +207,24 @@ export default function DrawingCanvas({
   };
 
   const handleFitScreen = () => {
-    if (!containerRef.current) return;
-
-    const container = containerRef.current;
-    const scale = calculateCanvasScale(
-      canvasWidth,
-      canvasHeight,
-      container.clientWidth,
-      container.clientHeight
-    );
-    const pos = calculateCenterPosition(
-      canvasWidth,
-      canvasHeight,
-      container.clientWidth,
-      container.clientHeight,
-      scale
-    );
-
-    setStageScale(scale);
-    setStagePos(pos);
+    if (containerRef.current) {
+      const container = containerRef.current;
+      const scale = calculateCanvasScale(
+        canvasWidth,
+        canvasHeight,
+        container.clientWidth,
+        container.clientHeight
+      );
+      const pos = calculateCenterPosition(
+        canvasWidth,
+        canvasHeight,
+        container.clientWidth,
+        container.clientHeight,
+        scale
+      );
+      setStageScale(scale);
+      setStagePos(pos);
+    }
   };
 
   // Handle undo
@@ -273,34 +248,25 @@ export default function DrawingCanvas({
   const renderGrid = () => {
     const lines = [];
     const gridSize = GRID_SIZE_PX;
-    const mediumInterval = 5; // 5mm
 
-    for (let i = 0, mmIndex = 0; i <= canvasWidth; i += gridSize, mmIndex++) {
-      const isMajor = mmIndex % GRID_MAJOR_INTERVAL === 0;
-      const isMedium = !isMajor && mmIndex % mediumInterval === 0;
-
+    for (let i = 0; i <= canvasWidth; i += gridSize) {
       lines.push(
         <Line
           key={`v-${i}`}
           points={[i, 0, i, canvasHeight]}
-          stroke={isMajor ? '#15803D' : isMedium ? '#34D399' : '#BBF7D0'}
-          strokeWidth={isMajor ? 1.5 : isMedium ? 1 : 0.5}
-          opacity={isMajor ? 0.8 : isMedium ? 0.7 : 0.6}
+          stroke="#E5E7EB"
+          strokeWidth={0.5}
         />
       );
     }
 
-    for (let i = 0, mmIndex = 0; i <= canvasHeight; i += gridSize, mmIndex++) {
-      const isMajor = mmIndex % GRID_MAJOR_INTERVAL === 0;
-      const isMedium = !isMajor && mmIndex % mediumInterval === 0;
-
+    for (let i = 0; i <= canvasHeight; i += gridSize) {
       lines.push(
         <Line
           key={`h-${i}`}
           points={[0, i, canvasWidth, i]}
-          stroke={isMajor ? '#15803D' : isMedium ? '#34D399' : '#BBF7D0'}
-          strokeWidth={isMajor ? 1.5 : isMedium ? 1 : 0.5}
-          opacity={isMajor ? 0.8 : isMedium ? 0.7 : 0.6}
+          stroke="#E5E7EB"
+          strokeWidth={0.5}
         />
       );
     }
@@ -309,58 +275,69 @@ export default function DrawingCanvas({
   };
 
   return (
-    <div className="flex h-full flex-col bg-slate-100">
+    <div ref={containerRef} className="relative w-full h-full bg-gray-100 overflow-hidden">
       {/* Toolbar */}
-      <div className="z-10 border-b border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 lg:gap-4">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-          >
-            <span aria-hidden>←</span>
-            <span>Vissza</span>
-          </button>
+      <div
+        className={`absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-4 space-y-4 transition-all ${
+          isToolbarOpen ? 'opacity-100' : 'opacity-50 hover:opacity-100'
+        } max-w-xs`}
+      >
+        {/* Toolbar Toggle */}
+        <button
+          onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+          className="absolute -right-3 top-4 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50"
+        >
+          {isToolbarOpen ? '◀' : '▶'}
+        </button>
 
-          <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
-
-          <div className="flex items-center gap-2">
+        {isToolbarOpen && (
+          <>
+            {/* Back Button */}
             <button
-              onClick={() => setTool('pen')}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                tool === 'pen'
-                  ? 'bg-emerald-100 text-emerald-700 shadow-inner'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+              onClick={onBack}
+              className="w-full px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 font-medium"
             >
-              🖊️
-              <span>Toll</span>
+              ← Vissza
             </button>
-            <button
-              onClick={() => setTool('eraser')}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                tool === 'eraser'
-                  ? 'bg-emerald-100 text-emerald-700 shadow-inner'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              🧹
-              <span>Radír</span>
-            </button>
-          </div>
 
-          <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
+            <div className="border-t pt-3">
+              {/* Tools */}
+              <p className="text-xs text-gray-500 font-medium mb-2">Eszköz</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTool('pen')}
+                  className={`flex-1 px-4 py-2 rounded ${
+                    tool === 'pen' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  🖊️ Toll
+                </button>
+                <button
+                  onClick={() => setTool('eraser')}
+                  className={`flex-1 px-4 py-2 rounded ${
+                    tool === 'eraser' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  🧹 Radír
+                </button>
+              </div>
+            </div>
 
-          {tool === 'pen' && (
-            <ColorPickerDropdown selectedColor={color} onChange={setColor} />
-          )}
+            {/* Color Picker */}
+            {tool === 'pen' && (
+              <div className="border-t pt-3">
+                <CompactColorPicker selectedColor={color} onChange={setColor} />
+              </div>
+            )}
 
-          <StrokeWidthDropdown width={width} onChange={setWidth} min={1} max={10} />
+            {/* Stroke Width */}
+            <div className="border-t pt-3">
+              <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={10} />
+            </div>
 
-          <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span className="hidden text-xs uppercase tracking-wide text-slate-400 sm:block">Papír</span>
+            {/* Paper Size */}
+            <div className="border-t pt-3">
+              <p className="text-xs text-gray-500 font-medium mb-2">Papír</p>
               <CompactPaperSizeSelector
                 paperSize={paperSize}
                 orientation={orientation}
@@ -369,76 +346,72 @@ export default function DrawingCanvas({
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleZoomOut}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-600 transition-colors hover:bg-slate-200"
-                aria-label="Kicsinyítés"
-              >
-                −
-              </button>
-              <span className="min-w-[48px] text-center text-sm font-medium text-slate-600">
+            {/* Zoom Controls */}
+            <div className="border-t pt-3">
+              <p className="text-xs text-gray-500 font-medium mb-2">Zoom</p>
+              <div className="flex gap-1">
+                <button
+                  onClick={handleZoomOut}
+                  className="flex-1 px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  -
+                </button>
+                <button
+                  onClick={handleZoomIn}
+                  className="flex-1 px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  +
+                </button>
+                <button
+                  onClick={handleFitScreen}
+                  className="flex-1 px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 text-xs"
+                >
+                  📐
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
                 {Math.round(stageScale * 100)}%
-              </span>
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="border-t pt-3 space-y-2">
               <button
-                onClick={handleZoomIn}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-600 transition-colors hover:bg-slate-200"
-                aria-label="Nagyítás"
+                onClick={handleUndo}
+                disabled={strokes.length === 0}
+                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                +
+                ↶ Visszavonás
               </button>
               <button
-                onClick={handleFitScreen}
-                className="hidden rounded-full border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 sm:block"
+                onClick={handleClear}
+                disabled={strokes.length === 0}
+                className="w-full px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Teljes nézet
+                🗑️ Összes törlése
               </button>
             </div>
-          </div>
 
-          <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleUndo}
-              disabled={strokes.length === 0}
-              className="flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent"
-            >
-              ↶
-              <span>Visszavonás</span>
-            </button>
-            <button
-              onClick={handleClear}
-              disabled={strokes.length === 0}
-              className="flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              🗑️
-              <span>Törlés</span>
-            </button>
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
+            {/* Save Button */}
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-60"
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
             >
-              💾
-              <span>{saving ? 'Mentés folyamatban...' : 'Mentés'}</span>
+              {saving ? 'Mentés...' : '💾 Mentés'}
             </button>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Canvas */}
-      <div ref={containerRef} className="relative flex-1 overflow-hidden">
-        <Stage
-          width={containerSize.width}
-          height={containerSize.height}
-          scaleX={stageScale}
-          scaleY={stageScale}
-          x={stagePos.x}
-          y={stagePos.y}
+      <Stage
+        width={windowSize.width}
+        height={windowSize.height}
+        scaleX={stageScale}
+        scaleY={stageScale}
+        x={stagePos.x}
+        y={stagePos.y}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -491,114 +464,18 @@ export default function DrawingCanvas({
             align="right"
           />
         </Layer>
-        </Stage>
+      </Stage>
 
-        {/* Drawing info */}
-        <div className="absolute bottom-4 right-4 rounded-full border border-slate-200 bg-white/80 px-5 py-3 text-sm text-slate-600 shadow backdrop-blur">
-          <div className="font-medium text-slate-800">{drawing.name}</div>
-          <div>
-            {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
-          </div>
-          <div className="text-xs text-slate-500">{strokes.length} rajzelem</div>
+      {/* Drawing info */}
+      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg px-4 py-2 text-sm space-y-1">
+        <div className="text-gray-900 font-medium">{drawing.name}</div>
+        <div className="text-gray-600">
+          {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
+        </div>
+        <div className="text-gray-500 text-xs">
+          {strokes.length} rajzelem
         </div>
       </div>
-    </div>
-  );
-}
-
-interface StrokeWidthDropdownProps {
-  width: number;
-  onChange: (width: number) => void;
-  min: number;
-  max: number;
-}
-
-function StrokeWidthDropdown({ width, onChange, min, max }: StrokeWidthDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const previewSize = Math.max(min, Math.min(max, width));
-
-  return (
-    <div className="relative min-w-[150px]">
-      <button
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center gap-3 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
-      >
-        <div className="relative h-6 w-16 rounded-full bg-slate-200" aria-hidden>
-          <span
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-700"
-            style={{
-              width: `${previewSize}px`,
-              height: `${previewSize}px`,
-            }}
-          />
-        </div>
-        <span>Vastagság</span>
-        <span className="ml-auto text-xs text-slate-400">{width}px</span>
-        <svg
-          className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute left-0 right-0 top-full z-20 mt-2 w-72 max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-            <StrokeWidthSlider width={width} onChange={onChange} min={min} max={max} />
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-interface ColorPickerDropdownProps {
-  selectedColor: string;
-  onChange: (color: string) => void;
-}
-
-function ColorPickerDropdown({ selectedColor, onChange }: ColorPickerDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative min-w-[150px]">
-      <button
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center gap-3 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
-      >
-        <span
-          className="h-6 w-6 rounded-full border border-slate-200"
-          style={{ backgroundColor: selectedColor }}
-        />
-        <span>Szín</span>
-        <svg
-          className={`ml-auto h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-            <CompactColorPicker
-              selectedColor={selectedColor}
-              onChange={(color) => {
-                onChange(color);
-                setIsOpen(false);
-              }}
-            />
-          </div>
-        </>
-      )}
     </div>
   );
 }

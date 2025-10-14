@@ -150,21 +150,6 @@ export function clampZoom(zoom: number): number {
 }
 
 /**
- * Clamp a point so it stays inside the canvas bounds
- * Korlátozd a pontot, hogy a canvas határain belül maradjon
- */
-export function clampPointToCanvas(
-  point: { x: number; y: number },
-  canvasWidth: number,
-  canvasHeight: number
-): { x: number; y: number } {
-  return {
-    x: Math.max(0, Math.min(canvasWidth, point.x)),
-    y: Math.max(0, Math.min(canvasHeight, point.y)),
-  };
-}
-
-/**
  * Generate SVG grid pattern for background
  * SVG grid pattern generálása háttérhez
  */

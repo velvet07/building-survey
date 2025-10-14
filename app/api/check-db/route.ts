@@ -24,15 +24,9 @@ export async function GET() {
     .single();
 
   // Check triggers existence
-  let triggers = null;
-  let triggersError = null;
-  try {
-    const result = await supabase.rpc('get_triggers_info' as any);
-    triggers = result.data;
-    triggersError = result.error;
-  } catch (e) {
-    triggersError = { message: 'RPC function not available' };
-  }
+  const { data: triggers, error: triggersError } = await supabase
+    .rpc('get_triggers_info' as any)
+    .catch(() => ({ data: null, error: { message: 'RPC function not available' } }));
 
   // Try to get detailed error when creating project
   const { data: testProject, error: createError } = await supabase

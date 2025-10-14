@@ -1,44 +1,32 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr';
 import type { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies';
 
-import { getSupabaseClientConfig, getSupabaseServerConfig } from './supabaseConfig';
-
 export function createClient() {
-  const { url, anonKey } = getSupabaseClientConfig();
-
-  return createBrowserClient(url, anonKey, {
-    global: {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-      },
-    },
-  });
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 }
 
 export function createServerSupabaseClient(cookieStore: ReadonlyRequestCookies) {
-  const { url, anonKey } = getSupabaseServerConfig();
-
-  return createServerClient(url, anonKey, {
-    global: {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Server component limitation
+          }
+        },
       },
-    },
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        } catch {
-          // Server component limitation
-        }
-      },
-    },
-  });
+    }
+  );
 }

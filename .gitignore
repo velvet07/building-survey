@@ -59,7 +59,3 @@ playwright-report/
 
 # Netlify
 .netlify/
-
-# Deployment packages
-*.tar.gz
-*.zip
