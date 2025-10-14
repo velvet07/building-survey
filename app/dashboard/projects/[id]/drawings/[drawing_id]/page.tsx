@@ -9,7 +9,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getDrawing, updateDrawing } from '@/lib/drawings/api';
-import type { Drawing, CanvasData } from '@/lib/drawings/types';
+import type {
+  Drawing,
+  CanvasData,
+  PaperSize,
+  PaperOrientation,
+} from '@/lib/drawings/types';
 import { showSuccess, showError } from '@/lib/toast';
 
 // Dynamic import - Canvas csak client-side
@@ -71,12 +76,35 @@ export default function DrawingEditorPage() {
     }
   };
 
-  const handleSave = async (canvasData: CanvasData) => {
+  const handleSave = async ({
+    canvasData,
+    paperSize,
+    orientation,
+  }: {
+    canvasData: CanvasData;
+    paperSize: PaperSize;
+    orientation: PaperOrientation;
+  }) => {
     if (saving) return;
 
     setSaving(true);
     try {
-      await updateDrawing(drawingId, { canvas_data: canvasData });
+      await updateDrawing(drawingId, {
+        canvas_data: canvasData,
+        paper_size: paperSize,
+        orientation,
+      });
+
+      setDrawing((prev) =>
+        prev
+          ? {
+              ...prev,
+              canvas_data: canvasData,
+              paper_size: paperSize,
+              orientation,
+            }
+          : prev
+      );
       setHasUnsavedChanges(false);
       showSuccess('Rajz mentve!');
     } catch (error) {
@@ -136,7 +164,6 @@ export default function DrawingEditorPage() {
         onBack={handleBack}
         onChange={handleCanvasChange}
         saving={saving}
-        projectId={projectId}
       />
     </div>
   );

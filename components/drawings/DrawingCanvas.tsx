@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Drawing Canvas Component - UPDATED VERSION
- * Fő rajz komponens react-konva használatával + teljes toolbar
- */
-
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactElement } from 'react';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type Konva from 'konva';
@@ -23,18 +18,32 @@ import {
   calculateCenterPosition,
   clampZoom,
   GRID_SIZE_PX,
+  GRID_MAJOR_INTERVAL,
+  GRID_MEDIUM_INTERVAL,
+  clampPointToCanvas,
+  isPointInsideCanvas,
 } from '@/lib/drawings/canvas-utils';
-import { CompactColorPicker } from './ColorPicker';
+import ColorPicker from './ColorPicker';
 import StrokeWidthSlider from './StrokeWidthSlider';
 import { CompactPaperSizeSelector } from './PaperSizeSelector';
 
+const WIDTH_PRESETS = [1, 2, 3, 5, 8, 10];
+const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
+  { id: 'pen', label: 'Toll', icon: '✏️' },
+  { id: 'eraser', label: 'Radír', icon: '🧽' },
+  { id: 'pan', label: 'Mozgatás', icon: '🖐️' },
+];
+
 interface DrawingCanvasProps {
   drawing: Drawing;
-  onSave: (canvasData: CanvasData) => void;
+  onSave: (payload: {
+    canvasData: CanvasData;
+    paperSize: PaperSize;
+    orientation: PaperOrientation;
+  }) => void;
   onBack: () => void;
   onChange?: () => void;
   saving: boolean;
-  projectId: string;
 }
 
 export default function DrawingCanvas({
@@ -43,148 +52,211 @@ export default function DrawingCanvas({
   onBack,
   onChange,
   saving,
-  projectId,
 }: DrawingCanvasProps) {
-  // Canvas state
   const [strokes, setStrokes] = useState<Stroke[]>(drawing.canvas_data.strokes || []);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
+  const currentStrokeRef = useRef<Stroke | null>(null);
 
-  // Tool state
   const [tool, setTool] = useState<DrawingTool>('pen');
   const [color, setColor] = useState('#000000');
   const [width, setWidth] = useState(2);
 
-  // Paper settings
   const [paperSize, setPaperSize] = useState<PaperSize>(drawing.paper_size);
   const [orientation, setOrientation] = useState<PaperOrientation>(drawing.orientation);
 
-  // Zoom/Pan state
   const [stageScale, setStageScale] = useState(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
 
-  // UI state
-  const [isToolbarOpen, setIsToolbarOpen] = useState(true);
-
-  // Window size state for responsive canvas
-  const [windowSize, setWindowSize] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1920,
-    height: typeof window !== 'undefined' ? window.innerHeight : 1080,
-  });
-
-  // Refs
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const widthDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Canvas dimensions
   const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
 
-  // Window resize listener
   useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
+    if (typeof window === 'undefined') return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      setStageSize({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      });
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
   }, []);
 
-  // Initialize canvas - center and fit to screen
+  const recenterCanvas = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const scale = calculateCanvasScale(
+      canvasWidth,
+      canvasHeight,
+      container.clientWidth,
+      container.clientHeight,
+      80
+    );
+    const pos = calculateCenterPosition(
+      canvasWidth,
+      canvasHeight,
+      container.clientWidth,
+      container.clientHeight,
+      scale
+    );
+    setStageScale(scale);
+    setStagePos(pos);
+  }, [canvasWidth, canvasHeight]);
+
   useEffect(() => {
-    if (containerRef.current) {
-      const container = containerRef.current;
-      const scale = calculateCanvasScale(
-        canvasWidth,
-        canvasHeight,
-        container.clientWidth,
-        container.clientHeight
-      );
-      const pos = calculateCenterPosition(
-        canvasWidth,
-        canvasHeight,
-        container.clientWidth,
-        container.clientHeight,
-        scale
-      );
-      setStageScale(scale);
-      setStagePos(pos);
-    }
-  }, [canvasWidth, canvasHeight, windowSize]);
+    recenterCanvas();
+  }, [recenterCanvas, stageSize.width, stageSize.height]);
 
-  // Handle mouse/touch down
-  const handleMouseDown = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (tool === 'pan') return;
+  useEffect(() => {
+    recenterCanvas();
+  }, [recenterCanvas, paperSize, orientation]);
 
-    isDrawing.current = true;
-    const stage = e.target.getStage();
-    if (!stage) return;
+  useEffect(() => {
+    if (!isWidthMenuOpen || typeof document === 'undefined') return;
 
-    const pos = stage.getPointerPosition();
-    if (!pos) return;
-
-    const transform = stage.getAbsoluteTransform();
-    if (!transform) return;
-
-    const inverted = transform.copy();
-    if (!inverted) return;
-
-    const canvasPos = inverted.invert().point(pos);
-
-    const newStroke: Stroke = {
-      id: `stroke-${Date.now()}-${Math.random()}`,
-      points: [canvasPos.x, canvasPos.y],
-      color: tool === 'eraser' ? '#FFFFFF' : color,
-      width: tool === 'eraser' ? width * 3 : width,
-      timestamp: new Date().toISOString(),
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!widthDropdownRef.current) return;
+      if (!widthDropdownRef.current.contains(event.target as Node)) {
+        setIsWidthMenuOpen(false);
+      }
     };
 
-    setCurrentStroke(newStroke);
-  };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsWidthMenuOpen(false);
+      }
+    };
 
-  // Handle mouse/touch move
-  const handleMouseMove = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (!isDrawing.current || !currentStroke || tool === 'pan') return;
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
 
-    const stage = e.target.getStage();
-    if (!stage) return;
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isWidthMenuOpen]);
 
-    const pos = stage.getPointerPosition();
-    if (!pos) return;
+  const getCanvasPoint = useCallback(
+    (stage: Konva.Stage, options: { requireInside?: boolean } = {}) => {
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return null;
 
-    const transform = stage.getAbsoluteTransform();
-    if (!transform) return;
+      const transform = stage.getAbsoluteTransform().copy();
+      const inverted = transform.invert();
+      const canvasPoint = inverted.point(pointer);
+      const inside = isPointInsideCanvas(canvasPoint, canvasWidth, canvasHeight);
 
-    const inverted = transform.copy();
-    if (!inverted) return;
+      if (options.requireInside && !inside) {
+        return null;
+      }
 
-    const canvasPos = inverted.invert().point(pos);
+      return clampPointToCanvas(canvasPoint, canvasWidth, canvasHeight);
+    },
+    [canvasWidth, canvasHeight]
+  );
 
-    const newPoints = [...currentStroke.points, canvasPos.x, canvasPos.y];
-    setCurrentStroke({ ...currentStroke, points: newPoints });
-  };
+  const beginStroke = useCallback((stroke: Stroke) => {
+    currentStrokeRef.current = stroke;
+    setCurrentStroke(stroke);
+  }, []);
 
-  // Handle mouse/touch up
-  const handleMouseUp = () => {
-    if (!isDrawing.current || !currentStroke) {
-      isDrawing.current = false;
-      return;
-    }
-
-    isDrawing.current = false;
-
-    if (currentStroke.points.length >= 4) {
-      setStrokes((prev) => [...prev, currentStroke]);
+  const commitStroke = useCallback(() => {
+    const stroke = currentStrokeRef.current;
+    if (stroke && stroke.points.length >= 4) {
+      setStrokes((prev) => [...prev, stroke]);
       onChange?.();
     }
-
+    currentStrokeRef.current = null;
     setCurrentStroke(null);
-  };
+  }, [onChange]);
 
-  // Handle save
-  const handleSave = () => {
+  const handlePointerDown = useCallback(
+    (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
+      if (tool === 'pan') return;
+
+      e.evt.preventDefault();
+      const stage = e.target.getStage();
+      if (!stage) return;
+
+      const canvasPos = getCanvasPoint(stage, { requireInside: true });
+      if (!canvasPos) return;
+
+      isDrawing.current = true;
+
+      const newStroke: Stroke = {
+        id: `stroke-${Date.now()}-${Math.random()}`,
+        points: [canvasPos.x, canvasPos.y],
+        color: tool === 'eraser' ? '#FFFFFF' : color,
+        width: tool === 'eraser' ? width * 3 : width,
+        timestamp: new Date().toISOString(),
+      };
+
+      beginStroke(newStroke);
+    },
+    [beginStroke, color, getCanvasPoint, tool, width]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
+      if (!isDrawing.current || tool === 'pan') return;
+      const stage = e.target.getStage();
+      if (!stage) return;
+
+      e.evt.preventDefault();
+
+      const canvasPos = getCanvasPoint(stage);
+      if (!canvasPos || !currentStrokeRef.current) return;
+
+      const lastPoints = currentStrokeRef.current.points;
+      const lastX = lastPoints[lastPoints.length - 2];
+      const lastY = lastPoints[lastPoints.length - 1];
+      if (lastX === canvasPos.x && lastY === canvasPos.y) return;
+
+      const updatedStroke: Stroke = {
+        ...currentStrokeRef.current,
+        points: [...lastPoints, canvasPos.x, canvasPos.y],
+      };
+
+      currentStrokeRef.current = updatedStroke;
+      setCurrentStroke(updatedStroke);
+    },
+    [getCanvasPoint, tool]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    if (!isDrawing.current) return;
+    isDrawing.current = false;
+    commitStroke();
+  }, [commitStroke]);
+
+  const handleUndo = useCallback(() => {
+    if (strokes.length === 0) return;
+    setStrokes((prev) => prev.slice(0, -1));
+    onChange?.();
+  }, [onChange, strokes.length]);
+
+  const handleClear = useCallback(() => {
+    if (strokes.length === 0) return;
+    if (window.confirm('Biztosan törölni szeretnéd az összes rajzelemet?')) {
+      setStrokes([]);
+      onChange?.();
+    }
+  }, [onChange, strokes.length]);
+
+  const handleSave = useCallback(() => {
     const canvasData: CanvasData = {
       version: '1.0',
       strokes: strokes,
@@ -194,10 +266,10 @@ export default function DrawingCanvas({
         grid_size: GRID_SIZE_PX,
       },
     };
-    onSave(canvasData);
-  };
 
-  // Handle zoom
+    onSave({ canvasData, paperSize, orientation });
+  }, [canvasHeight, canvasWidth, onSave, orientation, paperSize, strokes]);
+
   const handleZoomIn = () => {
     setStageScale((prev) => clampZoom(prev * 1.2));
   };
@@ -207,66 +279,60 @@ export default function DrawingCanvas({
   };
 
   const handleFitScreen = () => {
-    if (containerRef.current) {
-      const container = containerRef.current;
-      const scale = calculateCanvasScale(
-        canvasWidth,
-        canvasHeight,
-        container.clientWidth,
-        container.clientHeight
-      );
-      const pos = calculateCenterPosition(
-        canvasWidth,
-        canvasHeight,
-        container.clientWidth,
-        container.clientHeight,
-        scale
-      );
-      setStageScale(scale);
-      setStagePos(pos);
-    }
+    recenterCanvas();
   };
 
-  // Handle undo
-  const handleUndo = () => {
-    if (strokes.length > 0) {
-      setStrokes((prev) => prev.slice(0, -1));
-      onChange?.();
-    }
+  const handlePaperSizeChange = (size: PaperSize) => {
+    setPaperSize(size);
+    onChange?.();
   };
 
-  // Handle clear
-  const handleClear = () => {
-    if (strokes.length === 0) return;
-    if (window.confirm('Biztosan törölni szeretnéd az összes rajzelemet?')) {
-      setStrokes([]);
-      onChange?.();
-    }
+  const handleOrientationChange = (value: PaperOrientation) => {
+    setOrientation(value);
+    onChange?.();
   };
 
-  // Render grid
   const renderGrid = () => {
-    const lines = [];
-    const gridSize = GRID_SIZE_PX;
+    const lines: ReactElement[] = [];
+    const stepCountX = Math.ceil(canvasWidth / GRID_SIZE_PX);
+    const stepCountY = Math.ceil(canvasHeight / GRID_SIZE_PX);
 
-    for (let i = 0; i <= canvasWidth; i += gridSize) {
+    for (let step = 0; step <= stepCountX; step++) {
+      const x = Math.min(step * GRID_SIZE_PX, canvasWidth);
+      const isMajor = step % GRID_MAJOR_INTERVAL === 0;
+      const isMedium = !isMajor && step % GRID_MEDIUM_INTERVAL === 0;
+      const strokeColor = isMajor ? '#15803d' : isMedium ? '#34d399' : '#bbf7d0';
+      const strokeWidth = isMajor ? 1.1 : isMedium ? 0.8 : 0.35;
+      const opacity = isMajor ? 0.85 : isMedium ? 0.7 : 0.45;
+
       lines.push(
         <Line
-          key={`v-${i}`}
-          points={[i, 0, i, canvasHeight]}
-          stroke="#E5E7EB"
-          strokeWidth={0.5}
+          key={`v-${step}`}
+          points={[x, 0, x, canvasHeight]}
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          opacity={opacity}
+          listening={false}
         />
       );
     }
 
-    for (let i = 0; i <= canvasHeight; i += gridSize) {
+    for (let step = 0; step <= stepCountY; step++) {
+      const y = Math.min(step * GRID_SIZE_PX, canvasHeight);
+      const isMajor = step % GRID_MAJOR_INTERVAL === 0;
+      const isMedium = !isMajor && step % GRID_MEDIUM_INTERVAL === 0;
+      const strokeColor = isMajor ? '#15803d' : isMedium ? '#34d399' : '#bbf7d0';
+      const strokeWidth = isMajor ? 1.1 : isMedium ? 0.8 : 0.35;
+      const opacity = isMajor ? 0.85 : isMedium ? 0.7 : 0.45;
+
       lines.push(
         <Line
-          key={`h-${i}`}
-          points={[0, i, canvasWidth, i]}
-          stroke="#E5E7EB"
-          strokeWidth={0.5}
+          key={`h-${step}`}
+          points={[0, y, canvasWidth, y]}
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          opacity={opacity}
+          listening={false}
         />
       );
     }
@@ -275,205 +341,257 @@ export default function DrawingCanvas({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full h-full bg-gray-100 overflow-hidden">
-      {/* Toolbar */}
-      <div
-        className={`absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-4 space-y-4 transition-all ${
-          isToolbarOpen ? 'opacity-100' : 'opacity-50 hover:opacity-100'
-        } max-w-xs`}
-      >
-        {/* Toolbar Toggle */}
-        <button
-          onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-          className="absolute -right-3 top-4 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50"
-        >
-          {isToolbarOpen ? '◀' : '▶'}
-        </button>
+    <div className="flex h-full flex-col bg-emerald-50/40">
+      <div className="border-b border-emerald-100 bg-white shadow-sm">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 lg:gap-4">
+          <button
+            onClick={onBack}
+            className="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            ← Vissza
+          </button>
 
-        {isToolbarOpen && (
-          <>
-            {/* Back Button */}
-            <button
-              onClick={onBack}
-              className="w-full px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 font-medium"
-            >
-              ← Vissza
-            </button>
+          <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-2 py-2 shadow-inner">
+            {TOOLBAR_TOOLS.map((toolOption) => (
+              <button
+                key={toolOption.id}
+                onClick={() => setTool(toolOption.id)}
+                aria-pressed={tool === toolOption.id}
+                className={`flex h-12 min-w-[72px] flex-col items-center justify-center rounded-xl px-3 text-xs font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  tool === toolOption.id
+                    ? 'bg-emerald-600 text-white shadow-lg'
+                    : 'bg-white text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                <span className="text-lg">{toolOption.icon}</span>
+                {toolOption.label}
+              </button>
+            ))}
+          </div>
 
-            <div className="border-t pt-3">
-              {/* Tools */}
-              <p className="text-xs text-gray-500 font-medium mb-2">Eszköz</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTool('pen')}
-                  className={`flex-1 px-4 py-2 rounded ${
-                    tool === 'pen' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                  }`}
+          <div className="flex items-center gap-3">
+            <ColorPicker
+              selectedColor={color}
+              onChange={setColor}
+              className="w-48 min-w-[12rem]"
+            />
+
+            <div className="relative" ref={widthDropdownRef}>
+              <button
+                onClick={() => setIsWidthMenuOpen((prev) => !prev)}
+                className={`flex h-12 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  isWidthMenuOpen ? 'ring-2 ring-emerald-500' : ''
+                }`}
+              >
+                <span className="text-lg">✏️</span>
+                Vastagság
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                  {width}px
+                </span>
+                <svg
+                  className={`ml-1 h-4 w-4 transition-transform ${isWidthMenuOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  🖊️ Toll
-                </button>
-                <button
-                  onClick={() => setTool('eraser')}
-                  className={`flex-1 px-4 py-2 rounded ${
-                    tool === 'eraser' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  🧹 Radír
-                </button>
-              </div>
+                  <path
+                    d="M5 7.5L10 12.5L15 7.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {isWidthMenuOpen && (
+                <div className="absolute right-0 z-20 mt-2 w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                    Tollvastagság
+                  </h3>
+                  <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={12} />
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {WIDTH_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        onClick={() => setWidth(preset)}
+                        className={`flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
+                          width === preset
+                            ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                            : 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
+                        }`}
+                      >
+                        {preset}px
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+          </div>
 
-            {/* Color Picker */}
-            {tool === 'pen' && (
-              <div className="border-t pt-3">
-                <CompactColorPicker selectedColor={color} onChange={setColor} />
-              </div>
-            )}
+          <CompactPaperSizeSelector
+            paperSize={paperSize}
+            orientation={orientation}
+            onPaperSizeChange={handlePaperSizeChange}
+            onOrientationChange={handleOrientationChange}
+            className="ml-auto flex items-center gap-3"
+          />
 
-            {/* Stroke Width */}
-            <div className="border-t pt-3">
-              <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={10} />
-            </div>
-
-            {/* Paper Size */}
-            <div className="border-t pt-3">
-              <p className="text-xs text-gray-500 font-medium mb-2">Papír</p>
-              <CompactPaperSizeSelector
-                paperSize={paperSize}
-                orientation={orientation}
-                onPaperSizeChange={setPaperSize}
-                onOrientationChange={setOrientation}
-              />
-            </div>
-
-            {/* Zoom Controls */}
-            <div className="border-t pt-3">
-              <p className="text-xs text-gray-500 font-medium mb-2">Zoom</p>
-              <div className="flex gap-1">
-                <button
-                  onClick={handleZoomOut}
-                  className="flex-1 px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
-                >
-                  -
-                </button>
-                <button
-                  onClick={handleZoomIn}
-                  className="flex-1 px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
-                >
-                  +
-                </button>
-                <button
-                  onClick={handleFitScreen}
-                  className="flex-1 px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 text-xs"
-                >
-                  📐
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-2 shadow-sm">
+              <button
+                onClick={handleZoomOut}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                −
+              </button>
+              <button
+                onClick={handleFitScreen}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                ⤢
+              </button>
+              <button
+                onClick={handleZoomIn}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                +
+              </button>
+              <span className="ml-2 min-w-[3rem] text-center text-xs font-semibold text-emerald-700">
                 {Math.round(stageScale * 100)}%
-              </p>
+              </span>
             </div>
 
-            {/* Actions */}
-            <div className="border-t pt-3 space-y-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleUndo}
                 disabled={strokes.length === 0}
-                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-12 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                ↶ Visszavonás
+                ↺ Visszavonás
               </button>
               <button
                 onClick={handleClear}
                 disabled={strokes.length === 0}
-                className="w-full px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-12 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                🗑️ Összes törlése
+                🗑️ Törlés
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex h-12 items-center gap-2 rounded-xl border border-emerald-500 bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? 'Mentés...' : '💾 Mentés'}
               </button>
             </div>
-
-            {/* Save Button */}
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
-            >
-              {saving ? 'Mentés...' : '💾 Mentés'}
-            </button>
-          </>
-        )}
+          </div>
+        </div>
       </div>
 
-      {/* Canvas */}
-      <Stage
-        width={windowSize.width}
-        height={windowSize.height}
-        scaleX={stageScale}
-        scaleY={stageScale}
-        x={stagePos.x}
-        y={stagePos.y}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onTouchStart={handleMouseDown}
-        onTouchMove={handleMouseMove}
-        onTouchEnd={handleMouseUp}
-        ref={stageRef}
-      >
-        {/* Background Layer */}
-        <Layer>
-          <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} fill="white" />
-        </Layer>
+      <div className="relative flex-1 overflow-hidden">
+        <div
+          ref={containerRef}
+          className="relative h-full w-full"
+          style={{ touchAction: tool === 'pan' ? 'pan-x pan-y' : 'none' }}
+        >
+          {stageSize.width > 0 && stageSize.height > 0 && (
+            <Stage
+              width={stageSize.width}
+              height={stageSize.height}
+              scaleX={stageScale}
+              scaleY={stageScale}
+              x={stagePos.x}
+              y={stagePos.y}
+              draggable={tool === 'pan'}
+              onDragMove={(event) => setStagePos(event.target.position())}
+              onDragEnd={(event) => setStagePos(event.target.position())}
+              onMouseDown={handlePointerDown}
+              onMouseMove={handlePointerMove}
+              onMouseUp={handlePointerUp}
+              onMouseLeave={handlePointerUp}
+              onTouchStart={handlePointerDown}
+              onTouchMove={handlePointerMove}
+              onTouchEnd={handlePointerUp}
+              onTouchCancel={handlePointerUp}
+              ref={stageRef}
+            >
+              <Layer listening={false}>
+                <Rect
+                  x={0}
+                  y={0}
+                  width={canvasWidth}
+                  height={canvasHeight}
+                  fill="#f8fff4"
+                  stroke="#0f766e"
+                  strokeWidth={1.6}
+                  shadowColor="#0f766e"
+                  shadowBlur={20}
+                  shadowOpacity={0.12}
+                />
+              </Layer>
 
-        {/* Grid Layer */}
-        <Layer>{renderGrid()}</Layer>
+              <Layer
+                clipX={0}
+                clipY={0}
+                clipWidth={canvasWidth}
+                clipHeight={canvasHeight}
+                listening={false}
+              >
+                {renderGrid()}
+              </Layer>
 
-        {/* Drawing Layer */}
-        <Layer>
-          {strokes.map((stroke) => (
-            <Line
-              key={stroke.id}
-              points={stroke.points}
-              stroke={stroke.color}
-              strokeWidth={stroke.width}
-              lineCap="round"
-              lineJoin="round"
-              tension={0.5}
-            />
-          ))}
-          {currentStroke && (
-            <Line
-              points={currentStroke.points}
-              stroke={currentStroke.color}
-              strokeWidth={currentStroke.width}
-              lineCap="round"
-              lineJoin="round"
-              tension={0.5}
-            />
+              <Layer
+                clipX={0}
+                clipY={0}
+                clipWidth={canvasWidth}
+                clipHeight={canvasHeight}
+              >
+                {strokes.map((stroke) => (
+                  <Line
+                    key={stroke.id}
+                    points={stroke.points}
+                    stroke={stroke.color}
+                    strokeWidth={stroke.width}
+                    lineCap="round"
+                    lineJoin="round"
+                    tension={0.35}
+                  />
+                ))}
+                {currentStroke && (
+                  <Line
+                    points={currentStroke.points}
+                    stroke={currentStroke.color}
+                    strokeWidth={currentStroke.width}
+                    lineCap="round"
+                    lineJoin="round"
+                    tension={0.35}
+                  />
+                )}
+              </Layer>
+
+              <Layer listening={false}>
+                <Text
+                  x={canvasWidth - 260}
+                  y={canvasHeight - 48}
+                  text={drawing.name}
+                  fontSize={24}
+                  fill="#047857"
+                  align="right"
+                  width={240}
+                />
+              </Layer>
+            </Stage>
           )}
-        </Layer>
 
-        {/* Text Layer */}
-        <Layer>
-          <Text
-            x={canvasWidth - 200}
-            y={canvasHeight - 40}
-            text={drawing.name}
-            fontSize={20}
-            fill="#000000"
-            align="right"
-          />
-        </Layer>
-      </Stage>
-
-      {/* Drawing info */}
-      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg px-4 py-2 text-sm space-y-1">
-        <div className="text-gray-900 font-medium">{drawing.name}</div>
-        <div className="text-gray-600">
-          {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
-        </div>
-        <div className="text-gray-500 text-xs">
-          {strokes.length} rajzelem
+          <div className="pointer-events-none absolute bottom-6 right-6 rounded-2xl bg-white/90 px-4 py-3 text-sm shadow-xl backdrop-blur">
+            <div className="text-base font-semibold text-emerald-900">{drawing.name}</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+              {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
+            </div>
+            <div className="mt-1 text-xs text-emerald-500">{strokes.length} rajzelem</div>
+          </div>
         </div>
       </div>
     </div>
