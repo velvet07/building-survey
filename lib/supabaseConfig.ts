@@ -5,9 +5,28 @@ export type SupabaseConfig = {
 
 let cachedConfig: SupabaseConfig | null = null;
 
+const normalize = (value: string | undefined, key: string): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        `[supabase-config] A(z) ${key} értéke ('${value}') érvénytelennek tűnik, figyelmen kívül hagyjuk.`
+      );
+    }
+    return undefined;
+  }
+
+  return trimmed;
+};
+
 const resolveSupabaseConfig = (): SupabaseConfig => {
-  const urlResult = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKeyResult = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const urlResult = normalize(process.env.NEXT_PUBLIC_SUPABASE_URL, 'NEXT_PUBLIC_SUPABASE_URL');
+  const anonKeyResult = normalize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, 'NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
   if (!urlResult) {
     throw new Error(

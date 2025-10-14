@@ -6,13 +6,26 @@ import { getSupabaseClientConfig, getSupabaseServerConfig } from './supabaseConf
 export function createClient() {
   const { url, anonKey } = getSupabaseClientConfig();
 
-  return createBrowserClient(url, anonKey);
+  return createBrowserClient(url, anonKey, {
+    global: {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+    },
+  });
 }
 
 export function createServerSupabaseClient(cookieStore: ReadonlyRequestCookies) {
   const { url, anonKey } = getSupabaseServerConfig();
 
   return createServerClient(url, anonKey, {
+    global: {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();

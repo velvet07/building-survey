@@ -1,9 +1,18 @@
 const sanitize = (value, key) => {
-  if (!value) {
-    return value;
+  if (value === undefined) {
+    return undefined;
   }
 
   const trimmed = value.trim();
+
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') {
+    console.warn(
+      `[supabase-env] A(z) ${key} változó értéke ('${value}') érvénytelen, ezért figyelmen kívül hagyjuk. ` +
+        'Állíts be egy valós Supabase URL-t vagy anon kulcsot a Netlify környezeti változók között.'
+    );
+    return undefined;
+  }
+
   if (trimmed !== value) {
     console.warn(
       `[supabase-env] A(z) ${key} változó körülbelül szóközöket tartalmazott, ezeket automatikusan eltávolítottuk.`
