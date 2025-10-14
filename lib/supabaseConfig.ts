@@ -13,31 +13,67 @@ const sanitize = (value: string | undefined, key: string) => {
   return trimmed;
 };
 
-const resolveEnvValue = (primaryKey: string, fallbackKeys: string[]) => {
-  const direct = sanitize(process.env[primaryKey], primaryKey);
-  if (direct) {
-    return { value: direct, source: primaryKey } as const;
+const readProcessEnv = (key: string) => {
+  if (typeof process === 'undefined' || !process?.env) {
+    return undefined;
   }
 
-  for (const key of fallbackKeys) {
-    const fallback = sanitize(process.env[key], key);
-    if (fallback) {
-      console.warn(
-        `[supabase-config] A(z) ${primaryKey} nincs beállítva. A(z) ${key} értékét használjuk helyette.`
-      );
-      process.env[primaryKey] = fallback;
-      return { value: fallback, source: key } as const;
-    }
-  }
-
-  return { value: undefined, source: undefined } as const;
+  return process.env[key];
 };
 
-const { value: supabaseUrl } = resolveEnvValue('NEXT_PUBLIC_SUPABASE_URL', ['SUPABASE_URL']);
-const { value: supabaseAnonKey } = resolveEnvValue('NEXT_PUBLIC_SUPABASE_ANON_KEY', [
-  'SUPABASE_ANON_KEY',
-  'SUPABASE_KEY',
-]);
+const assignProcessEnv = (key: string, value: string) => {
+  if (typeof process === 'undefined' || !process?.env) {
+    return;
+  }
+
+  process.env[key] = value;
+};
+
+let supabaseUrl = sanitize(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  'NEXT_PUBLIC_SUPABASE_URL'
+);
+
+if (!supabaseUrl) {
+  const fallbackUrl = sanitize(readProcessEnv('SUPABASE_URL'), 'SUPABASE_URL');
+  if (fallbackUrl) {
+    console.warn(
+      `[supabase-config] A NEXT_PUBLIC_SUPABASE_URL nincs beállítva. A SUPABASE_URL értékét használjuk helyette.`
+    );
+    assignProcessEnv('NEXT_PUBLIC_SUPABASE_URL', fallbackUrl);
+    supabaseUrl = fallbackUrl;
+  }
+}
+
+let supabaseAnonKey = sanitize(
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+);
+
+if (!supabaseAnonKey) {
+  const anonKeyFallback = sanitize(readProcessEnv('SUPABASE_ANON_KEY'), 'SUPABASE_ANON_KEY');
+  let fallbackSource: 'SUPABASE_ANON_KEY' | 'SUPABASE_KEY' | null = null;
+  let resolvedFallback = anonKeyFallback;
+
+  if (!resolvedFallback) {
+    const keyFallback = sanitize(readProcessEnv('SUPABASE_KEY'), 'SUPABASE_KEY');
+    if (keyFallback) {
+      resolvedFallback = keyFallback;
+      fallbackSource = 'SUPABASE_KEY';
+    }
+  } else {
+    fallbackSource = 'SUPABASE_ANON_KEY';
+  }
+
+  if (resolvedFallback) {
+    const sourceLabel = fallbackSource ?? 'ismeretlen forrás';
+    console.warn(
+      `[supabase-config] A NEXT_PUBLIC_SUPABASE_ANON_KEY nincs beállítva. A ${sourceLabel} értékét használjuk helyette.`
+    );
+    assignProcessEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', resolvedFallback);
+    supabaseAnonKey = resolvedFallback;
+  }
+}
 
 if (!supabaseUrl) {
   throw new Error(

@@ -47,13 +47,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+const publicEnv = {
+  ...(supabaseUrl ? { NEXT_PUBLIC_SUPABASE_URL: supabaseUrl } : {}),
+  ...(supabaseAnonKey ? { NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey } : {}),
+};
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  env: {
-    NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey,
-  },
+  env: publicEnv,
   webpack: (config, { isServer }) => {
     // Exclude canvas and konva from server-side bundling
     if (isServer) {
