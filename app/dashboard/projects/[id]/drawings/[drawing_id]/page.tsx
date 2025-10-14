@@ -5,7 +5,7 @@
  * Rajz szerkesztő oldal - canvas interface
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getDrawing, updateDrawing } from '@/lib/drawings/api';
@@ -16,7 +16,7 @@ import type {
   PaperSize,
   PaperOrientation,
 } from '@/lib/drawings/types';
-import { showSuccess, showError } from '@/lib/toast';
+import { showError } from '@/lib/toast';
 
 // Dynamic import - Canvas csak client-side
 const DrawingCanvas = dynamic(
@@ -43,8 +43,18 @@ export default function DrawingEditorPage() {
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [projectName, setProjectName] = useState<string | null>(null);
+
+  type CanvasChangePayload = {
+    canvasData: CanvasData;
+    paperSize: PaperSize;
+    orientation: PaperOrientation;
+  };
+
+  const pendingSaveRef = useRef<{ payload: CanvasChangePayload; signature: string } | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSavingRef = useRef(false);
+  const lastSavedSignature = useRef<string | null>(null);
 
   useEffect(() => {
     loadDrawing();
@@ -54,18 +64,25 @@ export default function DrawingEditorPage() {
     loadProject();
   }, [projectId]);
 
-  // Warn before leaving if there are unsaved changes
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
+    if (!drawing) return;
+
+    const initialPayload: CanvasChangePayload = {
+      canvasData: drawing.canvas_data,
+      paperSize: drawing.paper_size,
+      orientation: drawing.orientation,
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+    lastSavedSignature.current = createSignature(initialPayload);
+  }, [drawing]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadDrawing = async () => {
     try {
@@ -92,58 +109,93 @@ export default function DrawingEditorPage() {
     }
   };
 
-  const handleSave = async ({
-    canvasData,
-    paperSize,
-    orientation,
-  }: {
-    canvasData: CanvasData;
-    paperSize: PaperSize;
-    orientation: PaperOrientation;
-  }) => {
-    if (saving) return;
+  function createSignature(payload: CanvasChangePayload) {
+    return JSON.stringify({
+      paperSize: payload.paperSize,
+      orientation: payload.orientation,
+      data: payload.canvasData,
+    });
+  }
 
+  function schedulePendingSave(delay = 800) {
+    if (isSavingRef.current) {
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      void flushPendingSave();
+    }, delay);
+  }
+
+  async function flushPendingSave() {
+    if (!pendingSaveRef.current || isSavingRef.current) {
+      return;
+    }
+
+    const { payload, signature } = pendingSaveRef.current;
+    pendingSaveRef.current = null;
+    isSavingRef.current = true;
     setSaving(true);
+
     try {
       await updateDrawing(drawingId, {
-        canvas_data: canvasData,
-        paper_size: paperSize,
-        orientation,
+        canvas_data: payload.canvasData,
+        paper_size: payload.paperSize,
+        orientation: payload.orientation,
       });
 
       setDrawing((prev) =>
         prev
           ? {
               ...prev,
-              canvas_data: canvasData,
-              paper_size: paperSize,
-              orientation,
+              canvas_data: payload.canvasData,
+              paper_size: payload.paperSize,
+              orientation: payload.orientation,
             }
           : prev
       );
-      setHasUnsavedChanges(false);
-      showSuccess('Rajz mentve!');
+      lastSavedSignature.current = signature;
     } catch (error) {
-      showError('Mentés sikertelen');
       console.error(error);
+      showError('Automatikus mentés sikertelen');
+      pendingSaveRef.current = { payload, signature };
     } finally {
       setSaving(false);
-    }
-  };
+      isSavingRef.current = false;
 
-  const handleBack = () => {
-    if (hasUnsavedChanges) {
-      const confirmLeave = window.confirm(
-        'Van mentetlen módosításod. Biztosan elhagyod az oldalt?'
-      );
-      if (!confirmLeave) return;
+      if (pendingSaveRef.current) {
+        schedulePendingSave(400);
+      } else if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
     }
-    router.push(`/dashboard/projects/${projectId}/drawings`);
-  };
+  }
 
-  const handleCanvasChange = () => {
-    setHasUnsavedChanges(true);
-  };
+  function handleCanvasChange(payload: CanvasChangePayload) {
+    const signature = createSignature(payload);
+
+    if (signature === lastSavedSignature.current) {
+      pendingSaveRef.current = null;
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    pendingSaveRef.current = { payload, signature };
+
+    if (isSavingRef.current) {
+      return;
+    }
+
+    schedulePendingSave();
+  }
 
   if (loading) {
     return (
@@ -176,9 +228,7 @@ export default function DrawingEditorPage() {
     <div className="h-screen flex flex-col overflow-hidden">
       <DrawingCanvas
         drawing={drawing}
-        onSave={handleSave}
-        onBack={handleBack}
-        onChange={handleCanvasChange}
+        onCanvasChange={handleCanvasChange}
         saving={saving}
         projectName={projectName ?? undefined}
         projectUrl={`/dashboard/projects/${projectId}`}

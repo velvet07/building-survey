@@ -78,12 +78,12 @@ export default function ColorPicker({
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
               Válassz színt
             </p>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-4">
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color.hex}
                   onClick={() => handleColorSelect(color.hex)}
-                  className={`group relative flex h-12 w-12 items-center justify-center rounded-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                  className={`group relative flex h-14 w-14 items-center justify-center rounded-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
                     selectedColor === color.hex
                       ? 'ring-2 ring-emerald-500 ring-offset-2'
                       : ''
@@ -149,12 +149,12 @@ export function CompactColorPicker({
   return (
     <div className={className}>
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-500">Szín</p>
-      <div className="grid grid-cols-4 gap-1">
+      <div className="grid grid-cols-4 gap-2">
         {PRESET_COLORS.map((color) => (
           <button
             key={color.hex}
             onClick={() => onChange(color.hex)}
-            className={`h-10 w-10 rounded-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+            className={`h-11 w-11 rounded-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
               selectedColor === color.hex
                 ? 'ring-2 ring-emerald-500'
                 : ''

@@ -39,13 +39,11 @@ type EraserMode = 'band' | 'stroke';
 
 interface DrawingCanvasProps {
   drawing: Drawing;
-  onSave: (payload: {
+  onCanvasChange: (payload: {
     canvasData: CanvasData;
     paperSize: PaperSize;
     orientation: PaperOrientation;
   }) => void;
-  onBack: () => void;
-  onChange?: () => void;
   saving: boolean;
   projectName?: string;
   projectUrl?: string;
@@ -53,9 +51,7 @@ interface DrawingCanvasProps {
 
 export default function DrawingCanvas({
   drawing,
-  onSave,
-  onBack,
-  onChange,
+  onCanvasChange,
   saving,
   projectName,
   projectUrl,
@@ -82,8 +78,29 @@ export default function DrawingCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
   const isStrokeErasing = useRef(false);
+  const pinchState = useRef<{
+    initialDistance: number;
+    initialScale: number;
+    initialPosition: { x: number; y: number };
+  } | null>(null);
+  const hasMountedRef = useRef(false);
+  const onCanvasChangeRef = useRef(onCanvasChange);
 
   const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
+
+  const getTouchDistance = useCallback((touch1: Touch, touch2: Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }, []);
+
+  const getTouchCenter = useCallback((stage: Konva.Stage, touch1: Touch, touch2: Touch) => {
+    const rect = stage.container().getBoundingClientRect();
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2 - rect.left,
+      y: (touch1.clientY + touch2.clientY) / 2 - rect.top,
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -132,6 +149,29 @@ export default function DrawingCanvas({
   useEffect(() => {
     recenterCanvas();
   }, [recenterCanvas, paperSize, orientation]);
+
+  useEffect(() => {
+    onCanvasChangeRef.current = onCanvasChange;
+  }, [onCanvasChange]);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
+    const canvasData: CanvasData = {
+      version: '1.0',
+      strokes,
+      metadata: {
+        canvas_width: canvasWidth,
+        canvas_height: canvasHeight,
+        grid_size: GRID_SIZE_PX,
+      },
+    };
+
+    onCanvasChangeRef.current?.({ canvasData, paperSize, orientation });
+  }, [canvasHeight, canvasWidth, orientation, paperSize, strokes]);
 
   useEffect(() => {
     if (!isWidthMenuOpen || typeof document === 'undefined') return;
@@ -186,11 +226,10 @@ export default function DrawingCanvas({
     const stroke = currentStrokeRef.current;
     if (stroke && stroke.points.length >= 4) {
       setStrokes((prev) => [...prev, stroke]);
-      onChange?.();
     }
     currentStrokeRef.current = null;
     setCurrentStroke(null);
-  }, [onChange]);
+  }, []);
 
   const distanceToSegment = useCallback((
     point: { x: number; y: number },
@@ -247,10 +286,10 @@ export default function DrawingCanvas({
       });
 
       if (removed) {
-        onChange?.();
+        // noop - state effect will propagate change
       }
     },
-    [distanceToSegment, onChange, width]
+    [distanceToSegment, width]
   );
 
   const handlePointerDown = useCallback(
@@ -336,33 +375,122 @@ export default function DrawingCanvas({
     commitStroke();
   }, [commitStroke, eraserMode, tool]);
 
+  const handleStageWheel = useCallback(
+    (event: KonvaEventObject<WheelEvent>) => {
+      event.evt.preventDefault();
+      const stage = event.target.getStage();
+      if (!stage) return;
+
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+
+      const scaleBy = 1.05;
+      const shouldZoomIn = event.evt.deltaY < 0;
+      const newScale = clampZoom(shouldZoomIn ? stageScale * scaleBy : stageScale / scaleBy);
+
+      const mousePointTo = {
+        x: (pointer.x - stagePos.x) / stageScale,
+        y: (pointer.y - stagePos.y) / stageScale,
+      };
+
+      const newPosition = {
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
+      };
+
+      setStageScale(newScale);
+      setStagePos(newPosition);
+    },
+    [stagePos.x, stagePos.y, stageScale]
+  );
+
+  const handleStageTouchStart = useCallback(
+    (event: KonvaEventObject<TouchEvent | PointerEvent>) => {
+      const stage = event.target.getStage();
+      if (!stage) return;
+
+      const touches = (event.evt as TouchEvent).touches;
+      if (touches && touches.length === 2) {
+        event.evt.preventDefault();
+        const [touch1, touch2] = [touches[0], touches[1]];
+        const distance = getTouchDistance(touch1, touch2);
+        pinchState.current = {
+          initialDistance: distance,
+          initialScale: stageScale,
+          initialPosition: { ...stage.position() },
+        };
+        isDrawing.current = false;
+        currentStrokeRef.current = null;
+        setCurrentStroke(null);
+        return;
+      }
+
+      handlePointerDown(event as KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>);
+    },
+    [getTouchDistance, handlePointerDown, stageScale]
+  );
+
+  const handleStageTouchMove = useCallback(
+    (event: KonvaEventObject<TouchEvent | PointerEvent>) => {
+      const stage = event.target.getStage();
+      if (!stage) return;
+
+      const touches = (event.evt as TouchEvent).touches;
+      if (touches && touches.length === 2 && pinchState.current) {
+        event.evt.preventDefault();
+        const [touch1, touch2] = [touches[0], touches[1]];
+        const distance = getTouchDistance(touch1, touch2);
+        if (distance === 0) return;
+
+        const scaleFactor = distance / pinchState.current.initialDistance;
+        const newScale = clampZoom(pinchState.current.initialScale * scaleFactor);
+        const center = getTouchCenter(stage, touch1, touch2);
+        const pointTo = {
+          x: (center.x - pinchState.current.initialPosition.x) /
+            pinchState.current.initialScale,
+          y: (center.y - pinchState.current.initialPosition.y) /
+            pinchState.current.initialScale,
+        };
+
+        const newPosition = {
+          x: center.x - pointTo.x * newScale,
+          y: center.y - pointTo.y * newScale,
+        };
+
+        setStageScale(newScale);
+        setStagePos(newPosition);
+        return;
+      }
+
+      handlePointerMove(event as KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>);
+    },
+    [getTouchCenter, getTouchDistance, handlePointerMove]
+  );
+
+  const handleStageTouchEnd = useCallback(
+    (event: KonvaEventObject<TouchEvent | PointerEvent>) => {
+      const touches = (event.evt as TouchEvent).touches;
+      if (!touches || touches.length < 2) {
+        pinchState.current = null;
+        isDrawing.current = false;
+      }
+
+      handlePointerUp();
+    },
+    [handlePointerUp]
+  );
+
   const handleUndo = useCallback(() => {
     if (strokes.length === 0) return;
     setStrokes((prev) => prev.slice(0, -1));
-    onChange?.();
-  }, [onChange, strokes.length]);
+  }, [strokes.length]);
 
   const handleClear = useCallback(() => {
     if (strokes.length === 0) return;
     if (window.confirm('Biztosan törölni szeretnéd az összes rajzelemet?')) {
       setStrokes([]);
-      onChange?.();
     }
-  }, [onChange, strokes.length]);
-
-  const handleSave = useCallback(() => {
-    const canvasData: CanvasData = {
-      version: '1.0',
-      strokes: strokes,
-      metadata: {
-        canvas_width: canvasWidth,
-        canvas_height: canvasHeight,
-        grid_size: GRID_SIZE_PX,
-      },
-    };
-
-    onSave({ canvasData, paperSize, orientation });
-  }, [canvasHeight, canvasWidth, onSave, orientation, paperSize, strokes]);
+  }, [strokes.length]);
 
   const handleZoomIn = () => {
     setStageScale((prev) => clampZoom(prev * 1.2));
@@ -378,12 +506,10 @@ export default function DrawingCanvas({
 
   const handlePaperSizeChange = (size: PaperSize) => {
     setPaperSize(size);
-    onChange?.();
   };
 
   const handleOrientationChange = (value: PaperOrientation) => {
     setOrientation(value);
-    onChange?.();
   };
 
   const renderGrid = () => {
@@ -438,20 +564,15 @@ export default function DrawingCanvas({
     <div className="flex h-full flex-col bg-emerald-50/40">
       <div className="border-b border-emerald-100 bg-white shadow-sm">
         <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 lg:gap-4">
-          <button
-            onClick={onBack}
-            className="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            ← Vissza
-          </button>
-
           {projectUrl && (
             <Link
               href={projectUrl}
-              className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-              <span className="text-xs uppercase tracking-wide text-emerald-500">Projekt</span>
-              <span className="text-emerald-900">{projectName ?? 'Projekt nézet'}</span>
+              <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                Projekt
+              </span>
+              <span className="text-base text-emerald-900">{projectName ?? 'Projekt nézet'}</span>
             </Link>
           )}
 
@@ -612,13 +733,16 @@ export default function DrawingCanvas({
               >
                 🗑️ Törlés
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex h-12 items-center gap-2 rounded-xl border border-emerald-500 bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? 'Mentés...' : '💾 Mentés'}
-              </button>
+              <div className="flex h-12 items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 shadow-sm">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                />
+                <span className="text-sm font-semibold text-emerald-700">
+                  {saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -628,7 +752,7 @@ export default function DrawingCanvas({
         <div
           ref={containerRef}
           className="relative h-full w-full"
-          style={{ touchAction: tool === 'pan' ? 'pan-x pan-y' : 'none' }}
+          style={{ touchAction: 'none' }}
         >
           {stageSize.width > 0 && stageSize.height > 0 && (
             <Stage
@@ -645,10 +769,11 @@ export default function DrawingCanvas({
               onMouseMove={handlePointerMove}
               onMouseUp={handlePointerUp}
               onMouseLeave={handlePointerUp}
-              onTouchStart={handlePointerDown}
-              onTouchMove={handlePointerMove}
-              onTouchEnd={handlePointerUp}
-              onTouchCancel={handlePointerUp}
+              onTouchStart={handleStageTouchStart}
+              onTouchMove={handleStageTouchMove}
+              onTouchEnd={handleStageTouchEnd}
+              onTouchCancel={handleStageTouchEnd}
+              onWheel={handleStageWheel}
               ref={stageRef}
             >
               <Layer listening={false}>
