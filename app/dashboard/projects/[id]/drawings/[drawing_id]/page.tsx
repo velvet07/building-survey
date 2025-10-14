@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getDrawing, updateDrawing } from '@/lib/drawings/api';
+import { getProjectById } from '@/lib/projects';
 import type {
   Drawing,
   CanvasData,
@@ -43,10 +44,15 @@ export default function DrawingEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [projectName, setProjectName] = useState<string | null>(null);
 
   useEffect(() => {
     loadDrawing();
   }, [drawingId]);
+
+  useEffect(() => {
+    loadProject();
+  }, [projectId]);
 
   // Warn before leaving if there are unsaved changes
   useEffect(() => {
@@ -73,6 +79,16 @@ export default function DrawingEditorPage() {
       router.push(`/dashboard/projects/${projectId}/drawings`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProject = async () => {
+    try {
+      const { data, error } = await getProjectById(projectId);
+      if (error) throw error;
+      setProjectName(data?.name ?? null);
+    } catch (error) {
+      console.error('Projekt betöltése sikertelen:', error);
     }
   };
 
@@ -164,6 +180,8 @@ export default function DrawingEditorPage() {
         onBack={handleBack}
         onChange={handleCanvasChange}
         saving={saving}
+        projectName={projectName ?? undefined}
+        projectUrl={`/dashboard/projects/${projectId}`}
       />
     </div>
   );

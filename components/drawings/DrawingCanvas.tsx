@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useRef, useEffect, useCallback, type ReactElement } from 'react';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
@@ -34,6 +35,8 @@ const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
   { id: 'pan', label: 'Mozgatás', icon: '🖐️' },
 ];
 
+type EraserMode = 'band' | 'stroke';
+
 interface DrawingCanvasProps {
   drawing: Drawing;
   onSave: (payload: {
@@ -44,6 +47,8 @@ interface DrawingCanvasProps {
   onBack: () => void;
   onChange?: () => void;
   saving: boolean;
+  projectName?: string;
+  projectUrl?: string;
 }
 
 export default function DrawingCanvas({
@@ -52,6 +57,8 @@ export default function DrawingCanvas({
   onBack,
   onChange,
   saving,
+  projectName,
+  projectUrl,
 }: DrawingCanvasProps) {
   const [strokes, setStrokes] = useState<Stroke[]>(drawing.canvas_data.strokes || []);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
@@ -60,6 +67,7 @@ export default function DrawingCanvas({
   const [tool, setTool] = useState<DrawingTool>('pen');
   const [color, setColor] = useState('#000000');
   const [width, setWidth] = useState(2);
+  const [eraserMode, setEraserMode] = useState<EraserMode>('stroke');
 
   const [paperSize, setPaperSize] = useState<PaperSize>(drawing.paper_size);
   const [orientation, setOrientation] = useState<PaperOrientation>(drawing.orientation);
@@ -73,6 +81,7 @@ export default function DrawingCanvas({
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
+  const isStrokeErasing = useRef(false);
 
   const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
 
@@ -183,6 +192,67 @@ export default function DrawingCanvas({
     setCurrentStroke(null);
   }, [onChange]);
 
+  const distanceToSegment = useCallback((
+    point: { x: number; y: number },
+    start: { x: number; y: number },
+    end: { x: number; y: number }
+  ) => {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    if (dx === 0 && dy === 0) {
+      const distX = point.x - start.x;
+      const distY = point.y - start.y;
+      return Math.sqrt(distX * distX + distY * distY);
+    }
+
+    const t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / (dx * dx + dy * dy);
+    const clampedT = Math.max(0, Math.min(1, t));
+    const projX = start.x + clampedT * dx;
+    const projY = start.y + clampedT * dy;
+    const distX = point.x - projX;
+    const distY = point.y - projY;
+    return Math.sqrt(distX * distX + distY * distY);
+  }, []);
+
+  const eraseStrokeAtPoint = useCallback(
+    (point: { x: number; y: number }) => {
+      let removed = false;
+      setStrokes((prev) => {
+        let targetIndex = -1;
+
+        for (let index = prev.length - 1; index >= 0; index--) {
+          const stroke = prev[index];
+          const pts = stroke.points;
+          for (let i = 0; i < pts.length - 2; i += 2) {
+            const segmentStart = { x: pts[i], y: pts[i + 1] };
+            const segmentEnd = { x: pts[i + 2], y: pts[i + 3] };
+            const distance = distanceToSegment(point, segmentStart, segmentEnd);
+            const tolerance = Math.max(width * 3, 24);
+            if (distance <= tolerance) {
+              targetIndex = index;
+              break;
+            }
+          }
+          if (targetIndex !== -1) {
+            break;
+          }
+        }
+
+        if (targetIndex === -1) {
+          return prev;
+        }
+
+        removed = true;
+        return prev.filter((_, idx) => idx !== targetIndex);
+      });
+
+      if (removed) {
+        onChange?.();
+      }
+    },
+    [distanceToSegment, onChange, width]
+  );
+
   const handlePointerDown = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
       if (tool === 'pan') return;
@@ -194,26 +264,46 @@ export default function DrawingCanvas({
       const canvasPos = getCanvasPoint(stage, { requireInside: true });
       if (!canvasPos) return;
 
+      if (tool === 'eraser' && eraserMode === 'stroke') {
+        isStrokeErasing.current = true;
+        eraseStrokeAtPoint(canvasPos);
+        return;
+      }
+
       isDrawing.current = true;
 
+      const isBandEraser = tool === 'eraser' && eraserMode === 'band';
       const newStroke: Stroke = {
         id: `stroke-${Date.now()}-${Math.random()}`,
         points: [canvasPos.x, canvasPos.y],
-        color: tool === 'eraser' ? '#FFFFFF' : color,
-        width: tool === 'eraser' ? width * 3 : width,
+        color: isBandEraser ? '#000000' : color,
+        width: isBandEraser ? width * 3 : width,
         timestamp: new Date().toISOString(),
+        compositeOperation:
+          isBandEraser ? 'destination-out' : 'source-over',
       };
 
       beginStroke(newStroke);
     },
-    [beginStroke, color, getCanvasPoint, tool, width]
+    [beginStroke, color, eraseStrokeAtPoint, eraserMode, getCanvasPoint, tool, width]
   );
 
   const handlePointerMove = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
-      if (!isDrawing.current || tool === 'pan') return;
       const stage = e.target.getStage();
       if (!stage) return;
+
+      if (tool === 'eraser' && eraserMode === 'stroke') {
+        if (!isStrokeErasing.current) return;
+
+        e.evt.preventDefault();
+        const canvasPos = getCanvasPoint(stage);
+        if (!canvasPos) return;
+        eraseStrokeAtPoint(canvasPos);
+        return;
+      }
+
+      if (!isDrawing.current || tool === 'pan') return;
 
       e.evt.preventDefault();
 
@@ -233,14 +323,18 @@ export default function DrawingCanvas({
       currentStrokeRef.current = updatedStroke;
       setCurrentStroke(updatedStroke);
     },
-    [getCanvasPoint, tool]
+    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, tool]
   );
 
   const handlePointerUp = useCallback(() => {
+    if (tool === 'eraser' && eraserMode === 'stroke') {
+      isStrokeErasing.current = false;
+      return;
+    }
     if (!isDrawing.current) return;
     isDrawing.current = false;
     commitStroke();
-  }, [commitStroke]);
+  }, [commitStroke, eraserMode, tool]);
 
   const handleUndo = useCallback(() => {
     if (strokes.length === 0) return;
@@ -351,6 +445,16 @@ export default function DrawingCanvas({
             ← Vissza
           </button>
 
+          {projectUrl && (
+            <Link
+              href={projectUrl}
+              className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <span className="text-xs uppercase tracking-wide text-emerald-500">Projekt</span>
+              <span className="text-emerald-900">{projectName ?? 'Projekt nézet'}</span>
+            </Link>
+          )}
+
           <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-2 py-2 shadow-inner">
             {TOOLBAR_TOOLS.map((toolOption) => (
               <button
@@ -368,6 +472,36 @@ export default function DrawingCanvas({
               </button>
             ))}
           </div>
+
+          {tool === 'eraser' && (
+            <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 shadow-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                Radír mód
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setEraserMode('band')}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                    eraserMode === 'band'
+                      ? 'bg-emerald-600 text-white shadow'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  }`}
+                >
+                  Sáv
+                </button>
+                <button
+                  onClick={() => setEraserMode('stroke')}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                    eraserMode === 'stroke'
+                      ? 'bg-emerald-600 text-white shadow'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  }`}
+                >
+                  Vonal
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <ColorPicker
@@ -557,6 +691,7 @@ export default function DrawingCanvas({
                     lineCap="round"
                     lineJoin="round"
                     tension={0.35}
+                    globalCompositeOperation={stroke.compositeOperation ?? 'source-over'}
                   />
                 ))}
                 {currentStroke && (
@@ -567,6 +702,7 @@ export default function DrawingCanvas({
                     lineCap="round"
                     lineJoin="round"
                     tension={0.35}
+                    globalCompositeOperation={currentStroke.compositeOperation ?? 'source-over'}
                   />
                 )}
               </Layer>

@@ -25,6 +25,7 @@ export interface Stroke {
   color: string; // Hex color (e.g., "#000000")
   width: number; // Stroke width in pixels
   timestamp: string; // ISO 8601 timestamp
+  compositeOperation?: GlobalCompositeOperation; // Optional canvas composite mode (e.g., destination-out for eraser)
 }
 
 // Canvas metadata

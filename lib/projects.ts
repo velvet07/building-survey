@@ -12,6 +12,19 @@ export async function getProjects() {
   return { data, error };
 }
 
+export async function getProjectById(id: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single();
+
+  return { data, error };
+}
+
 export async function createProject(name: string) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -78,12 +78,12 @@ export default function ColorPicker({
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
               Válassz színt
             </p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-3">
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color.hex}
                   onClick={() => handleColorSelect(color.hex)}
-                  className={`group relative h-12 w-12 rounded-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                  className={`group relative flex h-12 w-12 items-center justify-center rounded-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
                     selectedColor === color.hex
                       ? 'ring-2 ring-emerald-500 ring-offset-2'
                       : ''
@@ -95,7 +95,7 @@ export default function ColorPicker({
                   {/* Checkmark for selected color */}
                   {selectedColor === color.hex && (
                     <svg
-                      className="absolute inset-0 m-auto h-6 w-6 text-white drop-shadow-lg"
+                      className="h-6 w-6 text-white drop-shadow-lg"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
