@@ -232,6 +232,7 @@ export default function DrawingEditorPage() {
         saving={saving}
         projectName={projectName ?? undefined}
         projectUrl={`/dashboard/projects/${projectId}`}
+        drawingsUrl={`/dashboard/projects/${projectId}/drawings`}
       />
     </div>
   );

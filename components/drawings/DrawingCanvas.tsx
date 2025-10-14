@@ -47,6 +47,7 @@ interface DrawingCanvasProps {
   saving: boolean;
   projectName?: string;
   projectUrl?: string;
+  drawingsUrl?: string;
 }
 
 export default function DrawingCanvas({
@@ -55,6 +56,7 @@ export default function DrawingCanvas({
   saving,
   projectName,
   projectUrl,
+  drawingsUrl,
 }: DrawingCanvasProps) {
   const [strokes, setStrokes] = useState<Stroke[]>(drawing.canvas_data.strokes || []);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
@@ -564,6 +566,16 @@ export default function DrawingCanvas({
     <div className="flex h-full flex-col bg-emerald-50/40">
       <div className="border-b border-emerald-100 bg-white shadow-sm">
         <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 md:justify-between lg:flex-nowrap lg:gap-4">
+          {drawingsUrl && (
+            <Link
+              href={drawingsUrl}
+              className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <span aria-hidden className="text-base">←</span>
+              <span>Vissza a rajzokhoz</span>
+            </Link>
+          )}
+
           {projectUrl && (
             <Link
               href={projectUrl}
