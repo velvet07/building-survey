@@ -71,7 +71,8 @@ INSERT INTO public.modules (name, slug, description, is_system)
 VALUES
   ('Projekt modul', 'projects', 'Projektek létrehozása és kezelése', TRUE),
   ('Dashboard', 'dashboard', 'Főoldal és statisztikák', TRUE),
-  ('Analitika', 'analytics', 'Jelentések és elemzések (későbbi feature)', FALSE)
+  ('Analitika', 'analytics', 'Jelentések és elemzések (későbbi feature)', FALSE),
+  ('Aquapol űrlap', 'aquapol-form', 'Nedvességfelmérő kérdőív modul', FALSE)
 ON CONFLICT (slug) DO NOTHING;
 
 -- =============================================================================

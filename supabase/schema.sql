@@ -112,7 +112,33 @@ COMMENT ON COLUMN public.user_module_activations.user_id IS 'User ID';
 COMMENT ON COLUMN public.user_module_activations.module_id IS 'Modul ID';
 
 -- =============================================================================
--- 5. TRIGGER: AUTO-UPDATE updated_at OSZLOP
+-- 5. PROJECT_FORM_RESPONSES TÁBLA
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.project_form_responses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  form_slug TEXT NOT NULL,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_project_form UNIQUE (project_id, form_slug)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_form_responses_project_id
+  ON public.project_form_responses(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_form_responses_form_slug
+  ON public.project_form_responses(form_slug);
+
+COMMENT ON TABLE public.project_form_responses IS 'Projekt űrlap válaszok (Aquapol és további modulok)';
+COMMENT ON COLUMN public.project_form_responses.form_slug IS 'Űrlap slug (pl. aquapol-form)';
+COMMENT ON COLUMN public.project_form_responses.data IS 'Űrlap mezők JSON formátumban';
+
+-- =============================================================================
+-- 6. TRIGGER: AUTO-UPDATE updated_at OSZLOP
 -- =============================================================================
 
 -- Generic function az updated_at oszlop automatikus frissítéséhez
@@ -138,8 +164,14 @@ CREATE TRIGGER update_projects_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_project_form_responses_updated_at ON public.project_form_responses;
+CREATE TRIGGER update_project_form_responses_updated_at
+  BEFORE UPDATE ON public.project_form_responses
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- =============================================================================
--- 6. TRIGGER: AUTO-CREATE PROFILE ON USER REGISTRATION
+-- 7. TRIGGER: AUTO-CREATE PROFILE ON USER REGISTRATION
 -- =============================================================================
 
 -- Function: Automatikusan létrehozza a profile rekordot új user regisztrációjakor
@@ -160,7 +192,7 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION public.handle_new_user();
 
 -- =============================================================================
--- 7. SEED DATA - SYSTEM MODULES
+-- 8. SEED DATA - SYSTEM MODULES
 -- =============================================================================
 
 -- Alapértelmezett system modulok beszúrása (ha még nincsenek)
@@ -171,7 +203,7 @@ VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 -- =============================================================================
--- 8. ROW LEVEL SECURITY (RLS) ENGEDÉLYEZÉSE
+-- 9. ROW LEVEL SECURITY (RLS) ENGEDÉLYEZÉSE
 -- =============================================================================
 
 -- RLS engedélyezése minden táblára
@@ -179,11 +211,12 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_module_activations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_form_responses ENABLE ROW LEVEL SECURITY;
 
 -- Megjegyzés: A konkrét RLS policy-k a policies.sql fájlban találhatók
 
 -- =============================================================================
--- 9. GRANTS - Alapértelmezett jogosultságok
+-- 10. GRANTS - Alapértelmezett jogosultságok
 -- =============================================================================
 
 -- Authenticated user-ek számára alapértelmezett SELECT jogosultság
@@ -200,6 +233,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 -- 2. public.projects (Projektek)
 -- 3. public.modules (Modulok)
 -- 4. public.user_module_activations (User-modul kapcsolatok)
+-- 5. public.project_form_responses (Projekt űrlap válaszok)
 
 -- Enum típusok:
 -- 1. user_role (admin, user, viewer)
@@ -207,8 +241,9 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 -- Trigger-ek:
 -- 1. update_profiles_updated_at (Auto-update updated_at)
 -- 2. update_projects_updated_at (Auto-update updated_at)
--- 3. on_auth_user_created (Auto-create profile)
--- 4. auto_generate_project_identifier (functions.sql-ben)
+-- 3. update_project_form_responses_updated_at (Auto-update updated_at)
+-- 4. on_auth_user_created (Auto-create profile)
+-- 5. auto_generate_project_identifier (functions.sql-ben)
 
 -- Index-ek:
 -- 1. idx_profiles_role
@@ -220,6 +255,8 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 -- 7. idx_modules_is_system
 -- 8. idx_user_module_activations_user_id
 -- 9. idx_user_module_activations_module_id
+-- 10. idx_project_form_responses_project_id
+-- 11. idx_project_form_responses_form_slug
 
 -- =============================================================================
 -- END OF SCHEMA

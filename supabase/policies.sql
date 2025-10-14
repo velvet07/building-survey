@@ -273,6 +273,96 @@ USING (
 -- Policy: Viewer NEM aktiválhat/deaktiválhat modulokat (nincs policy)
 
 -- =============================================================================
+-- 8. PROJECT_FORM_RESPONSES TÁBLA - RLS POLICIES
+-- =============================================================================
+
+-- Policy: Admin megtekintheti az összes űrlap választ
+CREATE POLICY "Admins can view any project form response"
+ON public.project_form_responses
+FOR SELECT
+TO authenticated
+USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
+-- Policy: Projekt tulajdonos megtekintheti a saját űrlap válaszait
+CREATE POLICY "Project owners can view own form responses"
+ON public.project_form_responses
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.project_form_responses.project_id
+      AND public.projects.owner_id = auth.uid()
+      AND public.projects.deleted_at IS NULL
+  )
+);
+
+-- Policy: Admin létrehozhat új űrlap választ
+CREATE POLICY "Admins can insert project form responses"
+ON public.project_form_responses
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
+-- Policy: Projekt tulajdonos létrehozhat saját űrlap választ
+CREATE POLICY "Project owners can insert project form responses"
+ON public.project_form_responses
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.project_form_responses.project_id
+      AND public.projects.owner_id = auth.uid()
+      AND public.projects.deleted_at IS NULL
+  )
+);
+
+-- Policy: Admin frissítheti az űrlap válaszokat
+CREATE POLICY "Admins can update any project form response"
+ON public.project_form_responses
+FOR UPDATE
+TO authenticated
+USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+)
+WITH CHECK (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
+-- Policy: Projekt tulajdonos frissítheti saját űrlap válaszait
+CREATE POLICY "Project owners can update own form responses"
+ON public.project_form_responses
+FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.project_form_responses.project_id
+      AND public.projects.owner_id = auth.uid()
+      AND public.projects.deleted_at IS NULL
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.project_form_responses.project_id
+      AND public.projects.owner_id = auth.uid()
+      AND public.projects.deleted_at IS NULL
+  )
+);
+
+-- Megjegyzés:  Űrlap válaszokat nem törlünk (audit cél), ezért nincs DELETE policy
+
+-- =============================================================================
 -- RLS POLICIES SUMMARY
 -- =============================================================================
 
@@ -312,6 +402,14 @@ USING (
 -- 4. Admins can activate modules for any user (INSERT)
 -- 5. Users can deactivate own modules (DELETE)
 -- 6. Admins can deactivate modules for any user (DELETE)
+
+-- PROJECT_FORM_RESPONSES tábla:
+-- 1. Admins can view any project form response (SELECT)
+-- 2. Project owners can view own form responses (SELECT)
+-- 3. Admins can insert project form responses (INSERT)
+-- 4. Project owners can insert project form responses (INSERT)
+-- 5. Admins can update any project form response (UPDATE)
+-- 6. Project owners can update own form responses (UPDATE)
 
 -- =============================================================================
 -- TESTING COMMANDS (Manual Testing)

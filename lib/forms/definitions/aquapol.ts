@@ -1,0 +1,265 @@
+import type { FormDefinition } from '../types';
+
+const yesNoOptions = [
+  { value: 'yes', label: 'Igen' },
+  { value: 'no', label: 'Nem' },
+];
+
+export const aquapolFormDefinition: FormDefinition = {
+  id: 'aquapol-form',
+  title: 'Aquapol űrlap',
+  description:
+    'Az Aquapol nedvességcsökkentő rendszer telepítéséhez szükséges alapinformációk összegyűjtése.',
+  pdf: {
+    fileName: 'aquapol-felmeres',
+  },
+  sections: [
+    {
+      id: 'customer',
+      title: 'Megrendelő adatai',
+      columns: 2,
+      fields: [
+        {
+          id: 'customer_name',
+          type: 'text',
+          label: 'Megrendelő neve',
+          placeholder: 'Név',
+          width: 'half',
+          required: true,
+        },
+        {
+          id: 'contact_person',
+          type: 'text',
+          label: 'Kapcsolattartó',
+          placeholder: 'Kapcsolattartó neve',
+          width: 'half',
+        },
+        {
+          id: 'customer_address',
+          type: 'text',
+          label: 'Lakcím / Irányítószám',
+          placeholder: 'Cím, irányítószám',
+          width: 'half',
+        },
+        {
+          id: 'contact_phone',
+          type: 'text',
+          label: 'Telefon',
+          placeholder: '+36 ...',
+          width: 'half',
+        },
+        {
+          id: 'contact_mobile',
+          type: 'text',
+          label: 'Mobil',
+          placeholder: '+36 ...',
+          width: 'half',
+        },
+      ],
+    },
+    {
+      id: 'installation',
+      title: 'Telepítési hely',
+      description: 'Ahol az AQUAPOL készüléket telepíteni kívánja',
+      columns: 2,
+      fields: [
+        {
+          id: 'site_name',
+          type: 'text',
+          label: 'Név',
+          placeholder: 'Telepítési hely neve',
+          width: 'half',
+        },
+        {
+          id: 'site_phone',
+          type: 'text',
+          label: 'Telefon',
+          placeholder: '+36 ...',
+          width: 'half',
+        },
+        {
+          id: 'site_address',
+          type: 'text',
+          label: 'Cím / Irányítószám',
+          placeholder: 'Telepítési cím',
+          width: 'half',
+        },
+        {
+          id: 'site_mobile',
+          type: 'text',
+          label: 'Mobil',
+          placeholder: '+36 ...',
+          width: 'half',
+        },
+      ],
+    },
+    {
+      id: 'building',
+      title: 'Épület jellemzői',
+      columns: 2,
+      fields: [
+        {
+          id: 'building_year',
+          type: 'text',
+          label: 'Mikor épült a ház?',
+          placeholder: 'Év',
+          width: 'half',
+        },
+        {
+          id: 'building_area',
+          type: 'text',
+          label: 'Mekkora az alapterület?',
+          placeholder: 'm²',
+          width: 'half',
+        },
+        {
+          id: 'wall_thickness',
+          type: 'text',
+          label: 'Falazat vastagsága',
+          placeholder: 'cm',
+          width: 'half',
+        },
+        {
+          id: 'floor_level_difference',
+          type: 'text',
+          label: 'A ház szintje a föld szintjéhez képest',
+          placeholder: 'cm',
+          width: 'half',
+        },
+        {
+          id: 'basement_exists',
+          type: 'radio',
+          label: 'Van-e pince a ház alatt?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'basement_area',
+          type: 'text',
+          label: 'Hány m² alapterületű a pince?',
+          placeholder: 'm²',
+          width: 'half',
+          visibleWhen: {
+            fieldId: 'basement_exists',
+            equals: ['yes'],
+          },
+        },
+        {
+          id: 'basement_height_relative',
+          type: 'text',
+          label: 'A föld szintje felett pincemagasság',
+          placeholder: 'cm',
+          width: 'half',
+          visibleWhen: {
+            fieldId: 'basement_exists',
+            equals: ['yes'],
+          },
+        },
+        {
+          id: 'has_underfloor_fill',
+          type: 'radio',
+          label: 'Ha nincs pince, van-e feltöltés a padló alatt?',
+          options: yesNoOptions,
+          width: 'half',
+          visibleWhen: {
+            fieldId: 'basement_exists',
+            equals: ['no'],
+          },
+        },
+        {
+          id: 'building_material',
+          type: 'text',
+          label: 'Milyen építőanyagból készült a ház?',
+          placeholder: 'Anyag',
+          width: 'half',
+        },
+        {
+          id: 'wall_material',
+          type: 'text',
+          label: 'Milyen anyagból készültek a falak?',
+          placeholder: 'Anyag',
+          width: 'half',
+        },
+      ],
+    },
+    {
+      id: 'moisture',
+      title: 'Nedvesség és állapotfelmérés',
+      columns: 2,
+      fields: [
+        {
+          id: 'existing_dampproofing',
+          type: 'radio',
+          label: 'Van-e utólagos vízszigetelés?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'damp_wall',
+          type: 'radio',
+          label: 'Tapasztalható-e nedvesedés a falakon?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'salt_efflorescence',
+          type: 'radio',
+          label: 'Látható-e salétromosodás vagy foltosodás?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'mold_presence',
+          type: 'radio',
+          label: 'Jelen van-e penész?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'crumbling_plaster',
+          type: 'radio',
+          label: 'Hullik vagy pereg-e a vakolat?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'odor_musty',
+          type: 'radio',
+          label: 'Érezhető-e dohos, nyirkos szag a helyiségekben?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'floor_moisture',
+          type: 'radio',
+          label: 'Jelentkezik-e felázás a padlón vagy a szegélyeknél?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'has_heating',
+          type: 'radio',
+          label: 'Van-e padló- vagy falfűtés a helyiségekben?',
+          options: yesNoOptions,
+          width: 'half',
+        },
+        {
+          id: 'room_usage',
+          type: 'textarea',
+          label: 'Milyen helyiségek vannak az érintett területen? (pl. nappali, konyha)',
+          placeholder: 'Rövid leírás',
+          width: 'full',
+        },
+        {
+          id: 'additional_notes',
+          type: 'textarea',
+          label: 'Egyéb megjegyzések, speciális körülmények',
+          placeholder: 'Megjegyzések',
+          width: 'full',
+        },
+      ],
+    },
+  ],
+};
+
+export default aquapolFormDefinition;

@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import type { Project } from '@/types/project.types';
+import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
 
 export default function ProjectDashboardPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function ProjectDashboardPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   useEffect(() => {
     loadProject();
@@ -68,6 +70,30 @@ export default function ProjectDashboardPage() {
   }
 
   const modules = [
+    {
+      id: 'aquapol-form',
+      name: 'Aquapol űrlap',
+      description: 'Nedvességfelmérő kérdőív és telepítési adatok rögzítése',
+      icon: (
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 4h6a2 2 0 012 2v12a2 2 0 01-2 2H9a2 2 0 01-2-2V6a2 2 0 012-2z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 8h6M9 12h6M9 16h3"
+          />
+        </svg>
+      ),
+      color: 'emerald',
+      href: `/dashboard/projects/${projectId}/forms/aquapol`,
+      available: true,
+    },
     {
       id: 'data',
       name: 'Adatok',
@@ -196,6 +222,12 @@ export default function ProjectDashboardPage() {
               </div>
               <div className="flex gap-3">
                 <button
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="px-4 py-2 border border-blue-200 rounded-lg text-blue-600 font-medium hover:bg-blue-50"
+                >
+                  📄 Modul PDF export
+                </button>
+                <button
                   onClick={() => router.push('/dashboard/projects')}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
                 >
@@ -318,6 +350,13 @@ export default function ProjectDashboardPage() {
           </div>
         </div>
       </div>
+      {project && (
+        <ProjectPDFExportModal
+          project={project}
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
