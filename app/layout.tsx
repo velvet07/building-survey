@@ -15,18 +15,17 @@ const sanitizeEnv = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const runtimeSupabaseUrl =
-  sanitizeEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? sanitizeEnv(process.env.SUPABASE_URL);
+const runtimeSupabaseConfig = {
+  NEXT_PUBLIC_SUPABASE_URL: sanitizeEnv(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  SUPABASE_URL: sanitizeEnv(process.env.SUPABASE_URL),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: sanitizeEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  SUPABASE_ANON_KEY: sanitizeEnv(process.env.SUPABASE_ANON_KEY),
+  SUPABASE_KEY: sanitizeEnv(process.env.SUPABASE_KEY),
+};
 
-const runtimeSupabaseAnonKey =
-  sanitizeEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ??
-  sanitizeEnv(process.env.SUPABASE_ANON_KEY) ??
-  sanitizeEnv(process.env.SUPABASE_KEY);
-
-const supabaseRuntimeConfigScript = `window.__SUPABASE_RUNTIME_CONFIG__ = ${JSON.stringify({
-  ...(runtimeSupabaseUrl ? { NEXT_PUBLIC_SUPABASE_URL: runtimeSupabaseUrl } : {}),
-  ...(runtimeSupabaseAnonKey ? { NEXT_PUBLIC_SUPABASE_ANON_KEY: runtimeSupabaseAnonKey } : {}),
-})};`;
+const supabaseRuntimeConfigScript = `window.__SUPABASE_RUNTIME_CONFIG__ = ${JSON.stringify(
+  runtimeSupabaseConfig
+)};`;
 
 export const metadata: Metadata = {
   title: 'Épületfelmérő Rendszer',
