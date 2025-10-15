@@ -4,7 +4,7 @@ import type { FormDefinition, ProjectFormResponse } from '@/lib/forms/types';
 import type { Drawing } from '@/lib/drawings/types';
 import { renderDrawingToImage, getPaperDimensionsInMillimeters } from '@/lib/drawings/pdf-export';
 import { ensureHungarianFont, setFont } from '@/lib/pdf/font-utils';
-import { FORM_PAGE_CONFIG, renderFormDefinition } from '@/lib/forms/pdf-export';
+import { FORM_PAGE_CONFIG, renderFormContent } from '@/lib/forms/pdf-export';
 
 interface ModuleSelection {
   id: 'aquapol-form' | 'drawings';
@@ -47,22 +47,22 @@ export function exportProjectModulesToPDF({
   modules.forEach((module) => {
     if (module.id === 'aquapol-form' && aquapol) {
       pdf.addPage('a4', 'portrait');
-      const cursor = { current: FORM_PAGE_CONFIG.marginTop };
 
       if (aquapol.response) {
-        renderFormDefinition(pdf, aquapol.definition, aquapol.response.data, cursor);
+        renderFormContent(pdf, aquapol.definition, aquapol.response.data);
       } else {
         setFont(pdf, 'bold');
         pdf.setFontSize(14);
-        pdf.text('Aquapol űrlap', FORM_PAGE_CONFIG.marginLeft, cursor.current);
-        cursor.current += FORM_PAGE_CONFIG.lineHeight + 2;
+        const startY = FORM_PAGE_CONFIG.marginTop;
+        pdf.text('Aquapol űrlap', FORM_PAGE_CONFIG.marginLeft, startY);
+        const messageY = startY + FORM_PAGE_CONFIG.lineHeight + 2;
 
         setFont(pdf, 'normal');
         pdf.setFontSize(10);
         pdf.text(
           'Az Aquapol űrlap még nincs kitöltve ehhez a projekthez.',
           FORM_PAGE_CONFIG.marginLeft,
-          cursor.current
+          messageY
         );
       }
 

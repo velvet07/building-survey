@@ -116,16 +116,24 @@ export function renderFormDefinition(
   });
 }
 
-export function exportFormToPDF(definition: FormDefinition, values: FormValues): void {
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-  ensureHungarianFont(pdf);
-
+export function renderFormContent(
+  pdf: jsPDF,
+  definition: FormDefinition,
+  values: FormValues
+): void {
   if (definition.pdf?.template === 'aquapol') {
     renderAquapolFormPDF(pdf, definition, values);
   } else {
     const cursor = { current: FORM_PAGE_CONFIG.marginTop };
     renderFormDefinition(pdf, definition, values, cursor);
   }
+}
+
+export function exportFormToPDF(definition: FormDefinition, values: FormValues): void {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  ensureHungarianFont(pdf);
+
+  renderFormContent(pdf, definition, values);
 
   pdf.setProperties({
     title: definition.title,
