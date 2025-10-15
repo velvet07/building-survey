@@ -10,11 +10,10 @@ interface LayoutColumn {
   label: string;
   fieldId: string;
   width?: ColumnWidth;
+  labelWidth?: number;
 }
 
 interface LayoutRowOptions {
-  density?: 'default' | 'compact';
-  minHeight?: number;
   minValueLines?: number;
   valueLineClamp?: number;
 }
@@ -62,14 +61,14 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
     type: 'row',
     columns: [{ label: 'Cím / Irányítószám', fieldId: 'installation_address' }],
   },
-  { type: 'separator', marginTop: 6, marginBottom: 5, lineWidth: 0.5 },
+  { type: 'separator', marginTop: 0, marginBottom: 0, lineWidth: 0.5 },
   {
     type: 'row',
     columns: [
       { label: '12. Mikor épült a ház', fieldId: 'house_built_year', width: 0.5 },
       { label: '13. Mekkora az alapterülete', fieldId: 'house_floor_area', width: 0.5 },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -77,7 +76,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '14. Főfalak vastagsága', fieldId: 'main_wall_thickness', width: 0.5 },
       { label: '15. Közfalak vastagsága', fieldId: 'partition_wall_thickness', width: 0.5 },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -85,7 +84,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '16. Van-e pince a ház alatt?', fieldId: 'basement_exists', width: 0.5 },
       { label: '17. Hány m² alapterületű a pince', fieldId: 'basement_area', width: 0.5 },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -97,7 +96,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -114,7 +113,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -122,7 +121,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '22. Milyen építőanyagból készült a ház', fieldId: 'house_material', width: 0.5 },
       { label: '23. Mikor volt utoljára tatarozva', fieldId: 'last_renovation', width: 0.5 },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -134,7 +133,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -142,7 +141,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '26. Festés után', fieldId: 'dampness_after_paint', width: 0.5 },
       { label: '27. Látható-e sókicsapódás a falon?', fieldId: 'salt_efflorescence', width: 0.5 },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -150,7 +149,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '28. Penész?', fieldId: 'mold_present', width: 0.5 },
       { label: '30. Csak a bútorok mögött', fieldId: 'mold_behind_furniture', width: 0.5 },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -160,7 +159,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         fieldId: 'mold_location',
       },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -168,7 +167,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '31. Dohos, nyirkos a levegő a lakásban', fieldId: 'air_musty', width: 0.5 },
       { label: '32. Az építmény terepviszonyai', fieldId: 'terrain_type', width: 0.5 },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -181,7 +180,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -197,7 +196,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -213,7 +212,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -226,7 +225,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
-    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
+    options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -274,61 +273,88 @@ export function renderAquapolFormPDF(
 ): void {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const marginX = 14;
-  const marginTop = 20;
-  const marginBottom = 18;
+  const marginX = 12;
+  const marginTop = 19;
+  const marginBottom = 16;
   const contentWidth = pageWidth - marginX * 2;
   const labelFontSize = 9;
-  const labelLineHeight = 4;
   const valueFontSize = 10;
-  const valueLineHeight = 4.4;
-  const verticalPadding = 1.2;
-  const labelValueSpacing = 1;
-  const defaultRowMinHeight = 11.5;
+  const lineHeight = 4;
+  const verticalPadding = 1;
   const cellPaddingX = 3;
+  const labelValueGap = 2.2;
+  const outerBorderWidth = 0.7;
+  const innerBorderWidth = 0.22;
+  const sectionLineWidth = 0.6;
 
   let cursorY = marginTop;
-  let isFirstRow = true;
+  let tableStartY: number | null = null;
+  let tableEndY = marginTop;
+
+  const drawTableBorder = () => {
+    if (tableStartY !== null) {
+      pdf.setLineWidth(outerBorderWidth);
+      pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+      pdf.rect(marginX, tableStartY, contentWidth, tableEndY - tableStartY);
+    }
+  };
 
   setFont(pdf, 'bold');
   pdf.setFontSize(20);
   pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
   pdf.text('FELMÉRŐLAP', pageWidth / 2, cursorY, { align: 'center' });
-  cursorY += 3.5;
+  cursorY += 3.8;
 
   pdf.setTextColor(0, 0, 0);
 
   const ensureSpace = (height: number) => {
     if (cursorY + height > pageHeight - marginBottom) {
+      drawTableBorder();
       pdf.addPage('a4', 'portrait');
       cursorY = marginTop;
-      isFirstRow = true;
+      tableStartY = null;
+      tableEndY = marginTop;
     }
   };
 
+  const registerTableBounds = (top: number, bottom: number) => {
+    if (tableStartY === null) {
+      tableStartY = top;
+    }
+    tableEndY = Math.max(tableEndY, bottom);
+  };
+
   const drawSectionHeader = (title: string) => {
-    const headerHeight = 5.5;
+    const headerHeight = 5;
     ensureSpace(headerHeight);
+    const topY = cursorY;
+    pdf.setLineWidth(sectionLineWidth);
+    pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+    pdf.line(marginX, cursorY, marginX + contentWidth, cursorY);
+    cursorY += headerHeight;
     setFont(pdf, 'bold');
     pdf.setFontSize(9.5);
     pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-    pdf.text(title, marginX + 2, cursorY + 4);
-    cursorY += headerHeight;
+    pdf.text(title, marginX + cellPaddingX, cursorY - headerHeight + lineHeight + 0.4);
+    pdf.setLineWidth(innerBorderWidth);
+    pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+    pdf.line(marginX, cursorY, marginX + contentWidth, cursorY);
     pdf.setTextColor(0, 0, 0);
-    isFirstRow = true;
+    registerTableBounds(topY, cursorY);
   };
 
   const drawSeparator = (entry: Extract<LayoutEntry, { type: 'separator' }>) => {
-    const marginBefore = entry.marginTop ?? 6;
-    const marginAfter = entry.marginBottom ?? 4;
-    const totalHeight = marginBefore + marginAfter + 0.5;
-    ensureSpace(totalHeight);
+    const marginBefore = entry.marginTop ?? 0;
+    const marginAfter = entry.marginBottom ?? 0;
+    const totalHeight = marginBefore + marginAfter;
+    ensureSpace(totalHeight + 0.5);
     cursorY += marginBefore;
+    const lineY = cursorY;
+    pdf.setLineWidth(entry.lineWidth ?? sectionLineWidth);
     pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-    pdf.setLineWidth(entry.lineWidth ?? 0.45);
-    pdf.line(marginX, cursorY, marginX + contentWidth, cursorY);
+    pdf.line(marginX, lineY, marginX + contentWidth, lineY);
     cursorY += marginAfter;
-    isFirstRow = true;
+    registerTableBounds(lineY, cursorY);
   };
 
   const drawRow = (columns: LayoutColumn[], options?: LayoutRowOptions) => {
@@ -337,88 +363,93 @@ export function renderAquapolFormPDF(
       const widthRatio = column.width ?? 1 / columns.length;
       const colWidth = availableWidth * widthRatio;
       const innerWidth = colWidth - cellPaddingX * 2;
+      const labelAreaWidth = Math.max(
+        0,
+        Math.min(innerWidth - labelValueGap, innerWidth * (column.labelWidth ?? 0.45))
+      );
+      const valueAreaWidth = Math.max(innerWidth - labelAreaWidth - labelValueGap, 1);
       const label = `${column.label}:`;
       setFont(pdf, 'bold');
       pdf.setFontSize(labelFontSize);
-      const labelLines = pdf.splitTextToSize(label, innerWidth);
+      const labelLines = pdf.splitTextToSize(label, Math.max(labelAreaWidth, 6));
+      const labelLineCount = Math.max(labelLines.length, 1);
       const value = resolveValue(column.fieldId, values);
+      const printableValue = value === '-' ? '' : value;
       setFont(pdf, 'normal');
       pdf.setFontSize(valueFontSize);
-      const printableValue = value === '-' ? '' : value;
       let valueLines = printableValue
-        ? pdf.splitTextToSize(printableValue, innerWidth)
+        ? pdf.splitTextToSize(printableValue, valueAreaWidth)
         : [];
       if (options?.valueLineClamp) {
         valueLines = valueLines.slice(0, options.valueLineClamp);
       }
-      const minValueLines = options?.minValueLines ?? 0;
+      const minValueLines = options?.minValueLines ?? 1;
       const valueLineCount = Math.max(valueLines.length, minValueLines);
-      const labelHeight = Math.max(labelLineHeight * labelLines.length, labelLineHeight);
-      const valueHeight =
-        valueLineCount > 0 ? labelValueSpacing + valueLineCount * valueLineHeight : 0;
-      const contentHeight = verticalPadding * 2 + labelHeight + valueHeight;
+      const lineCount = Math.max(labelLineCount, valueLineCount);
+      const rowHeight = verticalPadding * 2 + lineCount * lineHeight;
+
       return {
         column,
         width: colWidth,
         labelLines,
         valueLines,
-        contentHeight,
+        labelAreaWidth,
+        valueAreaWidth,
+        lineCount,
+        rowHeight,
       };
     });
 
-    const rowMinHeight = options?.minHeight ?? (options?.density === 'compact' ? 10 : defaultRowMinHeight);
-    const rowHeight = Math.max(rowMinHeight, ...columnDescriptors.map((item) => item.contentHeight));
+    const rowHeight = Math.max(...columnDescriptors.map((descriptor) => descriptor.rowHeight));
     ensureSpace(rowHeight);
+    const rowTop = cursorY;
 
     pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-    pdf.setLineWidth(0.25);
-
-    if (isFirstRow) {
-      pdf.line(marginX, cursorY, marginX + contentWidth, cursorY);
-      isFirstRow = false;
-    }
-
-    pdf.line(marginX, cursorY + rowHeight, marginX + contentWidth, cursorY + rowHeight);
-    pdf.line(marginX, cursorY, marginX, cursorY + rowHeight);
-    pdf.line(marginX + contentWidth, cursorY, marginX + contentWidth, cursorY + rowHeight);
+    pdf.setLineWidth(innerBorderWidth);
 
     let x = marginX;
     columnDescriptors.forEach((descriptor, index) => {
-      const { column, width, labelLines, valueLines } = descriptor;
-
+      const { width, labelLines, valueLines, labelAreaWidth, valueAreaWidth, lineCount } = descriptor;
       const labelX = x + cellPaddingX;
-      let labelY = cursorY + verticalPadding + labelLineHeight;
-      setFont(pdf, 'bold');
-      pdf.setFontSize(labelFontSize);
-      pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-      labelLines.forEach((line: string) => {
-        pdf.text(line, labelX, labelY);
-        labelY += labelLineHeight;
-      });
+      const valueX = labelX + labelAreaWidth + labelValueGap;
+      const textBaseY = cursorY + verticalPadding + lineHeight;
 
-      setFont(pdf, 'normal');
-      pdf.setFontSize(valueFontSize);
-      pdf.setTextColor(0, 0, 0);
-      let valueY =
-        cursorY +
-        verticalPadding +
-        labelLines.length * labelLineHeight +
-        labelValueSpacing +
-        valueLineHeight;
-      valueLines.forEach((line: string) => {
-        pdf.text(line, labelX, valueY);
-        valueY += valueLineHeight;
-      });
+      for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
+        const labelLine = labelLines[lineIndex];
+        if (labelLine) {
+          setFont(pdf, 'bold');
+          pdf.setFontSize(labelFontSize);
+          pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+          pdf.text(labelLine, labelX, textBaseY + lineIndex * lineHeight);
+        }
+
+        const valueLine = valueLines[lineIndex];
+        if (valueLine) {
+          setFont(pdf, 'normal');
+          pdf.setFontSize(valueFontSize);
+          pdf.setTextColor(0, 0, 0);
+          pdf.text(valueLine, valueX, textBaseY + lineIndex * lineHeight, {
+            maxWidth: valueAreaWidth,
+          });
+        }
+      }
 
       if (index < columnDescriptors.length - 1) {
         const dividerX = x + width;
-        pdf.line(dividerX, cursorY, dividerX, cursorY + rowHeight);
+        pdf.setLineWidth(innerBorderWidth);
+        pdf.line(dividerX, rowTop, dividerX, rowTop + rowHeight);
       }
 
       x += width;
     });
 
+    pdf.setTextColor(0, 0, 0);
+
+    pdf.setLineWidth(innerBorderWidth);
+    pdf.line(marginX, rowTop + rowHeight, marginX + contentWidth, rowTop + rowHeight);
+
     cursorY += rowHeight;
+    registerTableBounds(rowTop, cursorY);
   };
 
   AQUAPOL_LAYOUT.forEach((entry) => {
@@ -430,6 +461,8 @@ export function renderAquapolFormPDF(
       drawRow(entry.columns, entry.options);
     }
   });
+
+  drawTableBorder();
 
   setFont(pdf, 'normal');
   pdf.setFontSize(8);
