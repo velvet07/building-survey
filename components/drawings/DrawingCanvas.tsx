@@ -61,6 +61,11 @@ export default function DrawingCanvas({
   const [width, setWidth] = useState(4);
   const [eraserMode, setEraserMode] = useState<EraserMode>('stroke');
 
+  const toolRef = useRef(tool);
+  const colorRef = useRef(color);
+  const widthRef = useRef(width);
+  const eraserModeRef = useRef(eraserMode);
+
   const [paperSize, setPaperSize] = useState<PaperSize>(drawing.paper_size);
   const [orientation, setOrientation] = useState<PaperOrientation>(drawing.orientation);
 
@@ -303,6 +308,22 @@ export default function DrawingCanvas({
     return Math.sqrt(distX * distX + distY * distY);
   }, []);
 
+  useEffect(() => {
+    toolRef.current = tool;
+  }, [tool]);
+
+  useEffect(() => {
+    colorRef.current = color;
+  }, [color]);
+
+  useEffect(() => {
+    widthRef.current = width;
+  }, [width]);
+
+  useEffect(() => {
+    eraserModeRef.current = eraserMode;
+  }, [eraserMode]);
+
   const eraseStrokeAtPoint = useCallback(
     (point: { x: number; y: number }) => {
       let removed = false;
@@ -316,7 +337,7 @@ export default function DrawingCanvas({
             const segmentStart = { x: pts[i], y: pts[i + 1] };
             const segmentEnd = { x: pts[i + 2], y: pts[i + 3] };
             const distance = distanceToSegment(point, segmentStart, segmentEnd);
-            const tolerance = Math.max(width * 3, 24);
+            const tolerance = Math.max(widthRef.current * 3, 24);
             if (distance <= tolerance) {
               targetIndex = index;
               break;
@@ -339,7 +360,7 @@ export default function DrawingCanvas({
         // noop - state effect will propagate change
       }
     },
-    [distanceToSegment, width]
+    [distanceToSegment]
   );
 
   useEffect(() => {
@@ -434,13 +455,16 @@ export default function DrawingCanvas({
         return;
       }
 
-      if (tool === 'pan') return;
+      const activeTool = toolRef.current;
+      const activeEraserMode = eraserModeRef.current;
+
+      if (activeTool === 'pan') return;
 
       e.evt.preventDefault();
 
       const canvasPos = canvasPoint.point;
 
-      if (tool === 'eraser' && eraserMode === 'stroke') {
+      if (activeTool === 'eraser' && activeEraserMode === 'stroke') {
         isStrokeErasing.current = true;
         eraseStrokeAtPoint(canvasPos);
         return;
@@ -448,12 +472,12 @@ export default function DrawingCanvas({
 
       isDrawing.current = true;
 
-      const isBandEraser = tool === 'eraser' && eraserMode === 'band';
+      const isBandEraser = activeTool === 'eraser' && activeEraserMode === 'band';
       const newStroke: Stroke = {
         id: `stroke-${Date.now()}-${Math.random()}`,
         points: [canvasPos.x, canvasPos.y],
-        color: isBandEraser ? '#000000' : color,
-        width: isBandEraser ? width * 3 : width,
+        color: isBandEraser ? '#000000' : colorRef.current,
+        width: isBandEraser ? widthRef.current * 3 : widthRef.current,
         timestamp: new Date().toISOString(),
         compositeOperation:
           isBandEraser ? 'destination-out' : 'source-over',
@@ -461,7 +485,7 @@ export default function DrawingCanvas({
 
       beginStroke(newStroke);
     },
-    [beginStroke, color, eraseStrokeAtPoint, eraserMode, getCanvasPoint, tool, width]
+    [beginStroke, eraseStrokeAtPoint, getCanvasPoint]
   );
 
   const handlePointerMove = useCallback(
@@ -473,7 +497,10 @@ export default function DrawingCanvas({
         return;
       }
 
-      if (tool === 'eraser' && eraserMode === 'stroke') {
+      const activeTool = toolRef.current;
+      const activeEraserMode = eraserModeRef.current;
+
+      if (activeTool === 'eraser' && activeEraserMode === 'stroke') {
         if (!isStrokeErasing.current) return;
 
         e.evt.preventDefault();
@@ -483,7 +510,7 @@ export default function DrawingCanvas({
         return;
       }
 
-      if (!isDrawing.current || tool === 'pan') return;
+      if (!isDrawing.current || activeTool === 'pan') return;
 
       e.evt.preventDefault();
 
@@ -503,19 +530,22 @@ export default function DrawingCanvas({
       currentStrokeRef.current = updatedStroke;
       setCurrentStroke(updatedStroke);
     },
-    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, isBackgroundPan, tool]
+    [eraseStrokeAtPoint, getCanvasPoint, isBackgroundPan]
   );
 
   const handlePointerUp = useCallback(() => {
     setIsBackgroundPan(false);
-    if (tool === 'eraser' && eraserMode === 'stroke') {
+    const activeTool = toolRef.current;
+    const activeEraserMode = eraserModeRef.current;
+
+    if (activeTool === 'eraser' && activeEraserMode === 'stroke') {
       isStrokeErasing.current = false;
       return;
     }
     if (!isDrawing.current) return;
     isDrawing.current = false;
     commitStroke();
-  }, [commitStroke, eraserMode, tool]);
+  }, [commitStroke]);
 
   const handleStageWheel = useCallback(
     (event: KonvaEventObject<WheelEvent>) => {
