@@ -72,6 +72,8 @@ export default function DrawingCanvas({
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isBackgroundPan, setIsBackgroundPan] = useState(false);
 
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
@@ -198,8 +200,32 @@ export default function DrawingCanvas({
     };
   }, [isWidthMenuOpen]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const container = stage.container();
+    if (isBackgroundPan || tool === 'pan') {
+      container.style.cursor = 'grab';
+    } else {
+      container.style.cursor = 'crosshair';
+    }
+  }, [isBackgroundPan, tool]);
+
   const getCanvasPoint = useCallback(
-    (stage: Konva.Stage, options: { requireInside?: boolean } = {}) => {
+    (stage: Konva.Stage) => {
       const pointer = stage.getPointerPosition();
       if (!pointer) return null;
 
@@ -208,11 +234,10 @@ export default function DrawingCanvas({
       const canvasPoint = inverted.point(pointer);
       const inside = isPointInsideCanvas(canvasPoint, canvasWidth, canvasHeight);
 
-      if (options.requireInside && !inside) {
-        return null;
-      }
-
-      return clampPointToCanvas(canvasPoint, canvasWidth, canvasHeight);
+      return {
+        point: clampPointToCanvas(canvasPoint, canvasWidth, canvasHeight),
+        inside,
+      };
     },
     [canvasWidth, canvasHeight]
   );
@@ -292,16 +317,42 @@ export default function DrawingCanvas({
     [distanceToSegment, width]
   );
 
+  const toggleFullscreen = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      if (container.requestFullscreen) {
+        void container.requestFullscreen();
+      }
+    } else if (document.exitFullscreen) {
+      void document.exitFullscreen();
+    }
+  }, []);
+
   const handlePointerDown = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
-      if (tool === 'pan') return;
-
-      e.evt.preventDefault();
       const stage = e.target.getStage();
       if (!stage) return;
 
-      const canvasPos = getCanvasPoint(stage, { requireInside: true });
-      if (!canvasPos) return;
+      const canvasPoint = getCanvasPoint(stage);
+      if (!canvasPoint) return;
+
+      if (!canvasPoint.inside) {
+        setIsBackgroundPan(true);
+        stage.draggable(true);
+        requestAnimationFrame(() => {
+          stage.startDrag();
+        });
+        return;
+      }
+
+      if (tool === 'pan') return;
+
+      e.evt.preventDefault();
+
+      const canvasPos = canvasPoint.point;
 
       if (tool === 'eraser' && eraserMode === 'stroke') {
         isStrokeErasing.current = true;
@@ -332,13 +383,17 @@ export default function DrawingCanvas({
       const stage = e.target.getStage();
       if (!stage) return;
 
+      if (isBackgroundPan) {
+        return;
+      }
+
       if (tool === 'eraser' && eraserMode === 'stroke') {
         if (!isStrokeErasing.current) return;
 
         e.evt.preventDefault();
-        const canvasPos = getCanvasPoint(stage);
-        if (!canvasPos) return;
-        eraseStrokeAtPoint(canvasPos);
+        const canvasPoint = getCanvasPoint(stage);
+        if (!canvasPoint) return;
+        eraseStrokeAtPoint(canvasPoint.point);
         return;
       }
 
@@ -346,26 +401,27 @@ export default function DrawingCanvas({
 
       e.evt.preventDefault();
 
-      const canvasPos = getCanvasPoint(stage);
-      if (!canvasPos || !currentStrokeRef.current) return;
+      const canvasPoint = getCanvasPoint(stage);
+      if (!canvasPoint || !currentStrokeRef.current) return;
 
       const lastPoints = currentStrokeRef.current.points;
       const lastX = lastPoints[lastPoints.length - 2];
       const lastY = lastPoints[lastPoints.length - 1];
-      if (lastX === canvasPos.x && lastY === canvasPos.y) return;
+      if (lastX === canvasPoint.point.x && lastY === canvasPoint.point.y) return;
 
       const updatedStroke: Stroke = {
         ...currentStrokeRef.current,
-        points: [...lastPoints, canvasPos.x, canvasPos.y],
+        points: [...lastPoints, canvasPoint.point.x, canvasPoint.point.y],
       };
 
       currentStrokeRef.current = updatedStroke;
       setCurrentStroke(updatedStroke);
     },
-    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, tool]
+    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, isBackgroundPan, tool]
   );
 
   const handlePointerUp = useCallback(() => {
+    setIsBackgroundPan(false);
     if (tool === 'eraser' && eraserMode === 'stroke') {
       isStrokeErasing.current = false;
       return;
@@ -562,89 +618,116 @@ export default function DrawingCanvas({
 
   return (
     <div className="flex h-full flex-col bg-emerald-50/40">
-      <div className="border-b border-emerald-100 bg-white shadow-sm">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 lg:gap-4">
-          {projectUrl && (
-            <Link
-              href={projectUrl}
-              className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Projekt
-              </span>
-              <span className="text-base text-emerald-900">{projectName ?? 'Projekt nézet'}</span>
-            </Link>
-          )}
-
-          <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-2 py-2 shadow-inner">
-            {TOOLBAR_TOOLS.map((toolOption) => (
-              <button
-                key={toolOption.id}
-                onClick={() => setTool(toolOption.id)}
-                aria-pressed={tool === toolOption.id}
-                className={`flex h-12 min-w-[72px] flex-col items-center justify-center rounded-xl px-3 text-xs font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  tool === toolOption.id
-                    ? 'bg-emerald-600 text-white shadow-lg'
-                    : 'bg-white text-emerald-700 hover:bg-emerald-100'
-                }`}
+      <div className="border-b border-emerald-100 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2 px-3 py-2 md:px-4 md:py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {projectUrl && (
+              <Link
+                href={projectUrl}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <span className="text-lg">{toolOption.icon}</span>
-                {toolOption.label}
+                ← Projekt
+              </Link>
+            )}
+
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-500">
+                Rajz
+              </span>
+              <span className="truncate text-sm font-semibold text-emerald-900 md:text-base">
+                {drawing.name}
+              </span>
+              {projectName && (
+                <span className="truncate text-xs text-emerald-600">{projectName}</span>
+              )}
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-md border border-emerald-100 bg-emerald-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                />
+                {saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
+              </div>
+              <button
+                onClick={toggleFullscreen}
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <span className="text-base">{isFullscreen ? '⤢' : '⛶'}</span>
+                <span className="hidden sm:inline">{isFullscreen ? 'Kilépés' : 'Teljes képernyő'}</span>
               </button>
-            ))}
+            </div>
           </div>
 
-          {tool === 'eraser' && (
-            <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 shadow-sm">
-              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
-                Radír mód
-              </span>
-              <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-1 shadow-sm">
+              {TOOLBAR_TOOLS.map((toolOption) => (
                 <button
-                  onClick={() => setEraserMode('band')}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    eraserMode === 'band'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  key={toolOption.id}
+                  onClick={() => setTool(toolOption.id)}
+                  aria-pressed={tool === toolOption.id}
+                  className={`flex h-11 min-w-[60px] flex-col items-center justify-center rounded-lg px-2 text-[11px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                    tool === toolOption.id
+                      ? 'bg-emerald-600 text-white shadow-lg'
+                      : 'bg-white text-emerald-700 hover:bg-emerald-100'
                   }`}
                 >
-                  Sáv
+                  <span className="text-lg">{toolOption.icon}</span>
+                  {toolOption.label}
                 </button>
-                <button
-                  onClick={() => setEraserMode('stroke')}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    eraserMode === 'stroke'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                  }`}
-                >
-                  Vonal
-                </button>
-              </div>
+              ))}
             </div>
-          )}
 
-          <div className="flex items-center gap-3">
+            {tool === 'eraser' && (
+              <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm">
+                <span className="hidden text-[11px] uppercase tracking-wide text-emerald-500 sm:inline">Radír mód</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setEraserMode('band')}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      eraserMode === 'band'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    Sáv
+                  </button>
+                  <button
+                    onClick={() => setEraserMode('stroke')}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      eraserMode === 'stroke'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    Vonal
+                  </button>
+                </div>
+              </div>
+            )}
+
             <ColorPicker
               selectedColor={color}
               onChange={setColor}
-              className="w-48 min-w-[12rem]"
+              className="w-40 min-w-[10rem]"
             />
 
             <div className="relative" ref={widthDropdownRef}>
               <button
                 onClick={() => setIsWidthMenuOpen((prev) => !prev)}
-                className={`flex h-12 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                className={`flex h-11 items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   isWidthMenuOpen ? 'ring-2 ring-emerald-500' : ''
                 }`}
               >
-                <span className="text-lg">✏️</span>
+                <span className="text-base">✏️</span>
                 Vastagság
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                   {width}px
                 </span>
                 <svg
-                  className={`ml-1 h-4 w-4 transition-transform ${isWidthMenuOpen ? 'rotate-180' : ''}`}
+                  className={`ml-1 h-3.5 w-3.5 transition-transform ${isWidthMenuOpen ? 'rotate-180' : ''}`}
                   viewBox="0 0 20 20"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
@@ -683,35 +766,40 @@ export default function DrawingCanvas({
                 </div>
               )}
             </div>
-          </div>
 
-          <CompactPaperSizeSelector
-            paperSize={paperSize}
-            orientation={orientation}
-            onPaperSizeChange={handlePaperSizeChange}
-            onOrientationChange={handleOrientationChange}
-            className="ml-auto flex items-center gap-3"
-          />
+            <CompactPaperSizeSelector
+              paperSize={paperSize}
+              orientation={orientation}
+              onPaperSizeChange={handlePaperSizeChange}
+              onOrientationChange={handleOrientationChange}
+              className="flex items-center gap-3"
+            />
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-2 shadow-sm">
+            <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-1 shadow-sm">
               <button
                 onClick={handleZoomOut}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-base text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 −
               </button>
               <button
                 onClick={handleFitScreen}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-base text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                ⤢
+                ◎
               </button>
               <button
                 onClick={handleZoomIn}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-base text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 +
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                className="hidden h-9 w-9 items-center justify-center rounded-lg text-base text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:flex"
+                aria-pressed={isFullscreen}
+              >
+                {isFullscreen ? '⤢' : '⛶'}
               </button>
               <span className="ml-2 min-w-[3rem] text-center text-xs font-semibold text-emerald-700">
                 {Math.round(stageScale * 100)}%
@@ -722,27 +810,17 @@ export default function DrawingCanvas({
               <button
                 onClick={handleUndo}
                 disabled={strokes.length === 0}
-                className="flex h-12 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ↺ Visszavonás
               </button>
               <button
                 onClick={handleClear}
                 disabled={strokes.length === 0}
-                className="flex h-12 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 🗑️ Törlés
               </button>
-              <div className="flex h-12 items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 shadow-sm">
-                <span
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
-                  }`}
-                />
-                <span className="text-sm font-semibold text-emerald-700">
-                  {saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
-                </span>
-              </div>
             </div>
           </div>
         </div>
@@ -762,9 +840,23 @@ export default function DrawingCanvas({
               scaleY={stageScale}
               x={stagePos.x}
               y={stagePos.y}
-              draggable={tool === 'pan'}
+              draggable={tool === 'pan' || isBackgroundPan}
+              onDragStart={() => {
+                const stage = stageRef.current;
+                if (stage) {
+                  stage.container().style.cursor = 'grabbing';
+                }
+              }}
               onDragMove={(event) => setStagePos(event.target.position())}
-              onDragEnd={(event) => setStagePos(event.target.position())}
+              onDragEnd={(event) => {
+                setStagePos(event.target.position());
+                setIsBackgroundPan(false);
+                const stageNode = stageRef.current;
+                if (stageNode) {
+                  stageNode.container().style.cursor =
+                    tool === 'pan' ? 'grab' : 'crosshair';
+                }
+              }}
               onMouseDown={handlePointerDown}
               onMouseMove={handlePointerMove}
               onMouseUp={handlePointerUp}
