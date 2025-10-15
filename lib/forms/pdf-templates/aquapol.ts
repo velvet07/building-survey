@@ -104,13 +104,19 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       {
         label: '20. Van-e oldalirányú nedvesedésre utaló jel a pincében?',
         fieldId: 'basement_lateral_moisture',
-        width: 0.5,
+        labelWidth: 0.72,
       },
+    ],
+    options: { minValueLines: 1, valueLineClamp: 1 },
+  },
+  {
+    type: 'row',
+    columns: [
       {
         label:
           '21. Ha nincs pince az épület alatt, mekkora a padlószint magassága a járdaszinthez képest',
         fieldId: 'floor_height_without_basement',
-        width: 0.5,
+        labelWidth: 0.82,
       },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
@@ -157,6 +163,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       {
         label: '29. A penész a falak alsó felén vagy a mennyezeti részen jelentkezik',
         fieldId: 'mold_location',
+        labelWidth: 0.8,
       },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
@@ -172,12 +179,18 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
   {
     type: 'row',
     columns: [
-      { label: '33. Esőcsatorna állapota', fieldId: 'gutter_condition', width: 0.5 },
+      { label: '33. Esőcsatorna állapota', fieldId: 'gutter_condition', labelWidth: 0.65 },
+    ],
+    options: { minValueLines: 1, valueLineClamp: 1 },
+  },
+  {
+    type: 'row',
+    columns: [
       {
         label:
           '34. Épül-e járda az épület köré, ami a fal tövéről indul és elvezeti a felcsapódó vizeket?',
         fieldId: 'sidewalk_building',
-        width: 0.5,
+        labelWidth: 0.82,
       },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
@@ -188,12 +201,18 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       {
         label: '35. Megoldódott-e az esővíz kifolyónyílásánál a vízelvezetés a falakról?',
         fieldId: 'rainwater_drainage_resolved',
-        width: 0.5,
+        labelWidth: 0.82,
       },
+    ],
+    options: { minValueLines: 1, valueLineClamp: 1 },
+  },
+  {
+    type: 'row',
+    columns: [
       {
         label: '36. Télen intenzív fűtés mellett páralecsapódást észlel-e a falakon?',
         fieldId: 'winter_condensation',
-        width: 0.5,
+        labelWidth: 0.82,
       },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
@@ -217,12 +236,22 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
   {
     type: 'row',
     columns: [
-      { label: '38. Deformálódik-e a padlózat a nedvesség hatására?', fieldId: 'floor_deformation', width: 0.5 },
+      {
+        label: '38. Deformálódik-e a padlózat a nedvesség hatására?',
+        fieldId: 'floor_deformation',
+        labelWidth: 0.72,
+      },
+    ],
+    options: { minValueLines: 1, valueLineClamp: 1 },
+  },
+  {
+    type: 'row',
+    columns: [
       {
         label:
           '39. Helytelen kivitelezésből adódó nedvesedés, eresz, WC, fürdőszoba, konyha, egyéb',
         fieldId: 'incorrect_execution_dampness',
-        width: 0.5,
+        labelWidth: 0.82,
       },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
