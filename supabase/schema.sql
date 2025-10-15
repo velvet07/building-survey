@@ -112,6 +112,26 @@ COMMENT ON COLUMN public.user_module_activations.user_id IS 'User ID';
 COMMENT ON COLUMN public.user_module_activations.module_id IS 'Modul ID';
 
 -- =============================================================================
+-- 5. AQUAPOL FORMS TÁBLA - HELYSZÍNI DIAGNOSZTIKA
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.aquapol_forms (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT aquapol_forms_project_unique UNIQUE (project_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_aquapol_forms_project_id ON public.aquapol_forms(project_id);
+
+COMMENT ON TABLE public.aquapol_forms IS 'Aquapol diagnosztikai űrlapok projekt szintű tárolása';
+COMMENT ON COLUMN public.aquapol_forms.project_id IS 'Kapcsolódó projekt azonosítója';
+COMMENT ON COLUMN public.aquapol_forms.data IS 'Aquapol űrlap JSON tartalma';
+
+
+-- =============================================================================
 -- 5. TRIGGER: AUTO-UPDATE updated_at OSZLOP
 -- =============================================================================
 
@@ -135,6 +155,13 @@ CREATE TRIGGER update_profiles_updated_at
 DROP TRIGGER IF EXISTS update_projects_updated_at ON public.projects;
 CREATE TRIGGER update_projects_updated_at
   BEFORE UPDATE ON public.projects
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger az aquapol_forms táblához
+DROP TRIGGER IF EXISTS update_aquapol_forms_updated_at ON public.aquapol_forms;
+CREATE TRIGGER update_aquapol_forms_updated_at
+  BEFORE UPDATE ON public.aquapol_forms
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
@@ -179,6 +206,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_module_activations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.aquapol_forms ENABLE ROW LEVEL SECURITY;
 
 -- Megjegyzés: A konkrét RLS policy-k a policies.sql fájlban találhatók
 

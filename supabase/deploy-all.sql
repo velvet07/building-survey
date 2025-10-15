@@ -84,6 +84,20 @@ CREATE TABLE IF NOT EXISTS user_module_activations (
 );
 
 -- =================================================================
+-- TABLE: aquapol_forms
+-- Aquapol diagnosztikai űrlapok projekt szintű tárolása
+-- =================================================================
+CREATE TABLE IF NOT EXISTS aquapol_forms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    data JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE(project_id)
+);
+
+-- =================================================================
 -- INDEXES
 -- =================================================================
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
@@ -100,6 +114,7 @@ CREATE INDEX IF NOT EXISTS idx_modules_is_active ON modules(is_active);
 
 CREATE INDEX IF NOT EXISTS idx_user_module_activations_user_id ON user_module_activations(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_module_activations_module_id ON user_module_activations(module_id);
+CREATE INDEX IF NOT EXISTS idx_aquapol_forms_project_id ON aquapol_forms(project_id);
 
 -- =================================================================
 -- PART 2: FUNCTIONS AND TRIGGERS
@@ -157,6 +172,12 @@ CREATE TRIGGER update_projects_updated_at
 DROP TRIGGER IF EXISTS update_modules_updated_at ON modules;
 CREATE TRIGGER update_modules_updated_at
     BEFORE UPDATE ON modules
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+DROP TRIGGER IF EXISTS update_aquapol_forms_updated_at ON aquapol_forms;
+CREATE TRIGGER update_aquapol_forms_updated_at
+    BEFORE UPDATE ON aquapol_forms
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
@@ -351,6 +372,7 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_module_activations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE aquapol_forms ENABLE ROW LEVEL SECURITY;
 
 -- =================================================================
 -- PROFILES POLICIES
@@ -491,6 +513,38 @@ CREATE POLICY "Admins can manage module activations"
     USING (is_admin(auth.uid()));
 
 -- =================================================================
+-- AQUAPOL_FORMS POLICIES
+-- =================================================================
+
+DROP POLICY IF EXISTS "Users can view Aquapol forms" ON aquapol_forms;
+CREATE POLICY "Users can view Aquapol forms"
+    ON aquapol_forms FOR SELECT
+    USING (
+        is_owner(auth.uid(), project_id)
+        OR is_admin(auth.uid())
+    );
+
+DROP POLICY IF EXISTS "Users can insert Aquapol forms" ON aquapol_forms;
+CREATE POLICY "Users can insert Aquapol forms"
+    ON aquapol_forms FOR INSERT
+    WITH CHECK (
+        is_owner(auth.uid(), project_id)
+        OR is_admin(auth.uid())
+    );
+
+DROP POLICY IF EXISTS "Users can update Aquapol forms" ON aquapol_forms;
+CREATE POLICY "Users can update Aquapol forms"
+    ON aquapol_forms FOR UPDATE
+    USING (
+        is_owner(auth.uid(), project_id)
+        OR is_admin(auth.uid())
+    )
+    WITH CHECK (
+        is_owner(auth.uid(), project_id)
+        OR is_admin(auth.uid())
+    );
+
+-- =================================================================
 -- SETUP COMPLETE
 -- =================================================================
 
@@ -507,10 +561,10 @@ ON CONFLICT (name) DO NOTHING;
 DO $$
 BEGIN
     RAISE NOTICE '✅ Database setup complete!';
-    RAISE NOTICE 'Tables created: profiles, projects, modules, user_module_activations';
+    RAISE NOTICE 'Tables created: profiles, projects, modules, user_module_activations, aquapol_forms';
     RAISE NOTICE 'Functions created: 11 functions';
-    RAISE NOTICE 'Triggers created: 4 triggers';
-    RAISE NOTICE 'RLS Policies created: 19 policies';
+    RAISE NOTICE 'Triggers created: 5 triggers';
+    RAISE NOTICE 'RLS Policies created: 22 policies';
     RAISE NOTICE 'Default modules inserted: 5 modules';
     RAISE NOTICE '';
     RAISE NOTICE 'Next steps:';

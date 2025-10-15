@@ -5,10 +5,13 @@
  * Központi oldal egy projekthez - modulok választása
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import type { Project } from '@/types/project.types';
+import { getAquapolForm } from '@/lib/aquapol/api';
+import type { AquapolFormRecord } from '@/types/aquapol.types';
+import { getDrawings } from '@/lib/drawings/api';
 
 export default function ProjectDashboardPage() {
   const router = useRouter();
@@ -17,6 +20,10 @@ export default function ProjectDashboardPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aquapolForm, setAquapolForm] = useState<AquapolFormRecord | null>(null);
+  const [aquapolLoading, setAquapolLoading] = useState(true);
+  const [drawingsCount, setDrawingsCount] = useState<number | null>(null);
+  const [drawingsLoading, setDrawingsLoading] = useState(true);
 
   useEffect(() => {
     loadProject();
@@ -39,6 +46,82 @@ export default function ProjectDashboardPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAquapolSummary = async () => {
+      setAquapolLoading(true);
+      try {
+        const record = await getAquapolForm(projectId);
+        if (isMounted) {
+          setAquapolForm(record);
+        }
+      } catch (error) {
+        console.error('Error loading Aquapol form summary:', error);
+      } finally {
+        if (isMounted) {
+          setAquapolLoading(false);
+        }
+      }
+    };
+
+    const loadDrawingSummary = async () => {
+      setDrawingsLoading(true);
+      try {
+        const items = await getDrawings(projectId);
+        if (isMounted) {
+          setDrawingsCount(items.length);
+        }
+      } catch (error) {
+        console.error('Error loading drawings for summary:', error);
+        if (isMounted) {
+          setDrawingsCount(null);
+        }
+      } finally {
+        if (isMounted) {
+          setDrawingsLoading(false);
+        }
+      }
+    };
+
+    loadAquapolSummary();
+    loadDrawingSummary();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
+
+  const aquapolSummary = useMemo(() => {
+    if (aquapolLoading) {
+      return 'Státusz: betöltés...';
+    }
+    if (aquapolForm) {
+      const date = new Date(aquapolForm.updated_at);
+      return `Utolsó mentés: ${date.toLocaleString('hu-HU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`;
+    }
+    return 'Még nincs kitöltve';
+  }, [aquapolForm, aquapolLoading]);
+
+  const drawingsSummary = useMemo(() => {
+    if (drawingsLoading) {
+      return 'Rajzok betöltése...';
+    }
+    if (drawingsCount === null) {
+      return 'Nem sikerült betölteni a rajzok listáját';
+    }
+    if (drawingsCount === 0) {
+      return 'Még nincs rajz a projektben';
+    }
+    return `${drawingsCount} rajz elérhető exporthoz`;
+  }, [drawingsCount, drawingsLoading]);
 
   if (loading) {
     return (
@@ -253,6 +336,75 @@ export default function ProjectDashboardPage() {
                 )}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Aquapol form & export quick actions */}
+        <div className="mt-10">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Űrlapok és export</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow-sm border border-blue-100 p-6 flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Aquapol űrlap</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Dokumentáld a nedvesedési diagnosztikát tablet barát űrlappal, hogy a kivitelezés előkészítése
+                    teljes legyen.
+                  </p>
+                </div>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600">
+                  ŰRLAP
+                </span>
+              </div>
+              <div className="text-sm text-blue-700 bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
+                {aquapolSummary}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => router.push(`/dashboard/projects/${projectId}/aquapol`)}
+                  className="px-5 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Űrlap megnyitása
+                </button>
+                <button
+                  onClick={() => router.push(`/dashboard/projects/${projectId}/drawings`)}
+                  className="px-4 py-2 rounded-lg border border-blue-200 text-blue-600 font-medium hover:bg-blue-50"
+                >
+                  Rajzok megnyitása
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Export központ</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Egyetlen helyen érheted el a PDF exportot és a rajzcsomagokat az ügyfélanyagokhoz.
+                  </p>
+                </div>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                  EXPORT
+                </span>
+              </div>
+              <div className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
+                {drawingsSummary}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => router.push(`/dashboard/projects/${projectId}/export`)}
+                  className="px-5 py-2 rounded-lg bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors"
+                >
+                  Export indítása
+                </button>
+                <button
+                  onClick={() => router.push(`/dashboard/projects/${projectId}/drawings`)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+                >
+                  Rajz lista
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

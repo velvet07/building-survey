@@ -205,6 +205,76 @@ WITH CHECK (
   (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
 
+-- =============================================================================
+-- 7. AQUAPOL_FORMS TÁBLA - RLS POLICIES
+-- =============================================================================
+
+DROP POLICY IF EXISTS aquapol_forms_select ON public.aquapol_forms;
+CREATE POLICY aquapol_forms_select
+ON public.aquapol_forms
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.aquapol_forms.project_id
+      AND public.projects.deleted_at IS NULL
+      AND (
+        public.projects.owner_id = auth.uid()
+        OR (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+      )
+  )
+);
+
+DROP POLICY IF EXISTS aquapol_forms_insert ON public.aquapol_forms;
+CREATE POLICY aquapol_forms_insert
+ON public.aquapol_forms
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.aquapol_forms.project_id
+      AND public.projects.deleted_at IS NULL
+      AND (
+        public.projects.owner_id = auth.uid()
+        OR (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+      )
+  )
+);
+
+DROP POLICY IF EXISTS aquapol_forms_update ON public.aquapol_forms;
+CREATE POLICY aquapol_forms_update
+ON public.aquapol_forms
+FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.aquapol_forms.project_id
+      AND public.projects.deleted_at IS NULL
+      AND (
+        public.projects.owner_id = auth.uid()
+        OR (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+      )
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.aquapol_forms.project_id
+      AND public.projects.deleted_at IS NULL
+      AND (
+        public.projects.owner_id = auth.uid()
+        OR (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+      )
+  )
+);
+
 -- Policy: Admin törölhet modulokat (csak non-system modulokat)
 CREATE POLICY "Admins can delete non-system modules"
 ON public.modules
