@@ -4,8 +4,6 @@ import { formatFormValue } from '../pdf/utils';
 import type { FormDefinition, FormValues } from '../types';
 
 const BRAND_GREEN = { r: 0, g: 132, b: 70 } as const;
-const HEADER_FILL = { r: 232, g: 246, b: 238 } as const;
-
 type ColumnWidth = number; // 0-1 ratio of the available width
 
 interface LayoutColumn {
@@ -238,7 +236,7 @@ function resolveValue(fieldId: string, values: FormValues): string {
 
 export function renderAquapolFormPDF(
   pdf: jsPDF,
-  definition: FormDefinition,
+  _definition: FormDefinition,
   values: FormValues
 ): void {
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -246,13 +244,15 @@ export function renderAquapolFormPDF(
   const marginX = 14;
   const marginTop = 20;
   const marginBottom = 18;
-  const columnGap = 0;
   const contentWidth = pageWidth - marginX * 2;
   const labelFontSize = 9;
+  const labelLineHeight = 4;
   const valueFontSize = 10;
-  const valueLineHeight = 4.2;
-  const verticalPadding = 2.5;
-  const minRowHeight = 13;
+  const valueLineHeight = 4.4;
+  const verticalPadding = 1.4;
+  const labelValueSpacing = 1.2;
+  const minRowHeight = 11.5;
+  const cellPaddingX = 3;
 
   let cursorY = marginTop;
 
@@ -261,12 +261,6 @@ export function renderAquapolFormPDF(
   pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
   pdf.text('FELMÉRŐLAP', pageWidth / 2, cursorY, { align: 'center' });
   cursorY += 8;
-
-  setFont(pdf, 'normal');
-  pdf.setFontSize(11);
-  pdf.setTextColor(60, 60, 60);
-  pdf.text(definition.title, pageWidth / 2, cursorY, { align: 'center' });
-  cursorY += 10;
 
   pdf.setTextColor(0, 0, 0);
 
@@ -278,16 +272,13 @@ export function renderAquapolFormPDF(
   };
 
   const drawSectionHeader = (title: string) => {
-    const headerHeight = 7.5;
+    const headerHeight = 6;
     ensureSpace(headerHeight);
-    pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-    pdf.setFillColor(HEADER_FILL.r, HEADER_FILL.g, HEADER_FILL.b);
-    pdf.rect(marginX, cursorY, contentWidth, headerHeight, 'FD');
     setFont(pdf, 'bold');
-    pdf.setFontSize(11);
+    pdf.setFontSize(9.5);
     pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-    pdf.text(title, marginX + 3, cursorY + headerHeight - 2.2);
-    cursorY += headerHeight + 2;
+    pdf.text(title, marginX + 2, cursorY + 4);
+    cursorY += headerHeight;
     pdf.setTextColor(0, 0, 0);
   };
 
@@ -296,19 +287,29 @@ export function renderAquapolFormPDF(
     const columnDescriptors = columns.map((column) => {
       const widthRatio = column.width ?? 1 / columns.length;
       const colWidth = availableWidth * widthRatio;
-      const textWidth = colWidth - 6;
+      const innerWidth = colWidth - cellPaddingX * 2;
+      const label = `${column.label}:`;
+      setFont(pdf, 'bold');
+      pdf.setFontSize(labelFontSize);
+      const labelLines = pdf.splitTextToSize(label, innerWidth);
       const value = resolveValue(column.fieldId, values);
       setFont(pdf, 'normal');
       pdf.setFontSize(valueFontSize);
-      const lines = pdf.splitTextToSize(value, textWidth);
-      const contentHeight =
-        verticalPadding * 2 + 4.4 + Math.max(lines.length, 1) * valueLineHeight;
+      const printableValue = value === '-' ? '' : value;
+      const valueLines = printableValue
+        ? pdf.splitTextToSize(printableValue, innerWidth)
+        : [];
+      const labelHeight = Math.max(labelLineHeight * labelLines.length, labelLineHeight);
+      const valueHeight =
+        valueLines.length > 0 ? labelValueSpacing + valueLines.length * valueLineHeight : 0;
+      const contentHeight = verticalPadding * 2 + labelHeight + valueHeight;
       return {
         column,
         width: colWidth,
-        lines,
+        labelLines,
+        valueLines,
         contentHeight,
-        value,
+        printableValue,
       };
     });
 
@@ -321,27 +322,31 @@ export function renderAquapolFormPDF(
 
     let x = marginX;
     columnDescriptors.forEach((descriptor, index) => {
-      const { column, width, lines } = descriptor;
+      const { column, width, labelLines, valueLines } = descriptor;
 
-      const labelX = x + 3;
-      const labelY = cursorY + verticalPadding + 4.2;
+      const labelX = x + cellPaddingX;
+      let labelY = cursorY + verticalPadding + labelLineHeight;
       setFont(pdf, 'bold');
       pdf.setFontSize(labelFontSize);
       pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-      pdf.text(`${column.label}:`, labelX, labelY);
+      labelLines.forEach((line: string) => {
+        pdf.text(line, labelX, labelY);
+        labelY += labelLineHeight;
+      });
 
       setFont(pdf, 'normal');
       pdf.setFontSize(valueFontSize);
       pdf.setTextColor(0, 0, 0);
-      let valueY = labelY + 2.6;
-      if (lines.length === 0) {
-        pdf.text('-', labelX, valueY);
-      } else {
-        lines.forEach((line: string) => {
-          pdf.text(line, labelX, valueY);
-          valueY += valueLineHeight;
-        });
-      }
+      let valueY =
+        cursorY +
+        verticalPadding +
+        labelLines.length * labelLineHeight +
+        labelValueSpacing +
+        valueLineHeight;
+      valueLines.forEach((line: string) => {
+        pdf.text(line, labelX, valueY);
+        valueY += valueLineHeight;
+      });
 
       if (index < columnDescriptors.length - 1) {
         const dividerX = x + width;
@@ -351,7 +356,7 @@ export function renderAquapolFormPDF(
       x += width;
     });
 
-    cursorY += rowHeight + 2;
+    cursorY += rowHeight;
   };
 
   AQUAPOL_LAYOUT.forEach((entry) => {
