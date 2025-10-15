@@ -77,6 +77,7 @@ export default function DrawingCanvas({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isImmersiveFallback, setIsImmersiveFallback] = useState(false);
   const [isBackgroundPan, setIsBackgroundPan] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
@@ -229,6 +230,24 @@ export default function DrawingCanvas({
       setWidthMenuRect(null);
     }
   }, [isWidthMenuOpen]);
+
+  useEffect(() => {
+    if (!isClearDialogOpen || typeof document === 'undefined') {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsClearDialogOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isClearDialogOpen]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -666,13 +685,12 @@ export default function DrawingCanvas({
 
   const handleStageTouchEnd = useCallback(
     (event: KonvaEventObject<TouchEvent | PointerEvent>) => {
+      handlePointerUp();
+
       const touches = (event.evt as TouchEvent).touches;
       if (!touches || touches.length < 2) {
         pinchState.current = null;
-        isDrawing.current = false;
       }
-
-      handlePointerUp();
     },
     [handlePointerUp]
   );
@@ -682,11 +700,18 @@ export default function DrawingCanvas({
     setStrokes((prev) => prev.slice(0, -1));
   }, [strokes.length]);
 
+  const confirmClear = useCallback(() => {
+    setStrokes([]);
+    setIsClearDialogOpen(false);
+  }, []);
+
+  const cancelClear = useCallback(() => {
+    setIsClearDialogOpen(false);
+  }, []);
+
   const handleClear = useCallback(() => {
     if (strokes.length === 0) return;
-    if (window.confirm('Biztosan törölni szeretnéd az összes rajzelemet?')) {
-      setStrokes([]);
-    }
+    setIsClearDialogOpen(true);
   }, [strokes.length]);
 
   const handleZoomIn = () => {
@@ -803,6 +828,50 @@ export default function DrawingCanvas({
                 {preset}px
               </button>
             ))}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const renderClearDialog = () => {
+    if (!isClearDialogOpen || typeof document === 'undefined') {
+      return null;
+    }
+
+    return createPortal(
+      <div className="fixed inset-0 z-[420] flex items-center justify-center bg-emerald-950/45 backdrop-blur">
+        <div
+          className="absolute inset-0"
+          onClick={cancelClear}
+          onTouchStart={cancelClear}
+        />
+        <div className="relative z-10 w-[min(90vw,24rem)] rounded-3xl border border-emerald-200 bg-white p-6 shadow-2xl">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-red-100 text-2xl">
+              🗑️
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-emerald-900">Rajz törlésének megerősítése</h2>
+              <p className="mt-1 text-sm text-emerald-700">
+                Biztosan törlöd az összes rajzolt elemet? Ez a művelet nem visszavonható.
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              onClick={cancelClear}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-200 px-4 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              Mégse
+            </button>
+            <button
+              onClick={confirmClear}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-red-300 bg-red-500 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              Igen, törlöm
+            </button>
           </div>
         </div>
       </div>,
@@ -990,6 +1059,7 @@ export default function DrawingCanvas({
       </div>
 
       {renderWidthMenu()}
+      {renderClearDialog()}
 
       <div className="relative z-0 flex-1 overflow-hidden">
         <div
