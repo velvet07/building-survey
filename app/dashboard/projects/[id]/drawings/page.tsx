@@ -5,7 +5,7 @@
  * Rajzok listázása projekten belül
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getDrawings, createDrawing } from '@/lib/drawings/api';
 import type { Drawing } from '@/lib/drawings/types';
@@ -21,11 +21,7 @@ export default function DrawingsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    loadDrawings();
-  }, [projectId]);
-
-  const loadDrawings = async () => {
+  const loadDrawings = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getDrawings(projectId);
@@ -36,7 +32,11 @@ export default function DrawingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    void loadDrawings();
+  }, [loadDrawings]);
 
   const handleCreateDrawing = async () => {
     if (creating) return;

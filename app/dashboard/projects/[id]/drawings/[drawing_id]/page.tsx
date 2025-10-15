@@ -5,7 +5,7 @@
  * Rajz szerkesztő oldal - canvas interface
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getDrawing, updateDrawing } from '@/lib/drawings/api';
@@ -56,35 +56,7 @@ export default function DrawingEditorPage() {
   const isSavingRef = useRef(false);
   const lastSavedSignature = useRef<string | null>(null);
 
-  useEffect(() => {
-    loadDrawing();
-  }, [drawingId]);
-
-  useEffect(() => {
-    loadProject();
-  }, [projectId]);
-
-  useEffect(() => {
-    if (!drawing) return;
-
-    const initialPayload: CanvasChangePayload = {
-      canvasData: drawing.canvas_data,
-      paperSize: drawing.paper_size,
-      orientation: drawing.orientation,
-    };
-
-    lastSavedSignature.current = createSignature(initialPayload);
-  }, [drawing]);
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const loadDrawing = async () => {
+  const loadDrawing = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getDrawing(drawingId);
@@ -97,9 +69,9 @@ export default function DrawingEditorPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [drawingId, projectId, router]);
 
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     try {
       const { data, error } = await getProjectById(projectId);
       if (error) throw error;
@@ -107,15 +79,43 @@ export default function DrawingEditorPage() {
     } catch (error) {
       console.error('Projekt betöltése sikertelen:', error);
     }
-  };
+  }, [projectId]);
 
-  function createSignature(payload: CanvasChangePayload) {
+  const createSignature = useCallback((payload: CanvasChangePayload) => {
     return JSON.stringify({
       paperSize: payload.paperSize,
       orientation: payload.orientation,
       data: payload.canvasData,
     });
-  }
+  }, []);
+
+  useEffect(() => {
+    void loadDrawing();
+  }, [loadDrawing]);
+
+  useEffect(() => {
+    void loadProject();
+  }, [loadProject]);
+
+  useEffect(() => {
+    if (!drawing) return;
+
+    const initialPayload: CanvasChangePayload = {
+      canvasData: drawing.canvas_data,
+      paperSize: drawing.paper_size,
+      orientation: drawing.orientation,
+    };
+
+    lastSavedSignature.current = createSignature(initialPayload);
+  }, [createSignature, drawing]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   function schedulePendingSave(delay = 800) {
     if (isSavingRef.current) {

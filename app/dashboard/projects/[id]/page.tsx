@@ -5,7 +5,7 @@
  * Központi oldal egy projekthez - modulok választása
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import type { Project } from '@/types/project.types';
@@ -20,11 +20,7 @@ export default function ProjectDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  useEffect(() => {
-    loadProject();
-  }, [projectId]);
-
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     try {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -40,7 +36,11 @@ export default function ProjectDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    void loadProject();
+  }, [loadProject]);
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '@/types/project.types';
 import { getProjectFormResponse } from '@/lib/forms/api';
 import { aquapolFormDefinition } from '@/lib/forms/definitions/aquapol';
@@ -53,16 +53,7 @@ export default function ProjectPDFExportModal({
     selectedModulesRef.current = selectedModules;
   }, [selectedModules]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedModules({ 'aquapol-form': true, drawings: false });
-      setSelectedDrawingIds([]);
-      setError(null);
-      void loadDrawings();
-    }
-  }, [isOpen]);
-
-  const loadDrawings = async (): Promise<Drawing[] | undefined> => {
+  const loadDrawings = useCallback(async (): Promise<Drawing[] | undefined> => {
     try {
       setDrawingsLoading(true);
       const drawings = await getDrawings(project.id);
@@ -78,7 +69,16 @@ export default function ProjectPDFExportModal({
     } finally {
       setDrawingsLoading(false);
     }
-  };
+  }, [project.id]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedModules({ 'aquapol-form': true, drawings: false });
+      setSelectedDrawingIds([]);
+      setError(null);
+      void loadDrawings();
+    }
+  }, [isOpen, loadDrawings]);
 
   const toggleModule = (moduleId: ModuleId) => {
     setSelectedModules((prev) => {

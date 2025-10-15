@@ -5,6 +5,7 @@
  * Egyedi rajz card megjelenítés thumbnail-lel, metadata-val, és action gombokkal
  */
 
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteDrawing, updateDrawing } from '@/lib/drawings/api';
@@ -91,10 +92,12 @@ export default function DrawingCard({
         {/* Thumbnail */}
         <div className="h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center border-b border-gray-200 relative overflow-hidden">
           {thumbnail ? (
-            <img
+            <Image
               src={thumbnail}
               alt={drawing.name}
-              className="w-full h-full object-contain"
+              fill
+              sizes="(max-width: 640px) 100vw, 33vw"
+              className="object-contain"
             />
           ) : (
             <svg
