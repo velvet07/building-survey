@@ -124,19 +124,10 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
   {
     type: 'row',
     columns: [
-      { label: '22. Milyen építőanyagból készült a ház', fieldId: 'house_material', width: 0.5 },
-      { label: '23. Mikor volt utoljára tatarozva', fieldId: 'last_renovation', width: 0.5 },
-    ],
-    options: { minValueLines: 1, valueLineClamp: 1 },
-  },
-  {
-    type: 'row',
-    columns: [
-      { label: '24. Festve', fieldId: 'last_paint', width: 0.5 },
       {
-        label: '25. Mennyi időt múlva jelentkezett a nedvesedés',
-        fieldId: 'dampness_after_time',
-        width: 0.5,
+        label: '22. Milyen építőanyagból készült a ház',
+        fieldId: 'house_material',
+        labelWidth: 0.68,
       },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
@@ -144,16 +135,28 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
   {
     type: 'row',
     columns: [
-      { label: '26. Festés után', fieldId: 'dampness_after_paint', width: 0.5 },
-      { label: '27. Látható-e sókicsapódás a falon?', fieldId: 'salt_efflorescence', width: 0.5 },
+      { label: '23. Mikor volt utoljára tatarozva', fieldId: 'last_renovation', width: 0.5 },
+      { label: '24. Festve', fieldId: 'last_paint', width: 0.5 },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
     columns: [
+      {
+        label: '25. Mennyi időt múlva jelentkezett a nedvesedés',
+        fieldId: 'dampness_after_time',
+        width: 0.5,
+      },
+      { label: '26. Festés után', fieldId: 'dampness_after_paint', width: 0.5 },
+    ],
+    options: { minValueLines: 1, valueLineClamp: 1 },
+  },
+  {
+    type: 'row',
+    columns: [
+      { label: '27. Látható-e sókicsapódás a falon?', fieldId: 'salt_efflorescence', width: 0.5 },
       { label: '28. Penész?', fieldId: 'mold_present', width: 0.5 },
-      { label: '30. Csak a bútorok mögött', fieldId: 'mold_behind_furniture', width: 0.5 },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
   },
@@ -171,15 +174,16 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
   {
     type: 'row',
     columns: [
+      { label: '30. Csak a bútorok mögött', fieldId: 'mold_behind_furniture', width: 0.5 },
       { label: '31. Dohos, nyirkos a levegő a lakásban', fieldId: 'air_musty', width: 0.5 },
-      { label: '32. Az építmény terepviszonyai', fieldId: 'terrain_type', width: 0.5 },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
     columns: [
-      { label: '33. Esőcsatorna állapota', fieldId: 'gutter_condition', labelWidth: 0.65 },
+      { label: '32. Az építmény terepviszonyai', fieldId: 'terrain_type', width: 0.5 },
+      { label: '33. Esőcsatorna állapota', fieldId: 'gutter_condition', width: 0.5, labelWidth: 0.6 },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
   },
@@ -223,12 +227,14 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       {
         label: '37. A falakon látható falnedvesség magassága (cm a főfalon)',
         fieldId: 'wall_moisture_height_main',
-        width: 0.5,
+        width: 0.58,
+        labelWidth: 0.78,
       },
       {
-        label: '37. A falakon látható falnedvesség magassága (cm a közbenső falon)',
+        label: 'cm a közbenső falon',
         fieldId: 'wall_moisture_height_partition',
-        width: 0.5,
+        width: 0.42,
+        labelWidth: 0.64,
       },
     ],
     options: { minValueLines: 1, valueLineClamp: 1 },
@@ -496,6 +502,4 @@ export function renderAquapolFormPDF(
   setFont(pdf, 'normal');
   pdf.setFontSize(8);
   pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-  const footerText = 'A dátumozás rendszeres és megfelelő elvégzése javasolt.';
-  pdf.text(footerText, marginX, pageHeight - marginBottom + 6);
 }

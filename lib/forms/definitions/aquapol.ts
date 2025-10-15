@@ -200,7 +200,7 @@ export const aquapolFormDefinition: FormDefinition = {
           id: 'house_material',
           type: 'text',
           label: '22. Milyen építőanyagból készült a ház',
-          width: 'half',
+          width: 'full',
         },
         {
           id: 'last_renovation',
@@ -319,7 +319,7 @@ export const aquapolFormDefinition: FormDefinition = {
         {
           id: 'wall_moisture_height_partition',
           type: 'text',
-          label: '37. A falakon látható falnedvesség magassága (cm a közbenső falon)',
+          label: 'cm a közbenső falon',
           placeholder: 'cm',
           width: 'half',
         },
