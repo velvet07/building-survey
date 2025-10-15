@@ -225,7 +225,7 @@ export default function DrawingEditorPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="flex min-h-screen flex-1 flex-col">
       <DrawingCanvas
         drawing={drawing}
         onCanvasChange={handleCanvasChange}

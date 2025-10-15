@@ -74,12 +74,14 @@ export default function DrawingCanvas({
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
+  const [isBackgroundPanning, setIsBackgroundPanning] = useState(false);
 
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
   const isStrokeErasing = useRef(false);
+  const backgroundPanningRef = useRef(false);
   const pinchState = useRef<{
     initialDistance: number;
     initialScale: number;
@@ -200,8 +202,33 @@ export default function DrawingCanvas({
     };
   }, [isWidthMenuOpen]);
 
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const container = stage.container();
+    if (!container) return;
+
+    if (backgroundPanningRef.current || isBackgroundPanning) {
+      container.style.cursor = 'grabbing';
+      return;
+    }
+
+    if (tool === 'pan') {
+      container.style.cursor = 'grab';
+    } else {
+      container.style.cursor = 'crosshair';
+    }
+  }, [isBackgroundPanning, tool]);
+
+  useEffect(() => {
+    stageRef.current?.batchDraw();
+  }, [currentStroke, strokes]);
+
+  type CanvasPointerResult = { point: { x: number; y: number }; inside: boolean };
+
   const getCanvasPoint = useCallback(
-    (stage: Konva.Stage, options: { requireInside?: boolean } = {}) => {
+    (stage: Konva.Stage, options: { requireInside?: boolean } = {}): CanvasPointerResult | null => {
       const pointer = stage.getPointerPosition();
       if (!pointer) return null;
 
@@ -209,12 +236,13 @@ export default function DrawingCanvas({
       const inverted = transform.invert();
       const canvasPoint = inverted.point(pointer);
       const inside = isPointInsideCanvas(canvasPoint, canvasWidth, canvasHeight);
+      const clampedPoint = clampPointToCanvas(canvasPoint, canvasWidth, canvasHeight);
 
       if (options.requireInside && !inside) {
         return null;
       }
 
-      return clampPointToCanvas(canvasPoint, canvasWidth, canvasHeight);
+      return { point: clampedPoint, inside };
     },
     [canvasWidth, canvasHeight]
   );
@@ -296,18 +324,31 @@ export default function DrawingCanvas({
 
   const handlePointerDown = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
-      if (tool === 'pan') return;
-
-      e.evt.preventDefault();
       const stage = e.target.getStage();
       if (!stage) return;
 
-      const canvasPos = getCanvasPoint(stage, { requireInside: true });
-      if (!canvasPos) return;
+      const pointerInfo = getCanvasPoint(stage);
+      if (!pointerInfo) return;
+      const { point, inside } = pointerInfo;
+
+      if (!inside) {
+        backgroundPanningRef.current = true;
+        setIsBackgroundPanning(true);
+        requestAnimationFrame(() => {
+          stage.startDrag();
+        });
+        return;
+      }
+
+      if (tool === 'pan') {
+        return;
+      }
+
+      e.evt.preventDefault();
 
       if (tool === 'eraser' && eraserMode === 'stroke') {
         isStrokeErasing.current = true;
-        eraseStrokeAtPoint(canvasPos);
+        eraseStrokeAtPoint(point);
         return;
       }
 
@@ -316,7 +357,7 @@ export default function DrawingCanvas({
       const isBandEraser = tool === 'eraser' && eraserMode === 'band';
       const newStroke: Stroke = {
         id: `stroke-${Date.now()}-${Math.random()}`,
-        points: [canvasPos.x, canvasPos.y],
+        points: [point.x, point.y],
         color: isBandEraser ? '#000000' : color,
         width: isBandEraser ? width * 3 : width,
         timestamp: new Date().toISOString(),
@@ -334,13 +375,15 @@ export default function DrawingCanvas({
       const stage = e.target.getStage();
       if (!stage) return;
 
+      if (backgroundPanningRef.current) return;
+
       if (tool === 'eraser' && eraserMode === 'stroke') {
         if (!isStrokeErasing.current) return;
 
         e.evt.preventDefault();
-        const canvasPos = getCanvasPoint(stage);
-        if (!canvasPos) return;
-        eraseStrokeAtPoint(canvasPos);
+        const pointerInfo = getCanvasPoint(stage);
+        if (!pointerInfo) return;
+        eraseStrokeAtPoint(pointerInfo.point);
         return;
       }
 
@@ -348,17 +391,18 @@ export default function DrawingCanvas({
 
       e.evt.preventDefault();
 
-      const canvasPos = getCanvasPoint(stage);
-      if (!canvasPos || !currentStrokeRef.current) return;
+      const pointerInfo = getCanvasPoint(stage);
+      if (!pointerInfo || !currentStrokeRef.current) return;
+      const { point } = pointerInfo;
 
       const lastPoints = currentStrokeRef.current.points;
       const lastX = lastPoints[lastPoints.length - 2];
       const lastY = lastPoints[lastPoints.length - 1];
-      if (lastX === canvasPos.x && lastY === canvasPos.y) return;
+      if (lastX === point.x && lastY === point.y) return;
 
       const updatedStroke: Stroke = {
         ...currentStrokeRef.current,
-        points: [...lastPoints, canvasPos.x, canvasPos.y],
+        points: [...lastPoints, point.x, point.y],
       };
 
       currentStrokeRef.current = updatedStroke;
@@ -368,6 +412,11 @@ export default function DrawingCanvas({
   );
 
   const handlePointerUp = useCallback(() => {
+    if (backgroundPanningRef.current) {
+      backgroundPanningRef.current = false;
+      setIsBackgroundPanning(false);
+    }
+
     if (tool === 'eraser' && eraserMode === 'stroke') {
       isStrokeErasing.current = false;
       return;
@@ -563,216 +612,228 @@ export default function DrawingCanvas({
   };
 
   return (
-    <div className="flex h-full flex-col bg-emerald-50/40">
-      <div className="border-b border-emerald-100 bg-white shadow-sm">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 md:justify-between lg:flex-nowrap lg:gap-4">
-          {drawingsUrl && (
-            <Link
-              href={drawingsUrl}
-              className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <span aria-hidden className="text-base">←</span>
-              <span>Vissza a rajzokhoz</span>
-            </Link>
-          )}
+    <div className="flex flex-1 flex-col bg-emerald-50/40">
+      <div className="relative z-30 border-b border-emerald-100 bg-white/95 shadow-sm backdrop-blur">
+        <div className="mx-auto flex w-full max-w-none flex-col gap-4 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              {drawingsUrl && (
+                <Link
+                  href={drawingsUrl}
+                  className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <span aria-hidden className="text-base">←</span>
+                  <span>Rajzok áttekintés</span>
+                </Link>
+              )}
 
-          {projectUrl && (
-            <Link
-              href={projectUrl}
-              className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 lg:hidden"
-            >
-              <span aria-hidden className="text-base">←</span>
-              <span>Vissza a projekthez</span>
-            </Link>
-          )}
-          {projectUrl && (
-            <Link
-              href={projectUrl}
-              className="hidden items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 lg:flex"
-            >
-              <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Projekt
-              </span>
-              <span className="text-base text-emerald-900">{projectName ?? 'Projekt nézet'}</span>
-            </Link>
-          )}
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                {projectUrl && (
+                  <>
+                    <Link
+                      href={projectUrl}
+                      className="rounded-lg bg-emerald-100 px-2 py-1 text-emerald-700 transition-colors hover:bg-emerald-200 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      {projectName ?? 'Projekt nézet'}
+                    </Link>
+                    <span className="text-emerald-300">/</span>
+                  </>
+                )}
+                <span>Rajz modul</span>
+                {drawingsUrl && <span className="text-emerald-300">/</span>}
+              </div>
 
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-2 py-2 shadow-inner">
-            {TOOLBAR_TOOLS.map((toolOption) => (
-              <button
-                key={toolOption.id}
-                onClick={() => setTool(toolOption.id)}
-                aria-pressed={tool === toolOption.id}
-                className={`flex h-12 min-w-[72px] flex-col items-center justify-center rounded-xl px-3 text-xs font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  tool === toolOption.id
-                    ? 'bg-emerald-600 text-white shadow-lg'
-                    : 'bg-white text-emerald-700 hover:bg-emerald-100'
+              {drawingsUrl && (
+                <Link
+                  href={drawingsUrl}
+                  className="text-lg font-semibold text-emerald-900 underline-offset-4 transition-colors hover:text-emerald-600 hover:underline"
+                  title="Vissza a rajzok dashboardjához"
+                >
+                  {drawing.name}
+                </Link>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-600 shadow-sm">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
                 }`}
-              >
-                <span className="text-lg">{toolOption.icon}</span>
-                {toolOption.label}
-              </button>
-            ))}
+              />
+              <span>{saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}</span>
+            </div>
           </div>
 
-          {tool === 'eraser' && (
-            <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 shadow-sm">
-              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
-                Radír mód
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setEraserMode('band')}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    eraserMode === 'band'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                  }`}
-                >
-                  Sáv
-                </button>
-                <button
-                  onClick={() => setEraserMode('stroke')}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    eraserMode === 'stroke'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                  }`}
-                >
-                  Vonal
-                </button>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex w-full flex-1 flex-col gap-3">
+              <div className="flex min-h-[56px] w-full flex-nowrap items-center gap-2 overflow-x-auto rounded-2xl border border-emerald-200 bg-emerald-50 px-2 py-2 shadow-inner">
+                {TOOLBAR_TOOLS.map((toolOption) => (
+                  <button
+                    key={toolOption.id}
+                    onClick={() => setTool(toolOption.id)}
+                    aria-pressed={tool === toolOption.id}
+                    className={`flex h-12 min-w-[68px] flex-col items-center justify-center rounded-xl px-3 text-xs font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      tool === toolOption.id
+                        ? 'bg-emerald-600 text-white shadow-lg'
+                        : 'bg-white text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <span className="text-lg">{toolOption.icon}</span>
+                    {toolOption.label}
+                  </button>
+                ))}
               </div>
-            </div>
-          )}
 
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:w-auto">
-            <ColorPicker
-              selectedColor={color}
-              onChange={setColor}
-              className="w-full min-w-[10rem] sm:w-48"
-            />
-
-            <div className="relative" ref={widthDropdownRef}>
-              <button
-                onClick={() => setIsWidthMenuOpen((prev) => !prev)}
-                className={`flex h-12 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  isWidthMenuOpen ? 'ring-2 ring-emerald-500' : ''
-                }`}
-              >
-                <span className="text-lg">✏️</span>
-                Vastagság
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
-                  {width}px
-                </span>
-                <svg
-                  className={`ml-1 h-4 w-4 transition-transform ${isWidthMenuOpen ? 'rotate-180' : ''}`}
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M5 7.5L10 12.5L15 7.5"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-
-              {isWidthMenuOpen && (
-                <div className="absolute right-0 z-20 mt-2 w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                    Tollvastagság
-                  </h3>
-                  <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={12} />
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    {WIDTH_PRESETS.map((preset) => (
-                      <button
-                        key={preset}
-                        onClick={() => setWidth(preset)}
-                        className={`flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
-                          width === preset
-                            ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
-                            : 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
-                        }`}
-                      >
-                        {preset}px
-                      </button>
-                    ))}
+              {tool === 'eraser' && (
+                <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 shadow-sm">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                    Radír mód
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEraserMode('band')}
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                        eraserMode === 'band'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      }`}
+                    >
+                      Sáv
+                    </button>
+                    <button
+                      onClick={() => setEraserMode('stroke')}
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                        eraserMode === 'stroke'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      }`}
+                    >
+                      Vonal
+                    </button>
                   </div>
                 </div>
               )}
-            </div>
-          </div>
 
-          <CompactPaperSizeSelector
-            paperSize={paperSize}
-            orientation={orientation}
-            onPaperSizeChange={handlePaperSizeChange}
-            onOrientationChange={handleOrientationChange}
-            className="flex w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:flex-nowrap lg:gap-3"
-          />
-
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-2 shadow-sm">
-              <button
-                onClick={handleZoomOut}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                −
-              </button>
-              <button
-                onClick={handleFitScreen}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                ⤢
-              </button>
-              <button
-                onClick={handleZoomIn}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                +
-              </button>
-              <span className="ml-2 min-w-[3rem] text-center text-xs font-semibold text-emerald-700">
-                {Math.round(stageScale * 100)}%
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleUndo}
-                disabled={strokes.length === 0}
-                className="flex h-12 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ↺ Visszavonás
-              </button>
-              <button
-                onClick={handleClear}
-                disabled={strokes.length === 0}
-                className="flex h-12 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                🗑️ Törlés
-              </button>
-              <div className="flex h-12 items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 shadow-sm">
-                <span
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
-                  }`}
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                <ColorPicker
+                  selectedColor={color}
+                  onChange={setColor}
+                  className="relative z-30 w-full min-w-[10rem] sm:w-48"
                 />
-                <span className="text-sm font-semibold text-emerald-700">
-                  {saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
+
+                <div className="relative z-30" ref={widthDropdownRef}>
+                  <button
+                    onClick={() => setIsWidthMenuOpen((prev) => !prev)}
+                    className={`flex h-12 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      isWidthMenuOpen ? 'ring-2 ring-emerald-500' : ''
+                    }`}
+                  >
+                    <span className="text-lg">✏️</span>
+                    Vastagság
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                      {width}px
+                    </span>
+                    <svg
+                      className={`ml-1 h-4 w-4 transition-transform ${isWidthMenuOpen ? 'rotate-180' : ''}`}
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M5 7.5L10 12.5L15 7.5"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+
+                  {isWidthMenuOpen && (
+                    <div className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
+                      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                        Tollvastagság
+                      </h3>
+                      <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={12} />
+                      <div className="mt-4 grid grid-cols-3 gap-2">
+                        {WIDTH_PRESETS.map((preset) => (
+                          <button
+                            key={preset}
+                            onClick={() => setWidth(preset)}
+                            className={`flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
+                              width === preset
+                                ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                                : 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
+                            }`}
+                          >
+                            {preset}px
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <CompactPaperSizeSelector
+                  paperSize={paperSize}
+                  orientation={orientation}
+                  onPaperSizeChange={handlePaperSizeChange}
+                  onOrientationChange={handleOrientationChange}
+                  className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap"
+                />
+              </div>
+            </div>
+
+            <div className="flex w-full flex-wrap items-center justify-start gap-3 sm:justify-end lg:w-auto">
+              <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-2 shadow-sm">
+                <button
+                  onClick={handleZoomOut}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  −
+                </button>
+                <button
+                  onClick={handleFitScreen}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  ⤢
+                </button>
+                <button
+                  onClick={handleZoomIn}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  +
+                </button>
+                <span className="ml-2 min-w-[3rem] text-center text-xs font-semibold text-emerald-700">
+                  {Math.round(stageScale * 100)}%
                 </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleUndo}
+                  disabled={strokes.length === 0}
+                  className="flex h-12 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ↺ Visszavonás
+                </button>
+                <button
+                  onClick={handleClear}
+                  disabled={strokes.length === 0}
+                  className="flex h-12 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  🗑️ Törlés
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative z-10 flex flex-1 overflow-hidden px-2 pb-2 sm:px-4 sm:pb-4">
         <div
           ref={containerRef}
-          className="relative h-full w-full"
+          className="relative h-full w-full overflow-hidden rounded-3xl border border-emerald-100 bg-emerald-100/60 shadow-inner"
           style={{ touchAction: 'none' }}
         >
           {stageSize.width > 0 && stageSize.height > 0 && (
@@ -783,9 +844,17 @@ export default function DrawingCanvas({
               scaleY={stageScale}
               x={stagePos.x}
               y={stagePos.y}
-              draggable={tool === 'pan'}
+              draggable={tool === 'pan' || isBackgroundPanning}
+              onDragStart={() => {
+                backgroundPanningRef.current = true;
+                setIsBackgroundPanning(true);
+              }}
               onDragMove={(event) => setStagePos(event.target.position())}
-              onDragEnd={(event) => setStagePos(event.target.position())}
+              onDragEnd={(event) => {
+                backgroundPanningRef.current = false;
+                setIsBackgroundPanning(false);
+                setStagePos(event.target.position());
+              }}
               onMouseDown={handlePointerDown}
               onMouseMove={handlePointerMove}
               onMouseUp={handlePointerUp}
