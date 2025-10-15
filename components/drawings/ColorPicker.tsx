@@ -5,7 +5,8 @@
  * Szín választó komponens előre beállított színekkel
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ColorPickerProps {
   selectedColor: string;
@@ -31,6 +32,38 @@ export default function ColorPicker({
   className = '',
 }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [canRenderPortal, setCanRenderPortal] = useState(false);
+  const [menuRect, setMenuRect] = useState<DOMRect | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const dropdownWidth = menuRect ? Math.max(menuRect.width, 224) : 224;
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : dropdownWidth;
+  const dropdownLeft = menuRect
+    ? Math.min(menuRect.left, Math.max(16, viewportWidth - dropdownWidth - 16))
+    : 16;
+
+  useEffect(() => {
+    setCanRenderPortal(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePosition = () => {
+      if (!triggerRef.current) return;
+      setMenuRect(triggerRef.current.getBoundingClientRect());
+    };
+
+    updatePosition();
+
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
 
   const handleColorSelect = (color: string) => {
     onChange(color);
@@ -41,9 +74,12 @@ export default function ColorPicker({
     <div className={`relative ${className}`}>
       {/* Selected color button */}
       <button
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         aria-label="Szín választó"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
       >
         <div
           className="h-6 w-6 flex-shrink-0 rounded-full border-2 border-emerald-300"
@@ -68,71 +104,73 @@ export default function ColorPicker({
       </button>
 
       {/* Color palette dropdown */}
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+      {isOpen && canRenderPortal && menuRect &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)} />
+            <div
+              className="fixed z-[70] mt-2 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl"
+              style={{
+                top: menuRect.bottom + 8,
+                left: dropdownLeft,
+                width: dropdownWidth,
+              }}
+            >
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                Válassz színt
+              </p>
+              <div className="grid grid-cols-4 gap-4">
+                {PRESET_COLORS.map((color) => (
+                  <button
+                    key={color.hex}
+                    onClick={() => handleColorSelect(color.hex)}
+                    className={`group relative flex h-14 w-14 items-center justify-center rounded-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                      selectedColor === color.hex
+                        ? 'ring-2 ring-emerald-500 ring-offset-2'
+                        : ''
+                    }`}
+                    style={{ backgroundColor: color.hex }}
+                    title={color.name}
+                    aria-label={color.name}
+                  >
+                    {selectedColor === color.hex && (
+                      <svg
+                        className="h-6 w-6 text-white drop-shadow-lg"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={3}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    )}
+                    <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 transform rounded bg-emerald-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap">
+                      {color.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
 
-          {/* Palette */}
-          <div className="absolute top-full left-0 right-0 z-50 mt-2 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-              Válassz színt
-            </p>
-            <div className="grid grid-cols-4 gap-4">
-              {PRESET_COLORS.map((color) => (
-                <button
-                  key={color.hex}
-                  onClick={() => handleColorSelect(color.hex)}
-                  className={`group relative flex h-14 w-14 items-center justify-center rounded-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-                    selectedColor === color.hex
-                      ? 'ring-2 ring-emerald-500 ring-offset-2'
-                      : ''
-                  }`}
-                  style={{ backgroundColor: color.hex }}
-                  title={color.name}
-                  aria-label={color.name}
-                >
-                  {/* Checkmark for selected color */}
-                  {selectedColor === color.hex && (
-                    <svg
-                      className="h-6 w-6 text-white drop-shadow-lg"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  )}
-
-                  {/* Tooltip on hover */}
-                  <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 transform rounded bg-emerald-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap">
-                    {color.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Color info */}
-            <div className="mt-4 border-t border-emerald-100 pt-3">
-              <div className="flex items-center justify-between text-xs text-emerald-600">
-                <span>Kiválasztott:</span>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-4 w-4 rounded border border-emerald-200"
-                    style={{ backgroundColor: selectedColor }}
-                  />
-                  <code className="font-mono text-emerald-700">{selectedColor}</code>
+              <div className="mt-4 border-t border-emerald-100 pt-3">
+                <div className="flex items-center justify-between text-xs text-emerald-600">
+                  <span>Kiválasztott:</span>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="h-4 w-4 rounded border border-emerald-200"
+                      style={{ backgroundColor: selectedColor }}
+                    />
+                    <code className="font-mono text-emerald-700">{selectedColor}</code>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </>,
+          document.body
+        )}
     </div>
   );
 }

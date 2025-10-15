@@ -25,7 +25,7 @@ import {
   isPointInsideCanvas,
 } from '@/lib/drawings/canvas-utils';
 import ColorPicker from './ColorPicker';
-import { CompactStrokeWidthSlider } from './StrokeWidthSlider';
+import StrokeWidthSlider from './StrokeWidthSlider';
 import { CompactPaperSizeSelector } from './PaperSizeSelector';
 
 const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
@@ -63,7 +63,7 @@ export default function DrawingCanvas({
 
   const [tool, setTool] = useState<DrawingTool>('pen');
   const [color, setColor] = useState('#000000');
-  const [width, setWidth] = useState(2);
+  const [width, setWidth] = useState(4);
   const [eraserMode, setEraserMode] = useState<EraserMode>('stroke');
 
   const [paperSize, setPaperSize] = useState<PaperSize>(drawing.paper_size);
@@ -73,10 +73,12 @@ export default function DrawingCanvas({
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isBackgroundPanning, setIsBackgroundPanning] = useState(false);
+  const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
 
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const widthDropdownRef = useRef<HTMLDivElement>(null);
   const isStrokeErasing = useRef(false);
   const backgroundPanningRef = useRef(false);
   const pinchState = useRef<{
@@ -197,6 +199,31 @@ export default function DrawingCanvas({
     stageRef.current?.batchDraw();
   }, [currentStroke, strokes]);
 
+  useEffect(() => {
+    if (!isWidthMenuOpen || typeof document === 'undefined') return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!widthDropdownRef.current) return;
+      if (!widthDropdownRef.current.contains(event.target as Node)) {
+        setIsWidthMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsWidthMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isWidthMenuOpen]);
+
   type CanvasPointerResult = { point: { x: number; y: number }; inside: boolean };
 
   const getCanvasPoint = useCallback(
@@ -288,7 +315,9 @@ export default function DrawingCanvas({
       });
 
       if (removed) {
-        // noop - state effect will propagate change
+        requestAnimationFrame(() => {
+          stageRef.current?.batchDraw();
+        });
       }
     },
     [distanceToSegment, width]
@@ -585,7 +614,7 @@ export default function DrawingCanvas({
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <header className="border-b border-emerald-100 bg-white px-4 py-4 shadow-sm sm:px-6">
+      <header className="sticky top-0 z-30 border-b border-emerald-100 bg-white px-4 py-3 shadow-sm sm:px-6">
         <div className="flex flex-wrap items-center gap-3">
           {drawingsUrl && (
             <Link
@@ -636,12 +665,15 @@ export default function DrawingCanvas({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm">
             {TOOLBAR_TOOLS.map((toolOption) => (
               <button
                 key={toolOption.id}
-                onClick={() => setTool(toolOption.id)}
+                onClick={() => {
+                  setTool(toolOption.id);
+                  setIsWidthMenuOpen(false);
+                }}
                 aria-pressed={tool === toolOption.id}
                 className={`flex h-10 min-w-[56px] flex-col items-center justify-center rounded-lg px-2 text-[11px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   tool === toolOption.id
@@ -683,11 +715,59 @@ export default function DrawingCanvas({
 
           <ColorPicker selectedColor={color} onChange={setColor} className="w-full max-w-[180px] sm:w-44" />
 
-          <CompactStrokeWidthSlider
-            width={width}
-            onChange={setWidth}
-            className="flex w-full max-w-xs flex-col rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm"
-          />
+          <div className="relative" ref={widthDropdownRef}>
+            <button
+              onClick={() => setIsWidthMenuOpen((prev) => !prev)}
+              className={`flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                isWidthMenuOpen ? 'ring-2 ring-emerald-500' : ''
+              }`}
+              aria-haspopup="dialog"
+              aria-expanded={isWidthMenuOpen}
+            >
+              <span className="text-base">✏️</span>
+              Vastagság
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">{width}px</span>
+              <svg
+                className={`ml-1 h-4 w-4 transition-transform ${isWidthMenuOpen ? 'rotate-180' : ''}`}
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M5 7.5L10 12.5L15 7.5"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+
+            {isWidthMenuOpen && (
+              <div className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">Tollvastagság</h3>
+                <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={12} />
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  {[2, 4, 6, 8, 10, 12].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => {
+                        setWidth(preset);
+                        setIsWidthMenuOpen(false);
+                      }}
+                      className={`flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
+                        width === preset
+                          ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                          : 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
+                      }`}
+                    >
+                      {preset}px
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm">
             <button
@@ -700,7 +780,7 @@ export default function DrawingCanvas({
             <button
               onClick={handleFitScreen}
               className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              aria-label="Igazítás képernyőhöz"
+              aria-label="Középre igazítás"
             >
               ⤢
             </button>
@@ -746,7 +826,7 @@ export default function DrawingCanvas({
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 bg-slate-50">
+      <main className="flex-1 min-h-0 bg-white">
         <div
           ref={containerRef}
           className="relative h-full w-full"
