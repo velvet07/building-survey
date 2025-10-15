@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, type ReactElement } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
@@ -82,6 +83,8 @@ export default function DrawingCanvas({
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
+  const widthMenuContentRef = useRef<HTMLDivElement | null>(null);
+  const [widthMenuRect, setWidthMenuRect] = useState<DOMRect | null>(null);
   const isStrokeErasing = useRef(false);
   const pinchState = useRef<{
     initialDistance: number;
@@ -183,11 +186,21 @@ export default function DrawingCanvas({
   useEffect(() => {
     if (!isWidthMenuOpen || typeof document === 'undefined') return;
 
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!widthDropdownRef.current) return;
-      if (!widthDropdownRef.current.contains(event.target as Node)) {
-        setIsWidthMenuOpen(false);
+    const updateRect = () => {
+      if (widthDropdownRef.current) {
+        setWidthMenuRect(widthDropdownRef.current.getBoundingClientRect());
       }
+    };
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        widthDropdownRef.current?.contains(target) ||
+        widthMenuContentRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setIsWidthMenuOpen(false);
     };
 
     const handleEscape = (event: KeyboardEvent) => {
@@ -196,13 +209,25 @@ export default function DrawingCanvas({
       }
     };
 
+    updateRect();
+
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleEscape);
 
     return () => {
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleEscape);
     };
+  }, [isWidthMenuOpen]);
+
+  useEffect(() => {
+    if (!isWidthMenuOpen) {
+      setWidthMenuRect(null);
+    }
   }, [isWidthMenuOpen]);
 
   useEffect(() => {
@@ -732,6 +757,59 @@ export default function DrawingCanvas({
     return lines;
   };
 
+  const renderWidthMenu = () => {
+    if (!isWidthMenuOpen || typeof document === 'undefined' || typeof window === 'undefined') {
+      return null;
+    }
+
+    if (!widthMenuRect) {
+      return null;
+    }
+
+    const menuWidth = 256;
+    const viewportPadding = 12;
+    const tentativeLeft = widthMenuRect.right - menuWidth;
+    const maxLeft = window.innerWidth - viewportPadding - menuWidth;
+    const left = Math.max(viewportPadding, Math.min(tentativeLeft, maxLeft));
+    const top = widthMenuRect.bottom + 8;
+
+    return createPortal(
+      <div className="fixed inset-0 z-[380]">
+        <div
+          className="absolute inset-0"
+          onMouseDown={() => setIsWidthMenuOpen(false)}
+          onTouchStart={() => setIsWidthMenuOpen(false)}
+        />
+        <div
+          ref={widthMenuContentRef}
+          className="absolute w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl"
+          style={{ top, left }}
+        >
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+            Tollvastagság
+          </h3>
+          <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={12} />
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {WIDTH_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                onClick={() => setWidth(preset)}
+                className={`flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
+                  width === preset
+                    ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                    : 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
+                }`}
+              >
+                {preset}px
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
   return (
     <div
       ref={rootRef}
@@ -802,9 +880,17 @@ export default function DrawingCanvas({
             className="min-w-[9.5rem] flex-shrink-0"
           />
 
-          <div className="relative flex-shrink-0" ref={widthDropdownRef}>
+          <div className="flex-shrink-0" ref={widthDropdownRef}>
             <button
-              onClick={() => setIsWidthMenuOpen((prev) => !prev)}
+              onClick={() =>
+                setIsWidthMenuOpen((prev) => {
+                  const next = !prev;
+                  if (!prev && widthDropdownRef.current) {
+                    setWidthMenuRect(widthDropdownRef.current.getBoundingClientRect());
+                  }
+                  return next;
+                })
+              }
               className={`flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                 isWidthMenuOpen ? 'ring-2 ring-emerald-500' : ''
               }`}
@@ -829,30 +915,6 @@ export default function DrawingCanvas({
                 />
               </svg>
             </button>
-
-            {isWidthMenuOpen && (
-              <div className="absolute right-0 z-[220] mt-2 w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
-                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                  Tollvastagság
-                </h3>
-                <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={12} />
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  {WIDTH_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      onClick={() => setWidth(preset)}
-                      className={`flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
-                        width === preset
-                          ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
-                          : 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
-                      }`}
-                    >
-                      {preset}px
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <CompactPaperSizeSelector
@@ -926,6 +988,8 @@ export default function DrawingCanvas({
           </div>
         </div>
       </div>
+
+      {renderWidthMenu()}
 
       <div className="relative z-0 flex-1 overflow-hidden">
         <div
