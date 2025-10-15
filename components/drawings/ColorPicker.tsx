@@ -34,12 +34,20 @@ export default function ColorPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [canRenderPortal, setCanRenderPortal] = useState(false);
   const [menuRect, setMenuRect] = useState<DOMRect | null>(null);
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const dropdownWidth = menuRect ? Math.max(menuRect.width, 224) : 224;
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : dropdownWidth;
   const dropdownLeft = menuRect
     ? Math.min(menuRect.left, Math.max(16, viewportWidth - dropdownWidth - 16))
+    : 16;
+  const estimatedHeight = 320;
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : estimatedHeight;
+  const dropdownTop = menuRect
+    ? placement === 'bottom'
+      ? Math.max(16, Math.min(menuRect.bottom + 8, viewportHeight - estimatedHeight - 16))
+      : Math.max(16, Math.min(menuRect.top - estimatedHeight - 8, viewportHeight - estimatedHeight - 16))
     : 16;
 
   useEffect(() => {
@@ -51,7 +59,15 @@ export default function ColorPicker({
 
     const updatePosition = () => {
       if (!triggerRef.current) return;
-      setMenuRect(triggerRef.current.getBoundingClientRect());
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuRect(rect);
+
+      if (typeof window !== 'undefined') {
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const shouldFlip = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+        setPlacement(shouldFlip ? 'top' : 'bottom');
+      }
     };
 
     updatePosition();
@@ -75,7 +91,19 @@ export default function ColorPicker({
       {/* Selected color button */}
       <button
         ref={triggerRef}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isOpen && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setMenuRect(rect);
+            if (typeof window !== 'undefined') {
+              const spaceBelow = window.innerHeight - rect.bottom;
+              const spaceAbove = rect.top;
+              const shouldFlip = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+              setPlacement(shouldFlip ? 'top' : 'bottom');
+            }
+          }
+          setIsOpen((prev) => !prev);
+        }}
         className="flex w-full items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         aria-label="Szín választó"
         aria-haspopup="dialog"
@@ -111,9 +139,11 @@ export default function ColorPicker({
             <div
               className="fixed z-[70] mt-2 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl"
               style={{
-                top: menuRect.bottom + 8,
+                top: dropdownTop,
                 left: dropdownLeft,
                 width: dropdownWidth,
+                maxHeight: Math.max(200, viewportHeight - 32),
+                overflowY: 'auto',
               }}
             >
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">

@@ -64,15 +64,16 @@ export function calculateCanvasScale(
   containerHeight: number,
   padding: number = 40
 ): number {
-  const availableWidth = containerWidth - padding * 2;
-  const availableHeight = containerHeight - padding * 2;
+  const safeWidth = Math.max(containerWidth - padding * 2, 1);
+  const safeHeight = Math.max(containerHeight - padding * 2, 1);
 
-  const scaleX = availableWidth / canvasWidth;
-  const scaleY = availableHeight / canvasHeight;
+  const scaleX = safeWidth / canvasWidth;
+  const scaleY = safeHeight / canvasHeight;
 
-  // Take the minimum scale to ensure canvas fits in both dimensions
-  // Don't scale up beyond 100% (max 1.0)
-  return Math.min(scaleX, scaleY, 1);
+  // Take the minimum scale to ensure canvas fits in both dimensions.
+  // Don't scale up beyond 100% (max 1.0) and guard against negative/zero
+  // results when the available space is extremely small.
+  return Math.max(Math.min(scaleX, scaleY, 1), 0.05);
 }
 
 /**
@@ -86,11 +87,13 @@ export function calculateCenterPosition(
   containerHeight: number,
   scale: number
 ): { x: number; y: number } {
+  const safeContainerWidth = Math.max(containerWidth, 1);
+  const safeContainerHeight = Math.max(containerHeight, 1);
   const scaledWidth = canvasWidth * scale;
   const scaledHeight = canvasHeight * scale;
 
-  const x = (containerWidth - scaledWidth) / 2;
-  const y = (containerHeight - scaledHeight) / 2;
+  const x = (safeContainerWidth - scaledWidth) / 2;
+  const y = (safeContainerHeight - scaledHeight) / 2;
 
   return { x, y };
 }
