@@ -25,7 +25,7 @@ import {
   isPointInsideCanvas,
 } from '@/lib/drawings/canvas-utils';
 import ColorPicker from './ColorPicker';
-import StrokeWidthSlider from './StrokeWidthSlider';
+import { CompactStrokeWidthSlider } from './StrokeWidthSlider';
 import { CompactPaperSizeSelector } from './PaperSizeSelector';
 
 const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
@@ -584,13 +584,13 @@ export default function DrawingCanvas({
   };
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-emerald-50">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 bg-white/90 px-3 py-2 shadow-sm backdrop-blur sm:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+    <div className="flex min-h-screen flex-col bg-white">
+      <header className="border-b border-emerald-100 bg-white px-4 py-4 shadow-sm sm:px-6">
+        <div className="flex flex-wrap items-center gap-3">
           {drawingsUrl && (
             <Link
               href={drawingsUrl}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-200 bg-white text-base text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-white text-base text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               aria-label="Vissza a rajzokhoz"
             >
               ←
@@ -625,22 +625,131 @@ export default function DrawingCanvas({
               <span className="mt-1 truncate text-sm font-semibold text-emerald-900">{drawing.name}</span>
             )}
           </div>
+
+          <div className="ml-auto flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 shadow-sm">
+            <span
+              className={`h-2 w-2 rounded-full ${saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'}`}
+            />
+            <span className="whitespace-nowrap">
+              {saving ? 'Mentés folyamatban…' : 'Minden változtatás mentve'}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 shadow-sm">
-          <span
-            className={`h-2 w-2 rounded-full ${saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'}`}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm">
+            {TOOLBAR_TOOLS.map((toolOption) => (
+              <button
+                key={toolOption.id}
+                onClick={() => setTool(toolOption.id)}
+                aria-pressed={tool === toolOption.id}
+                className={`flex h-10 min-w-[56px] flex-col items-center justify-center rounded-lg px-2 text-[11px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  tool === toolOption.id
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                <span className="text-lg leading-none">{toolOption.icon}</span>
+                <span className="leading-none">{toolOption.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {tool === 'eraser' && (
+            <div className="flex items-center gap-1 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 shadow-sm">
+              <span>Radír mód:</span>
+              <button
+                onClick={() => setEraserMode('band')}
+                className={`rounded-lg px-3 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  eraserMode === 'band'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                Sáv
+              </button>
+              <button
+                onClick={() => setEraserMode('stroke')}
+                className={`rounded-lg px-3 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  eraserMode === 'stroke'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                Vonal
+              </button>
+            </div>
+          )}
+
+          <ColorPicker selectedColor={color} onChange={setColor} className="w-full max-w-[180px] sm:w-44" />
+
+          <CompactStrokeWidthSlider
+            width={width}
+            onChange={setWidth}
+            className="flex w-full max-w-xs flex-col rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm"
           />
-          <span className="whitespace-nowrap">
-            {saving ? 'Mentés folyamatban…' : 'Minden változtatás mentve'}
-          </span>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm">
+            <button
+              onClick={handleZoomOut}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              aria-label="Kicsinyítés"
+            >
+              −
+            </button>
+            <button
+              onClick={handleFitScreen}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              aria-label="Igazítás képernyőhöz"
+            >
+              ⤢
+            </button>
+            <button
+              onClick={handleZoomIn}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-lg text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              aria-label="Nagyítás"
+            >
+              +
+            </button>
+            <span className="ml-1 text-xs font-semibold text-emerald-700">{Math.round(stageScale * 100)}%</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm">
+            <CompactPaperSizeSelector
+              paperSize={paperSize}
+              orientation={orientation}
+              onPaperSizeChange={handlePaperSizeChange}
+              onOrientationChange={handleOrientationChange}
+              className="flex flex-wrap items-center gap-2"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm">
+            <button
+              onClick={handleUndo}
+              disabled={strokes.length === 0}
+              className="flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ↺ Visszavonás
+            </button>
+            <button
+              onClick={handleClear}
+              disabled={strokes.length === 0}
+              className="flex h-10 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              🗑️ Törlés
+            </button>
+            <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white px-3 py-2">
+              <div className="text-sm font-semibold text-emerald-900">{strokes.length} rajzelem</div>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main className="relative flex flex-1 overflow-hidden px-2 pb-2 sm:px-4 sm:pb-4">
+      <main className="flex-1 min-h-0 bg-slate-50">
         <div
           ref={containerRef}
-          className="relative h-full w-full overflow-hidden rounded-3xl border border-emerald-100 bg-emerald-100/60 shadow-inner"
+          className="relative h-full w-full"
           style={{ touchAction: 'none' }}
         >
           {stageSize.width > 0 && stageSize.height > 0 && (
@@ -742,142 +851,6 @@ export default function DrawingCanvas({
               </Layer>
             </Stage>
           )}
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 flex flex-col">
-          <div className="pointer-events-none flex justify-between gap-3 p-3 sm:p-4">
-            <div className="pointer-events-auto flex flex-col gap-2">
-              <div className="flex flex-col gap-2 rounded-2xl bg-white/95 p-2 shadow-lg backdrop-blur">
-                <span className="px-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-500">
-                  Eszközök
-                </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  {TOOLBAR_TOOLS.map((toolOption) => (
-                    <button
-                      key={toolOption.id}
-                      onClick={() => setTool(toolOption.id)}
-                      aria-pressed={tool === toolOption.id}
-                      className={`flex h-11 min-w-[60px] flex-col items-center justify-center rounded-xl px-2 text-[11px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                        tool === toolOption.id
-                          ? 'bg-emerald-600 text-white shadow-lg'
-                          : 'bg-white text-emerald-700 hover:bg-emerald-100'
-                      }`}
-                    >
-                      <span className="text-lg">{toolOption.icon}</span>
-                      <span className="leading-none">{toolOption.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {tool === 'eraser' && (
-                <div className="flex items-center justify-between gap-2 rounded-2xl bg-white/95 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 shadow-lg backdrop-blur">
-                  <span>Radír mód</span>
-                  <div className="flex items-center gap-1 text-xs normal-case">
-                    <button
-                      onClick={() => setEraserMode('band')}
-                      className={`rounded-lg px-3 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                        eraserMode === 'band'
-                          ? 'bg-emerald-600 text-white shadow'
-                          : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                      }`}
-                    >
-                      Sáv
-                    </button>
-                    <button
-                      onClick={() => setEraserMode('stroke')}
-                      className={`rounded-lg px-3 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                        eraserMode === 'stroke'
-                          ? 'bg-emerald-600 text-white shadow'
-                          : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                      }`}
-                    >
-                      Vonal
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="pointer-events-auto flex flex-col items-end gap-2">
-              <div className="rounded-2xl bg-white/95 p-2 shadow-lg backdrop-blur">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleUndo}
-                    disabled={strokes.length === 0}
-                    className="flex h-10 items-center justify-center rounded-lg border border-emerald-200 bg-white px-3 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    ↺ Visszavonás
-                  </button>
-                  <button
-                    onClick={handleClear}
-                    disabled={strokes.length === 0}
-                    className="flex h-10 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    🗑️ Törlés
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pointer-events-none flex-1" />
-
-          <div className="pointer-events-none flex justify-between gap-3 p-3 sm:p-4">
-            <div className="pointer-events-auto">
-              <div className="flex flex-col gap-3 rounded-2xl bg-white/95 p-3 shadow-lg backdrop-blur">
-                <ColorPicker selectedColor={color} onChange={setColor} className="w-48" />
-                <StrokeWidthSlider width={width} onChange={setWidth} className="w-48" />
-              </div>
-            </div>
-
-            <div className="pointer-events-auto flex flex-col items-end gap-3">
-              <div className="w-full max-w-xs rounded-2xl bg-white/95 p-3 shadow-lg backdrop-blur">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-500">
-                  Papír beállítások
-                </p>
-                <CompactPaperSizeSelector
-                  paperSize={paperSize}
-                  orientation={orientation}
-                  onPaperSizeChange={handlePaperSizeChange}
-                  onOrientationChange={handleOrientationChange}
-                  className="mt-2 flex flex-wrap items-center gap-2"
-                />
-                <div className="mt-3 flex items-center gap-2">
-                  <button
-                    onClick={handleZoomOut}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-white text-base text-emerald-700 transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    aria-label="Kicsinyítés"
-                  >
-                    −
-                  </button>
-                  <button
-                    onClick={handleFitScreen}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-white text-base text-emerald-700 transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    aria-label="Igazítás képernyőhöz"
-                  >
-                    ⤢
-                  </button>
-                  <button
-                    onClick={handleZoomIn}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-white text-base text-emerald-700 transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    aria-label="Nagyítás"
-                  >
-                    +
-                  </button>
-                  <span className="ml-1 text-xs font-semibold text-emerald-700">{Math.round(stageScale * 100)}%</span>
-                </div>
-              </div>
-
-              <div className="rounded-2xl bg-white/95 px-4 py-3 text-sm shadow-lg backdrop-blur">
-                <div className="text-base font-semibold text-emerald-900">{drawing.name}</div>
-                <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-                  {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
-                </div>
-                <div className="mt-1 text-xs text-emerald-500">{strokes.length} rajzelem</div>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
     </div>
