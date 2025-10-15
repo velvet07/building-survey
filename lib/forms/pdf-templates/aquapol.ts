@@ -12,12 +12,19 @@ interface LayoutColumn {
   width?: ColumnWidth;
 }
 
+interface LayoutRowOptions {
+  density?: 'default' | 'compact';
+  minHeight?: number;
+  minValueLines?: number;
+  valueLineClamp?: number;
+}
+
 type LayoutEntry =
   | { type: 'section'; title: string }
-  | { type: 'row'; columns: LayoutColumn[] };
+  | { type: 'separator'; marginTop?: number; marginBottom?: number; lineWidth?: number }
+  | { type: 'row'; columns: LayoutColumn[]; options?: LayoutRowOptions };
 
 const AQUAPOL_LAYOUT: LayoutEntry[] = [
-  { type: 'section', title: 'Személyes adatok' },
   {
     type: 'row',
     columns: [
@@ -55,13 +62,14 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
     type: 'row',
     columns: [{ label: 'Cím / Irányítószám', fieldId: 'installation_address' }],
   },
-  { type: 'section', title: 'Az épületről' },
+  { type: 'separator', marginTop: 6, marginBottom: 5, lineWidth: 0.5 },
   {
     type: 'row',
     columns: [
       { label: '12. Mikor épült a ház', fieldId: 'house_built_year', width: 0.5 },
       { label: '13. Mekkora az alapterülete', fieldId: 'house_floor_area', width: 0.5 },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -69,6 +77,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '14. Főfalak vastagsága', fieldId: 'main_wall_thickness', width: 0.5 },
       { label: '15. Közfalak vastagsága', fieldId: 'partition_wall_thickness', width: 0.5 },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -76,6 +85,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '16. Van-e pince a ház alatt?', fieldId: 'basement_exists', width: 0.5 },
       { label: '17. Hány m² alapterületű a pince', fieldId: 'basement_area', width: 0.5 },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -87,6 +97,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -103,6 +114,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -110,6 +122,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '22. Milyen építőanyagból készült a ház', fieldId: 'house_material', width: 0.5 },
       { label: '23. Mikor volt utoljára tatarozva', fieldId: 'last_renovation', width: 0.5 },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -121,6 +134,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -128,6 +142,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '26. Festés után', fieldId: 'dampness_after_paint', width: 0.5 },
       { label: '27. Látható-e sókicsapódás a falon?', fieldId: 'salt_efflorescence', width: 0.5 },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -135,6 +150,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '28. Penész?', fieldId: 'mold_present', width: 0.5 },
       { label: '30. Csak a bútorok mögött', fieldId: 'mold_behind_furniture', width: 0.5 },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -144,6 +160,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         fieldId: 'mold_location',
       },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -151,6 +168,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
       { label: '31. Dohos, nyirkos a levegő a lakásban', fieldId: 'air_musty', width: 0.5 },
       { label: '32. Az építmény terepviszonyai', fieldId: 'terrain_type', width: 0.5 },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -163,6 +181,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -178,6 +197,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -193,6 +213,7 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
@@ -205,15 +226,27 @@ const AQUAPOL_LAYOUT: LayoutEntry[] = [
         width: 0.5,
       },
     ],
+    options: { density: 'compact', minValueLines: 1, valueLineClamp: 1 },
   },
   {
     type: 'row',
     columns: [
       { label: '39. Részletek (ha Igen)', fieldId: 'incorrect_execution_details' },
     ],
+    options: { minValueLines: 2 },
   },
-  { type: 'row', columns: [{ label: '40. Egyéb észrevételei amit lényegesnek tart', fieldId: 'additional_observations' }] },
-  { type: 'row', columns: [{ label: '41. Kalkuláció', fieldId: 'calculation_notes' }] },
+  {
+    type: 'row',
+    columns: [
+      { label: '40. Egyéb észrevételei amit lényegesnek tart', fieldId: 'additional_observations' },
+    ],
+    options: { minValueLines: 3 },
+  },
+  {
+    type: 'row',
+    columns: [{ label: '41. Kalkuláció', fieldId: 'calculation_notes' }],
+    options: { minValueLines: 5 },
+  },
 ];
 
 function resolveValue(fieldId: string, values: FormValues): string {
@@ -249,18 +282,19 @@ export function renderAquapolFormPDF(
   const labelLineHeight = 4;
   const valueFontSize = 10;
   const valueLineHeight = 4.4;
-  const verticalPadding = 1.4;
-  const labelValueSpacing = 1.2;
-  const minRowHeight = 11.5;
+  const verticalPadding = 1.2;
+  const labelValueSpacing = 1;
+  const defaultRowMinHeight = 11.5;
   const cellPaddingX = 3;
 
   let cursorY = marginTop;
+  let isFirstRow = true;
 
   setFont(pdf, 'bold');
   pdf.setFontSize(20);
   pdf.setTextColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
   pdf.text('FELMÉRŐLAP', pageWidth / 2, cursorY, { align: 'center' });
-  cursorY += 8;
+  cursorY += 3.5;
 
   pdf.setTextColor(0, 0, 0);
 
@@ -268,11 +302,12 @@ export function renderAquapolFormPDF(
     if (cursorY + height > pageHeight - marginBottom) {
       pdf.addPage('a4', 'portrait');
       cursorY = marginTop;
+      isFirstRow = true;
     }
   };
 
   const drawSectionHeader = (title: string) => {
-    const headerHeight = 6;
+    const headerHeight = 5.5;
     ensureSpace(headerHeight);
     setFont(pdf, 'bold');
     pdf.setFontSize(9.5);
@@ -280,9 +315,23 @@ export function renderAquapolFormPDF(
     pdf.text(title, marginX + 2, cursorY + 4);
     cursorY += headerHeight;
     pdf.setTextColor(0, 0, 0);
+    isFirstRow = true;
   };
 
-  const drawRow = (columns: LayoutColumn[]) => {
+  const drawSeparator = (entry: Extract<LayoutEntry, { type: 'separator' }>) => {
+    const marginBefore = entry.marginTop ?? 6;
+    const marginAfter = entry.marginBottom ?? 4;
+    const totalHeight = marginBefore + marginAfter + 0.5;
+    ensureSpace(totalHeight);
+    cursorY += marginBefore;
+    pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
+    pdf.setLineWidth(entry.lineWidth ?? 0.45);
+    pdf.line(marginX, cursorY, marginX + contentWidth, cursorY);
+    cursorY += marginAfter;
+    isFirstRow = true;
+  };
+
+  const drawRow = (columns: LayoutColumn[], options?: LayoutRowOptions) => {
     const availableWidth = contentWidth;
     const columnDescriptors = columns.map((column) => {
       const widthRatio = column.width ?? 1 / columns.length;
@@ -296,12 +345,17 @@ export function renderAquapolFormPDF(
       setFont(pdf, 'normal');
       pdf.setFontSize(valueFontSize);
       const printableValue = value === '-' ? '' : value;
-      const valueLines = printableValue
+      let valueLines = printableValue
         ? pdf.splitTextToSize(printableValue, innerWidth)
         : [];
+      if (options?.valueLineClamp) {
+        valueLines = valueLines.slice(0, options.valueLineClamp);
+      }
+      const minValueLines = options?.minValueLines ?? 0;
+      const valueLineCount = Math.max(valueLines.length, minValueLines);
       const labelHeight = Math.max(labelLineHeight * labelLines.length, labelLineHeight);
       const valueHeight =
-        valueLines.length > 0 ? labelValueSpacing + valueLines.length * valueLineHeight : 0;
+        valueLineCount > 0 ? labelValueSpacing + valueLineCount * valueLineHeight : 0;
       const contentHeight = verticalPadding * 2 + labelHeight + valueHeight;
       return {
         column,
@@ -309,16 +363,24 @@ export function renderAquapolFormPDF(
         labelLines,
         valueLines,
         contentHeight,
-        printableValue,
       };
     });
 
-    const rowHeight = Math.max(minRowHeight, ...columnDescriptors.map((item) => item.contentHeight));
+    const rowMinHeight = options?.minHeight ?? (options?.density === 'compact' ? 10 : defaultRowMinHeight);
+    const rowHeight = Math.max(rowMinHeight, ...columnDescriptors.map((item) => item.contentHeight));
     ensureSpace(rowHeight);
 
     pdf.setDrawColor(BRAND_GREEN.r, BRAND_GREEN.g, BRAND_GREEN.b);
-    pdf.setLineWidth(0.35);
-    pdf.rect(marginX, cursorY, contentWidth, rowHeight);
+    pdf.setLineWidth(0.25);
+
+    if (isFirstRow) {
+      pdf.line(marginX, cursorY, marginX + contentWidth, cursorY);
+      isFirstRow = false;
+    }
+
+    pdf.line(marginX, cursorY + rowHeight, marginX + contentWidth, cursorY + rowHeight);
+    pdf.line(marginX, cursorY, marginX, cursorY + rowHeight);
+    pdf.line(marginX + contentWidth, cursorY, marginX + contentWidth, cursorY + rowHeight);
 
     let x = marginX;
     columnDescriptors.forEach((descriptor, index) => {
@@ -362,8 +424,10 @@ export function renderAquapolFormPDF(
   AQUAPOL_LAYOUT.forEach((entry) => {
     if (entry.type === 'section') {
       drawSectionHeader(entry.title);
+    } else if (entry.type === 'separator') {
+      drawSeparator(entry);
     } else {
-      drawRow(entry.columns);
+      drawRow(entry.columns, entry.options);
     }
   });
 

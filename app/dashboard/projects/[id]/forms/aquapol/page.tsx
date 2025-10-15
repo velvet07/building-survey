@@ -165,6 +165,20 @@ export default function AquapolFormPage() {
     }
   }, [formValues, project]);
 
+  const saveButtonContent = saving ? (
+    <>
+      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      Mentés folyamatban...
+    </>
+  ) : (
+    <>
+      <span role="img" aria-hidden="true">
+        💾
+      </span>
+      Mentés
+    </>
+  );
+
   const statusBadge = useMemo(() => {
     if (!statusMessage || !statusType) return null;
 
@@ -250,17 +264,7 @@ export default function AquapolFormPage() {
                 disabled={saving}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {saving ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Mentés folyamatban...
-                  </>
-                ) : (
-                  <>
-                    <span role="img" aria-hidden="true">💾</span>
-                    Mentés
-                  </>
-                )}
+                {saveButtonContent}
               </button>
             </div>
           </div>
@@ -272,6 +276,15 @@ export default function AquapolFormPage() {
           onChange={handleFieldChange}
           onSubmit={handleSave}
           isSubmitting={saving}
+          actions={
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 self-end rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saveButtonContent}
+            </button>
+          }
         />
       </div>
     </div>
