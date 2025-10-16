@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useRef, useEffect, useCallback, type ReactElement } from 'react';
 import { useRouter } from 'next/navigation';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
@@ -45,12 +46,16 @@ interface DrawingCanvasProps {
     orientation: PaperOrientation;
   }) => void;
   saving: boolean;
+  projectName?: string;
+  projectUrl?: string;
 }
 
 export default function DrawingCanvas({
   drawing,
   onCanvasChange,
   saving,
+  projectName,
+  projectUrl,
 }: DrawingCanvasProps) {
   const [strokes, setStrokes] = useState<Stroke[]>(drawing.canvas_data.strokes || []);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
@@ -58,7 +63,7 @@ export default function DrawingCanvas({
 
   const [tool, setTool] = useState<DrawingTool>('pen');
   const [color, setColor] = useState('#000000');
-  const [width, setWidth] = useState(4);
+  const [width, setWidth] = useState(2);
   const [eraserMode, setEraserMode] = useState<EraserMode>('stroke');
 
   const toolRef = useRef(tool);
@@ -79,7 +84,6 @@ export default function DrawingCanvas({
 
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
   const isStrokeErasing = useRef(false);
@@ -209,6 +213,7 @@ export default function DrawingCanvas({
     if (typeof document === 'undefined') return;
 
     const handleFullscreenChange = () => {
+<<<<<<< HEAD
       const fullscreenElement =
         document.fullscreenElement ||
         (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
@@ -216,16 +221,14 @@ export default function DrawingCanvas({
       if (!fullscreenElement) {
         setIsImmersiveFallback(false);
       }
+=======
+      setIsFullscreen(Boolean(document.fullscreenElement));
+>>>>>>> parent of 1372566 (Streamline drawing editor layout and controls)
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange as EventListener);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener(
-        'webkitfullscreenchange',
-        handleFullscreenChange as EventListener
-      );
     };
   }, []);
 
@@ -370,9 +373,10 @@ export default function DrawingCanvas({
 
   const toggleFullscreen = useCallback(() => {
     if (typeof document === 'undefined') return;
-    const container = rootRef.current;
+    const container = containerRef.current;
     if (!container) return;
 
+<<<<<<< HEAD
     const anyDocument = document as unknown as {
       webkitExitFullscreen?: () => Promise<void> | void;
       webkitFullscreenElement?: Element | null;
@@ -398,6 +402,14 @@ export default function DrawingCanvas({
         void exit();
       }
       return;
+=======
+    if (!document.fullscreenElement) {
+      if (container.requestFullscreen) {
+        void container.requestFullscreen();
+      }
+    } else if (document.exitFullscreen) {
+      void document.exitFullscreen();
+>>>>>>> parent of 1372566 (Streamline drawing editor layout and controls)
     }
 
     setIsImmersiveFallback((prev) => !prev);
@@ -733,6 +745,7 @@ export default function DrawingCanvas({
   };
 
   return (
+<<<<<<< HEAD
     <div
       ref={rootRef}
       className={`flex flex-col bg-emerald-50/40 ${
@@ -761,41 +774,72 @@ export default function DrawingCanvas({
                     ? 'bg-emerald-600 text-white shadow-lg'
                     : 'bg-white text-emerald-700 hover:bg-emerald-100'
                 }`}
+=======
+    <div className="flex h-full flex-col bg-emerald-50/40">
+      <div className="border-b border-emerald-100 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2 px-3 py-2 md:px-4 md:py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {projectUrl && (
+              <Link
+                href={projectUrl}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+>>>>>>> parent of 1372566 (Streamline drawing editor layout and controls)
               >
-                <span className="text-base">{toolOption.icon}</span>
-                <span>{toolOption.label}</span>
+                ← Projekt
+              </Link>
+            )}
+
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-500">
+                Rajz
+              </span>
+              <span className="truncate text-sm font-semibold text-emerald-900 md:text-base">
+                {drawing.name}
+              </span>
+              {projectName && (
+                <span className="truncate text-xs text-emerald-600">{projectName}</span>
+              )}
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-md border border-emerald-100 bg-emerald-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                />
+                {saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
+              </div>
+              <button
+                onClick={toggleFullscreen}
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <span className="text-base">{isFullscreen ? '⤢' : '⛶'}</span>
+                <span className="hidden sm:inline">{isFullscreen ? 'Kilépés' : 'Teljes képernyő'}</span>
               </button>
-            ))}
+            </div>
           </div>
 
-          {tool === 'eraser' && (
-            <div className="flex flex-shrink-0 items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-700 shadow-sm">
-              <span className="hidden uppercase tracking-wide text-emerald-500 sm:inline">Radír mód</span>
-              <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-1 shadow-sm">
+              {TOOLBAR_TOOLS.map((toolOption) => (
                 <button
-                  onClick={() => setEraserMode('band')}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    eraserMode === 'band'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  key={toolOption.id}
+                  onClick={() => setTool(toolOption.id)}
+                  aria-pressed={tool === toolOption.id}
+                  className={`flex h-11 min-w-[60px] flex-col items-center justify-center rounded-lg px-2 text-[11px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                    tool === toolOption.id
+                      ? 'bg-emerald-600 text-white shadow-lg'
+                      : 'bg-white text-emerald-700 hover:bg-emerald-100'
                   }`}
                 >
-                  Sáv
+                  <span className="text-lg">{toolOption.icon}</span>
+                  {toolOption.label}
                 </button>
-                <button
-                  onClick={() => setEraserMode('stroke')}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    eraserMode === 'stroke'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                  }`}
-                >
-                  Vonal
-                </button>
-              </div>
+              ))}
             </div>
-          )}
 
+<<<<<<< HEAD
           <ColorPicker
             selectedColor={color}
             onChange={setColor}
@@ -850,11 +894,37 @@ export default function DrawingCanvas({
                       {preset}px
                     </button>
                   ))}
+=======
+            {tool === 'eraser' && (
+              <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm">
+                <span className="hidden text-[11px] uppercase tracking-wide text-emerald-500 sm:inline">Radír mód</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setEraserMode('band')}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      eraserMode === 'band'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    Sáv
+                  </button>
+                  <button
+                    onClick={() => setEraserMode('stroke')}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      eraserMode === 'stroke'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    Vonal
+                  </button>
+>>>>>>> parent of 1372566 (Streamline drawing editor layout and controls)
                 </div>
               </div>
             )}
-          </div>
 
+<<<<<<< HEAD
           <CompactPaperSizeSelector
             paperSize={paperSize}
             orientation={orientation}
@@ -921,8 +991,122 @@ export default function DrawingCanvas({
               className={`h-2 w-2 rounded-full ${
                 saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
               }`}
+=======
+            <ColorPicker
+              selectedColor={color}
+              onChange={setColor}
+              className="w-40 min-w-[10rem]"
+>>>>>>> parent of 1372566 (Streamline drawing editor layout and controls)
             />
-            {saving ? 'Mentés folyamatban…' : 'Mentve'}
+
+            <div className="relative" ref={widthDropdownRef}>
+              <button
+                onClick={() => setIsWidthMenuOpen((prev) => !prev)}
+                className={`flex h-11 items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  isWidthMenuOpen ? 'ring-2 ring-emerald-500' : ''
+                }`}
+              >
+                <span className="text-base">✏️</span>
+                Vastagság
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                  {width}px
+                </span>
+                <svg
+                  className={`ml-1 h-3.5 w-3.5 transition-transform ${isWidthMenuOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5 7.5L10 12.5L15 7.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {isWidthMenuOpen && (
+                <div className="absolute right-0 z-20 mt-2 w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                    Tollvastagság
+                  </h3>
+                  <StrokeWidthSlider width={width} onChange={setWidth} min={1} max={12} />
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {WIDTH_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        onClick={() => setWidth(preset)}
+                        className={`flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
+                          width === preset
+                            ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                            : 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
+                        }`}
+                      >
+                        {preset}px
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <CompactPaperSizeSelector
+              paperSize={paperSize}
+              orientation={orientation}
+              onPaperSizeChange={handlePaperSizeChange}
+              onOrientationChange={handleOrientationChange}
+              className="flex items-center gap-3"
+            />
+
+            <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-1 shadow-sm">
+              <button
+                onClick={handleZoomOut}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-base text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                −
+              </button>
+              <button
+                onClick={handleFitScreen}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-base text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                ◎
+              </button>
+              <button
+                onClick={handleZoomIn}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-base text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                +
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                className="hidden h-9 w-9 items-center justify-center rounded-lg text-base text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:flex"
+                aria-pressed={isFullscreen}
+              >
+                {isFullscreen ? '⤢' : '⛶'}
+              </button>
+              <span className="ml-2 min-w-[3rem] text-center text-xs font-semibold text-emerald-700">
+                {Math.round(stageScale * 100)}%
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleUndo}
+                disabled={strokes.length === 0}
+                className="flex h-11 items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ↺ Visszavonás
+              </button>
+              <button
+                onClick={handleClear}
+                disabled={strokes.length === 0}
+                className="flex h-11 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                🗑️ Törlés
+              </button>
+            </div>
           </div>
         </div>
       </div>
