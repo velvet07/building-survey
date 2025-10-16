@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getDrawing, updateDrawing } from '@/lib/drawings/api';
+import { getProjectById } from '@/lib/projects';
 import type {
   Drawing,
   CanvasData,
@@ -42,6 +43,7 @@ export default function DrawingEditorPage() {
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [projectName, setProjectName] = useState<string | null>(null);
 
   type CanvasChangePayload = {
     canvasData: CanvasData;
@@ -58,6 +60,9 @@ export default function DrawingEditorPage() {
     loadDrawing();
   }, [drawingId]);
 
+  useEffect(() => {
+    loadProject();
+  }, [projectId]);
 
   useEffect(() => {
     if (!drawing) return;
@@ -91,6 +96,16 @@ export default function DrawingEditorPage() {
       router.push(`/dashboard/projects/${projectId}/drawings`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProject = async () => {
+    try {
+      const { data, error } = await getProjectById(projectId);
+      if (error) throw error;
+      setProjectName(data?.name ?? null);
+    } catch (error) {
+      console.error('Projekt betöltése sikertelen:', error);
     }
   };
 
@@ -215,6 +230,8 @@ export default function DrawingEditorPage() {
         drawing={drawing}
         onCanvasChange={handleCanvasChange}
         saving={saving}
+        projectName={projectName ?? undefined}
+        projectUrl={`/dashboard/projects/${projectId}`}
       />
     </div>
   );
