@@ -709,7 +709,7 @@ export default function DrawingCanvas({
         isImmersiveFallback ? 'fixed inset-0 z-50 h-[100dvh] w-full' : 'h-full'
       }`}
     >
-      <div className="relative z-[200] border-b border-emerald-100 bg-white/95 backdrop-blur-sm">
+      <div className="z-30 border-b border-emerald-100 bg-white/95 backdrop-blur-sm">
         <div className="flex items-center gap-2 overflow-x-auto overflow-y-visible px-3 py-2 md:px-4">
           <button
             type="button"
@@ -801,7 +801,7 @@ export default function DrawingCanvas({
             </button>
 
             {isWidthMenuOpen && (
-              <div className="absolute right-0 z-[220] mt-2 w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
+              <div className="absolute right-0 z-20 mt-2 w-64 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
                 <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
                   Tollvastagság
                 </h3>
@@ -897,7 +897,7 @@ export default function DrawingCanvas({
         </div>
       </div>
 
-      <div className="relative z-0 flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-hidden">
         <div
           ref={containerRef}
           className="relative h-full w-full"
