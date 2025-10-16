@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, type ReactElement } from 'react';
-import { useRouter } from 'next/navigation';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type Konva from 'konva';
@@ -69,7 +68,6 @@ export default function DrawingCanvas({
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isImmersiveFallback, setIsImmersiveFallback] = useState(false);
   const [isBackgroundPan, setIsBackgroundPan] = useState(false);
 
   const isDrawing = useRef(false);
@@ -85,8 +83,6 @@ export default function DrawingCanvas({
   } | null>(null);
   const hasMountedRef = useRef(false);
   const onCanvasChangeRef = useRef(onCanvasChange);
-
-  const router = useRouter();
 
   const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
 
@@ -208,9 +204,6 @@ export default function DrawingCanvas({
         document.fullscreenElement ||
         (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
       setIsFullscreen(Boolean(fullscreenElement));
-      if (!fullscreenElement) {
-        setIsImmersiveFallback(false);
-      }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -223,20 +216,6 @@ export default function DrawingCanvas({
       );
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const body = document.body;
-    if (isImmersiveFallback) {
-      body.classList.add('overflow-hidden');
-    } else {
-      body.classList.remove('overflow-hidden');
-    }
-
-    return () => {
-      body.classList.remove('overflow-hidden');
-    };
-  }, [isImmersiveFallback]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -342,11 +321,6 @@ export default function DrawingCanvas({
     [distanceToSegment, width]
   );
 
-  useEffect(() => {
-    const stage = stageRef.current;
-    stage?.batchDraw();
-  }, [strokes]);
-
   const toggleFullscreen = useCallback(() => {
     if (typeof document === 'undefined') return;
     const container = rootRef.current;
@@ -362,60 +336,17 @@ export default function DrawingCanvas({
       (container as unknown as { webkitRequestFullscreen?: () => Promise<void> | void })
         .webkitRequestFullscreen;
 
-    const isNativeFullscreen = Boolean(
-      document.fullscreenElement || anyDocument.webkitFullscreenElement
-    );
-
-    if (!isNativeFullscreen && request) {
-      void request();
-      return;
-    }
-
-    if (isNativeFullscreen) {
+    if (!document.fullscreenElement && !anyDocument.webkitFullscreenElement) {
+      if (request) {
+        void request();
+      }
+    } else {
       const exit = document.exitFullscreen?.bind(document) || anyDocument.webkitExitFullscreen;
       if (exit) {
         void exit();
       }
-      return;
     }
-
-    setIsImmersiveFallback((prev) => !prev);
   }, []);
-
-  const isFullscreenActive = isFullscreen || isImmersiveFallback;
-
-  useEffect(() => {
-    if (!isFullscreenActive) return;
-    const raf = requestAnimationFrame(() => {
-      recenterCanvas();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [isFullscreenActive, recenterCanvas]);
-
-  const handleBackToList = useCallback(() => {
-    const target = `/dashboard/projects/${drawing.project_id}/drawings`;
-
-    if (typeof document !== 'undefined') {
-      const anyDocument = document as unknown as {
-        webkitExitFullscreen?: () => Promise<void> | void;
-        webkitFullscreenElement?: Element | null;
-      };
-
-      const isNativeFullscreen = Boolean(
-        document.fullscreenElement || anyDocument.webkitFullscreenElement
-      );
-
-      if (isNativeFullscreen) {
-        const exit = document.exitFullscreen?.bind(document) || anyDocument.webkitExitFullscreen;
-        if (exit) {
-          void exit();
-        }
-      }
-    }
-
-    setIsImmersiveFallback(false);
-    router.push(target);
-  }, [drawing.project_id, router]);
 
   const handlePointerDown = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
@@ -703,22 +634,12 @@ export default function DrawingCanvas({
   };
 
   return (
-    <div
-      ref={rootRef}
-      className={`flex flex-col bg-emerald-50/40 ${
-        isImmersiveFallback ? 'fixed inset-0 z-50 h-[100dvh] w-full' : 'h-full'
-      }`}
-    >
-      <div className="z-30 border-b border-emerald-100 bg-white/95 backdrop-blur-sm">
-        <div className="flex items-center gap-2 overflow-x-auto overflow-y-visible px-3 py-2 md:px-4">
-          <button
-            type="button"
-            onClick={handleBackToList}
-            className="flex-shrink-0 rounded-lg bg-emerald-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 transition-colors hover:bg-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            title="Vissza a rajzokhoz"
-          >
+    <div ref={rootRef} className="flex h-full flex-col bg-emerald-50/40">
+      <div className="border-b border-emerald-100 bg-white/95 backdrop-blur-sm">
+        <div className="flex items-center gap-2 overflow-x-auto px-3 py-2 md:px-4">
+          <span className="flex-shrink-0 rounded-lg bg-emerald-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
             {drawing.name}
-          </button>
+          </span>
 
           <div className="flex flex-shrink-0 items-center gap-1 rounded-xl border border-emerald-200 bg-white px-1.5 py-1 shadow-sm">
             {TOOLBAR_TOOLS.map((toolOption) => (
@@ -855,14 +776,14 @@ export default function DrawingCanvas({
             <button
               onClick={toggleFullscreen}
               className={`flex h-9 w-9 items-center justify-center rounded-lg text-base transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                isFullscreenActive
+                isFullscreen
                   ? 'bg-emerald-600 text-white shadow'
                   : 'text-emerald-700 hover:bg-emerald-50'
               }`}
-              aria-pressed={isFullscreenActive}
-              title={isFullscreenActive ? 'Kilépés teljes képernyőből' : 'Teljes képernyő'}
+              aria-pressed={isFullscreen}
+              title={isFullscreen ? 'Kilépés teljes képernyőből' : 'Teljes képernyő'}
             >
-              {isFullscreenActive ? '⤢' : '⛶'}
+              {isFullscreen ? '⤢' : '⛶'}
             </button>
             <span className="ml-2 min-w-[3rem] text-center text-[11px] font-semibold text-emerald-700">
               {Math.round(stageScale * 100)}%
