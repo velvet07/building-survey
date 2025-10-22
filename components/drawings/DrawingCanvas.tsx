@@ -753,109 +753,107 @@ export default function DrawingCanvas({
           <span>{saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}</span>
         </div>
       </div>
-      <div className="relative flex-1 overflow-hidden">
-        <div
-          ref={containerRef}
-          className="relative h-full w-full"
-          style={{ touchAction: 'none' }}
-        >
-          {stageSize.width > 0 && stageSize.height > 0 && (
-            <Stage
-              className="border-none outline-none shadow-none"
-              width={stageSize.width}
-              height={stageSize.height}
-              scaleX={stageScale}
-              scaleY={stageScale}
-              x={stagePos.x}
-              y={stagePos.y}
-              draggable={tool === 'pan'}
-              onDragMove={(event) => setStagePos(event.target.position())}
-              onDragEnd={(event) => setStagePos(event.target.position())}
-              onMouseDown={handlePointerDown}
-              onMouseMove={handlePointerMove}
-              onMouseUp={handlePointerUp}
-              onMouseLeave={handlePointerUp}
-              onTouchStart={handleStageTouchStart}
-              onTouchMove={handleStageTouchMove}
-              onTouchEnd={handleStageTouchEnd}
-              onTouchCancel={handleStageTouchEnd}
-              onWheel={handleStageWheel}
-              ref={stageRef}
+      <div
+        ref={containerRef}
+        className="relative flex-1 overflow-hidden"
+        style={{ touchAction: 'none' }}
+      >
+        {stageSize.width > 0 && stageSize.height > 0 && (
+          <Stage
+            className="border-none outline-none shadow-none"
+            width={stageSize.width}
+            height={stageSize.height}
+            scaleX={stageScale}
+            scaleY={stageScale}
+            x={stagePos.x}
+            y={stagePos.y}
+            draggable={tool === 'pan'}
+            onDragMove={(event) => setStagePos(event.target.position())}
+            onDragEnd={(event) => setStagePos(event.target.position())}
+            onMouseDown={handlePointerDown}
+            onMouseMove={handlePointerMove}
+            onMouseUp={handlePointerUp}
+            onMouseLeave={handlePointerUp}
+            onTouchStart={handleStageTouchStart}
+            onTouchMove={handleStageTouchMove}
+            onTouchEnd={handleStageTouchEnd}
+            onTouchCancel={handleStageTouchEnd}
+            onWheel={handleStageWheel}
+            ref={stageRef}
+          >
+            <Layer listening={false}>
+              <Rect
+                x={0}
+                y={0}
+                width={canvasWidth}
+                height={canvasHeight}
+                fill="#f8fff4"
+                strokeEnabled={false}
+                shadowEnabled={false}
+              />
+            </Layer>
+
+            <Layer
+              clipX={0}
+              clipY={0}
+              clipWidth={canvasWidth}
+              clipHeight={canvasHeight}
+              listening={false}
             >
-              <Layer listening={false}>
-                <Rect
-                  x={0}
-                  y={0}
-                  width={canvasWidth}
-                  height={canvasHeight}
-                  fill="#f8fff4"
-                  strokeEnabled={false}
-                  shadowEnabled={false}
+              {renderGrid()}
+            </Layer>
+
+            <Layer
+              clipX={0}
+              clipY={0}
+              clipWidth={canvasWidth}
+              clipHeight={canvasHeight}
+            >
+              {strokes.map((stroke) => (
+                <Line
+                  key={stroke.id}
+                  points={stroke.points}
+                  stroke={stroke.color}
+                  strokeWidth={stroke.width}
+                  lineCap="round"
+                  lineJoin="round"
+                  tension={0.35}
+                  globalCompositeOperation={stroke.compositeOperation ?? 'source-over'}
                 />
-              </Layer>
-
-              <Layer
-                clipX={0}
-                clipY={0}
-                clipWidth={canvasWidth}
-                clipHeight={canvasHeight}
-                listening={false}
-              >
-                {renderGrid()}
-              </Layer>
-
-              <Layer
-                clipX={0}
-                clipY={0}
-                clipWidth={canvasWidth}
-                clipHeight={canvasHeight}
-              >
-                {strokes.map((stroke) => (
-                  <Line
-                    key={stroke.id}
-                    points={stroke.points}
-                    stroke={stroke.color}
-                    strokeWidth={stroke.width}
-                    lineCap="round"
-                    lineJoin="round"
-                    tension={0.35}
-                    globalCompositeOperation={stroke.compositeOperation ?? 'source-over'}
-                  />
-                ))}
-                {currentStroke && (
-                  <Line
-                    points={currentStroke.points}
-                    stroke={currentStroke.color}
-                    strokeWidth={currentStroke.width}
-                    lineCap="round"
-                    lineJoin="round"
-                    tension={0.35}
-                    globalCompositeOperation={currentStroke.compositeOperation ?? 'source-over'}
-                  />
-                )}
-              </Layer>
-
-              <Layer listening={false}>
-                <Text
-                  x={canvasWidth - 260}
-                  y={canvasHeight - 48}
-                  text={drawing.name}
-                  fontSize={24}
-                  fill="#047857"
-                  align="right"
-                  width={240}
+              ))}
+              {currentStroke && (
+                <Line
+                  points={currentStroke.points}
+                  stroke={currentStroke.color}
+                  strokeWidth={currentStroke.width}
+                  lineCap="round"
+                  lineJoin="round"
+                  tension={0.35}
+                  globalCompositeOperation={currentStroke.compositeOperation ?? 'source-over'}
                 />
-              </Layer>
-            </Stage>
-          )}
+              )}
+            </Layer>
 
-          <div className="pointer-events-none absolute bottom-6 right-6 rounded-2xl bg-white/90 px-4 py-3 text-sm shadow-xl backdrop-blur">
-            <div className="text-base font-semibold text-emerald-900">{drawing.name}</div>
-            <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-              {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
-            </div>
-            <div className="mt-1 text-xs text-emerald-500">{strokes.length} rajzelem</div>
+            <Layer listening={false}>
+              <Text
+                x={canvasWidth - 260}
+                y={canvasHeight - 48}
+                text={drawing.name}
+                fontSize={24}
+                fill="#047857"
+                align="right"
+                width={240}
+              />
+            </Layer>
+          </Stage>
+        )}
+
+        <div className="pointer-events-none absolute bottom-6 right-6 rounded-2xl bg-white/90 px-4 py-3 text-sm shadow-xl backdrop-blur">
+          <div className="text-base font-semibold text-emerald-900">{drawing.name}</div>
+          <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+            {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
           </div>
+          <div className="mt-1 text-xs text-emerald-500">{strokes.length} rajzelem</div>
         </div>
       </div>
       <style jsx global>{`
