@@ -565,7 +565,7 @@ export default function DrawingCanvas({
   return (
     <div className="flex h-full flex-col bg-emerald-50/40">
       <div className="relative flex-1 overflow-visible flex flex-col">
-        <div className="toolbar-container relative flex flex-row items-center gap-1 px-3 py-2 bg-white border-b border-gray-200 overflow-visible overflow-x-auto overflow-y-visible sticky top-0 z-50 flex-shrink-0 scrollbar-thin scrollbar-thumb-gray-300 md:gap-2 md:px-4 md:py-3">
+        <div className="toolbar-container relative flex flex-row items-center gap-1 px-3 py-2 bg-white border-b border-gray-200 overflow-visible overflow-x-auto overflow-y-visible sticky top-0 z-50 flex-shrink-0 scrollbar-thin scrollbar-thumb-gray-300 md:gap-2 md:px-4 md:py-3" style={{ zIndex: 50, position: 'relative' }}>
         {drawingsUrl && (
           <Link
             href={drawingsUrl}
@@ -674,7 +674,7 @@ export default function DrawingCanvas({
             </button>
 
             {isWidthMenuOpen && (
-              <div className="absolute right-0 top-full z-[100] mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+              <div className="absolute right-0 top-full z-[9999] mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
                 <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-600">
                   Tollvastagság
                 </h3>

@@ -74,7 +74,7 @@ export default function ColorPicker({
           <div className="fixed inset-0 z-[55]" onClick={() => setIsOpen(false)} />
 
           {/* Színválasztó lista */}
-          <div className="absolute top-full left-0 right-0 z-[100] mt-2 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
+          <div className="absolute top-full left-0 right-0 z-[9999] mt-2 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
               Válassz színt
             </p>
