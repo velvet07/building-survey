@@ -225,15 +225,13 @@ export default function DrawingEditorPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <DrawingCanvas
-        drawing={drawing}
-        onCanvasChange={handleCanvasChange}
-        saving={saving}
-        projectName={projectName ?? undefined}
-        projectUrl={`/dashboard/projects/${projectId}`}
-        drawingsUrl={`/dashboard/projects/${projectId}/drawings`}
-      />
-    </div>
+    <DrawingCanvas
+      drawing={drawing}
+      onCanvasChange={handleCanvasChange}
+      saving={saving}
+      projectName={projectName ?? undefined}
+      projectUrl={`/dashboard/projects/${projectId}`}
+      drawingsUrl={`/dashboard/projects/${projectId}/drawings`}
+    />
   );
 }
