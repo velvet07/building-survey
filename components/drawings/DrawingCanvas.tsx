@@ -674,7 +674,7 @@ export default function DrawingCanvas({
             </button>
 
             {isWidthMenuOpen && (
-              <div className="absolute right-0 top-full z-[9999] mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+              <div className="absolute right-0 top-full z-[99999] mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
                 <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-600">
                   Tollvastagság
                 </h3>
