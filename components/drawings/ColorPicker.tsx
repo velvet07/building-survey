@@ -70,11 +70,11 @@ export default function ColorPicker({
       {/* Color palette dropdown */}
       {isOpen && (
         <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          {/* Háttér a dropdown bezárásához */}
+          <div className="fixed inset-0 z-[55]" onClick={() => setIsOpen(false)} />
 
-          {/* Palette */}
-          <div className="absolute top-full left-0 right-0 z-20 mt-2 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
+          {/* Színválasztó lista */}
+          <div className="absolute top-full left-0 right-0 z-[60] mt-2 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
               Válassz színt
             </p>
