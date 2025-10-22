@@ -1,7 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, useEffect, useCallback, type ReactElement } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useLayoutEffect,
+  type ReactElement,
+} from 'react';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type Konva from 'konva';
@@ -144,9 +151,25 @@ export default function DrawingCanvas({
     setStagePos(pos);
   }, [canvasWidth, canvasHeight]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    if (containerRef.current.clientWidth === 0 || containerRef.current.clientHeight === 0) {
+      requestAnimationFrame(() => {
+        if (containerRef.current) {
+          recenterCanvas();
+        }
+      });
+      return;
+    }
     recenterCanvas();
-  }, [recenterCanvas, stageSize.width, stageSize.height]);
+  }, [recenterCanvas]);
+
+  useEffect(() => {
+    if (stageSize.width === 0 || stageSize.height === 0) {
+      return;
+    }
+    recenterCanvas();
+  }, [recenterCanvas, stageSize.height, stageSize.width]);
 
   useEffect(() => {
     recenterCanvas();
@@ -379,9 +402,19 @@ export default function DrawingCanvas({
 
   const handleStageWheel = useCallback(
     (event: KonvaEventObject<WheelEvent>) => {
-      event.evt.preventDefault();
       const stage = event.target.getStage();
       if (!stage) return;
+
+      if (!event.evt.ctrlKey && !event.evt.metaKey) {
+        if (tool === 'pan' || tool === 'pen' || tool === 'eraser') {
+          event.evt.preventDefault();
+          const { deltaX, deltaY } = event.evt;
+          setStagePos((prev) => ({ x: prev.x - deltaX, y: prev.y - deltaY }));
+        }
+        return;
+      }
+
+      event.evt.preventDefault();
 
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
@@ -403,7 +436,7 @@ export default function DrawingCanvas({
       setStageScale(newScale);
       setStagePos(newPosition);
     },
-    [stagePos.x, stagePos.y, stageScale]
+    [stagePos.x, stagePos.y, stageScale, tool]
   );
 
   const handleStageTouchStart = useCallback(
@@ -660,98 +693,108 @@ export default function DrawingCanvas({
         </div>
       </div>
 
-      <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] flex w-[min(92vw,1100px)] max-w-5xl -translate-x-1/2 flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur">
-        {drawingsUrl && (
-          <Link
-            href={drawingsUrl}
-            className="toolbar-button inline-flex min-w-[48px] min-h-[48px] flex-shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation md:min-h-[44px] md:min-w-[44px]"
-          >
-            <span aria-hidden className="text-lg">←</span>
-            <span>Vissza a rajzokhoz</span>
-          </Link>
-        )}
+      <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] flex w-[min(95vw,1180px)] max-w-5xl -translate-x-1/2 flex-nowrap items-center gap-2 whitespace-nowrap rounded-2xl border border-gray-200 bg-white/95 px-3 py-2 text-[0.7rem] shadow-xl backdrop-blur sm:text-[0.75rem] md:text-sm">
+        <div className="flex flex-shrink-0 items-center gap-1.5">
+          {drawingsUrl && (
+            <Link
+              href={drawingsUrl}
+              className="toolbar-button inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation sm:px-3"
+            >
+              <span aria-hidden className="text-base">←</span>
+              <span className="hidden xl:inline whitespace-nowrap">Vissza a rajzokhoz</span>
+              <span className="sr-only xl:hidden">Vissza a rajzokhoz</span>
+            </Link>
+          )}
 
-        {projectUrl && (
-          <Link
-            href={projectUrl}
-            className="toolbar-button inline-flex min-w-[48px] min-h-[48px] flex-shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation md:min-h-[44px] md:min-w-[44px]"
-          >
-            <span aria-hidden className="text-lg">←</span>
-            <span>Vissza a projekthez</span>
-          </Link>
-        )}
+          {projectUrl && (
+            <Link
+              href={projectUrl}
+              className="toolbar-button inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation sm:px-3"
+            >
+              <span aria-hidden className="text-base">←</span>
+              <span className="hidden xl:inline whitespace-nowrap">Vissza a projekthez</span>
+              <span className="sr-only xl:hidden">Vissza a projekthez</span>
+            </Link>
+          )}
 
-        {projectName && (
-          <span className="hidden flex-shrink-0 text-sm font-semibold text-gray-500 lg:inline">
-            {projectName}
-          </span>
-        )}
+          {projectName && (
+            <span className="hidden 2xl:inline-flex text-xs font-semibold text-gray-500">
+              {projectName}
+            </span>
+          )}
+        </div>
 
-        <div className="flex flex-row items-center gap-1 pr-2">
+        <div className="flex flex-shrink-0 items-center gap-1.5 rounded-2xl border border-gray-200 bg-gray-50 px-2 py-1.5 shadow-inner">
           {TOOLBAR_TOOLS.map((toolOption) => (
             <button
               key={toolOption.id}
               onClick={() => setTool(toolOption.id)}
               aria-pressed={tool === toolOption.id}
-              className={`toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation text-sm font-semibold text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-[44px] md:min-w-[44px] ${
-                tool === toolOption.id ? 'bg-blue-50 text-blue-700' : 'bg-white'
+              aria-label={toolOption.label}
+              className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 flex-col items-center justify-center rounded-lg px-2 py-1 font-semibold uppercase tracking-wide transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                tool === toolOption.id ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-700'
               }`}
             >
               <span className="text-lg" aria-hidden>
                 {toolOption.icon}
               </span>
-              <span className="text-xs uppercase tracking-wide">{toolOption.label}</span>
+              <span className="hidden 2xl:block text-[0.6rem]">{toolOption.label}</span>
             </button>
           ))}
         </div>
 
         {tool === 'eraser' && (
-          <div className="flex flex-row items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <div className="flex flex-shrink-0 items-center gap-1.5">
+            <span className="hidden xl:inline text-[0.65rem] font-semibold uppercase tracking-wide text-gray-500">
               Radír mód
             </span>
             <button
               onClick={() => setEraserMode('band')}
-              className={`toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg text-sm font-semibold transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-[44px] md:min-w-[44px] ${
+              aria-label="Sávos radír mód"
+              className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-lg px-3 py-2 font-semibold transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 eraserMode === 'band' ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-700'
               }`}
             >
-              Sávos
+              <span className="hidden xl:inline whitespace-nowrap">Sávos</span>
+              <span className="xl:hidden text-xs font-semibold">S</span>
             </button>
             <button
               onClick={() => setEraserMode('stroke')}
-              className={`toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg text-sm font-semibold transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-[44px] md:min-w-[44px] ${
+              aria-label="Vonás radír mód"
+              className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-lg px-3 py-2 font-semibold transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 eraserMode === 'stroke' ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-700'
               }`}
             >
-              Vonás
+              <span className="hidden xl:inline whitespace-nowrap">Vonás</span>
+              <span className="xl:hidden text-xs font-semibold">V</span>
             </button>
           </div>
         )}
 
-        <div className="flex flex-row items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-2">
           <ColorPicker
             selectedColor={color}
             onChange={setColor}
-            className="min-w-[160px] flex-shrink-0"
+            className="min-w-[7.5rem] flex-shrink-0"
           />
 
           <div className="relative flex-shrink-0" ref={widthDropdownRef}>
             <button
               onClick={() => setIsWidthMenuOpen((prev) => !prev)}
-              className={`toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-[44px] md:min-w-[44px] ${
+              className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 isWidthMenuOpen ? 'bg-blue-50 text-blue-700' : ''
               }`}
             >
               <span className="text-lg" aria-hidden>
                 ✏️
               </span>
-              <span className="flex items-center gap-1 text-xs uppercase tracking-wide">
+              <span className="hidden xl:flex items-center gap-1 text-[0.65rem] uppercase tracking-wide">
                 Vastagság
                 <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[0.65rem] font-bold text-blue-700">
                   {width}px
                 </span>
               </span>
+              <span className="xl:hidden text-[0.7rem] font-semibold">{width}px</span>
               <svg
                 className={`ml-1 h-4 w-4 transition-transform ${isWidthMenuOpen ? 'rotate-180' : ''}`}
                 viewBox="0 0 20 20"
@@ -779,7 +822,7 @@ export default function DrawingCanvas({
                     <button
                       key={preset}
                       onClick={() => setWidth(preset)}
-                      className={`toolbar-button min-w-[48px] min-h-[48px] justify-center rounded-lg border text-sm font-medium transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-[44px] md:min-w-[44px] ${
+                      className={`toolbar-button min-h-[44px] min-w-[44px] justify-center rounded-lg border text-sm font-medium transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                         width === preset
                           ? 'border-blue-400 bg-blue-50 text-blue-700'
                           : 'border-gray-200 bg-white text-gray-700'
@@ -799,66 +842,83 @@ export default function DrawingCanvas({
           orientation={orientation}
           onPaperSizeChange={handlePaperSizeChange}
           onOrientationChange={handleOrientationChange}
-          className="flex flex-row flex-wrap items-center gap-2"
+          className="flex flex-shrink-0 items-center gap-2"
         />
 
-        <div className="flex flex-row items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-1.5">
           <button
             onClick={handleZoomOut}
-            className="toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg text-lg text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-[44px] md:min-w-[44px]"
+            aria-label="Kicsinyítés"
+            className="toolbar-button inline-flex h-11 w-11 items-center justify-center rounded-lg text-lg text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             −
           </button>
           <button
             onClick={handleFitScreen}
-            className="toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg text-lg text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-[44px] md:min-w-[44px]"
+            aria-label="Teljes nézet"
+            className="toolbar-button inline-flex h-11 w-11 items-center justify-center rounded-lg text-lg text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             ⤢
           </button>
           <button
             onClick={handleZoomIn}
-            className="toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg text-lg text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-[44px] md:min-w-[44px]"
+            aria-label="Nagyítás"
+            className="toolbar-button inline-flex h-11 w-11 items-center justify-center rounded-lg text-lg text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             +
           </button>
-          <span className="min-w-[3rem] text-center text-xs font-semibold text-gray-600">
+          <span className="min-w-[3rem] text-center text-[0.7rem] font-semibold text-gray-600">
             {Math.round(stageScale * 100)}%
           </span>
         </div>
 
-        <button
-          onClick={handleUndo}
-          disabled={strokes.length === 0}
-          className="toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[44px] md:min-w-[44px]"
-        >
-          ↺ Visszavonás
-        </button>
-        <button
-          onClick={handleClear}
-          disabled={strokes.length === 0}
-          className="toolbar-button min-w-[48px] min-h-[48px] p-2 rounded-lg border border-red-200 bg-red-50 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 active:bg-red-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[44px] md:min-w-[44px]"
-        >
-          🗑️ Törlés
-        </button>
-        <div className="flex min-w-[200px] flex-shrink-0 flex-row items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 text-sm font-semibold text-gray-700">
-          <span
-            className={`h-2.5 w-2.5 rounded-full ${
-              saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
-            }`}
-          />
-          <span>{saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}</span>
+        <div className="flex flex-shrink-0 items-center gap-1.5">
+          <button
+            onClick={handleUndo}
+            disabled={strokes.length === 0}
+            aria-label="Visszavonás"
+            className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span aria-hidden className="text-base">↺</span>
+            <span className="hidden xl:inline whitespace-nowrap">Visszavonás</span>
+          </button>
+          <button
+            onClick={handleClear}
+            disabled={strokes.length === 0}
+            aria-label="Minden törlése"
+            className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 font-semibold text-red-700 transition-colors hover:bg-red-100 active:bg-red-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span aria-hidden className="text-base">🗑️</span>
+            <span className="hidden xl:inline whitespace-nowrap">Törlés</span>
+          </button>
+          <div className="flex min-w-[180px] flex-shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-semibold text-gray-700">
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${
+                saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
+              }`}
+            />
+            <span className="text-[0.7rem] sm:text-xs md:text-sm">
+              {saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
+            </span>
+          </div>
         </div>
       </div>
       <style jsx global>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1280px) {
           .toolbar-container {
-            gap: 0.25rem;
-            padding: 0.5rem 0.75rem;
+            gap: 0.5rem;
           }
 
           .toolbar-button {
-            min-width: 48px;
-            min-height: 48px;
+            min-width: 44px;
+            min-height: 44px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .toolbar-container {
+            gap: 0.35rem;
+            padding: 0.5rem 0.75rem;
           }
         }
       `}</style>
