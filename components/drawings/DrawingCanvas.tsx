@@ -564,7 +564,8 @@ export default function DrawingCanvas({
 
   return (
     <div className="flex h-full flex-col bg-emerald-50/40">
-      <div className="toolbar-container relative flex flex-row items-center gap-1 px-3 py-2 bg-white border-b border-gray-200 overflow-visible overflow-x-auto overflow-y-visible sticky top-0 z-50 scrollbar-thin scrollbar-thumb-gray-300 md:gap-2 md:px-4 md:py-3">
+      <div className="relative flex-1 overflow-visible flex flex-col">
+        <div className="toolbar-container relative flex flex-row items-center gap-1 px-3 py-2 bg-white border-b border-gray-200 overflow-visible overflow-x-auto overflow-y-visible sticky top-0 z-50 flex-shrink-0 scrollbar-thin scrollbar-thumb-gray-300 md:gap-2 md:px-4 md:py-3">
         {drawingsUrl && (
           <Link
             href={drawingsUrl}
@@ -752,14 +753,14 @@ export default function DrawingCanvas({
           />
           <span>{saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}</span>
         </div>
-      </div>
-      <div
-        ref={containerRef}
-        className="relative flex-1 overflow-hidden"
-        style={{ touchAction: 'none' }}
-      >
-        {stageSize.width > 0 && stageSize.height > 0 && (
-          <Stage
+        </div>
+        <div
+          ref={containerRef}
+          className="relative flex-1 overflow-hidden"
+          style={{ touchAction: 'none' }}
+        >
+          {stageSize.width > 0 && stageSize.height > 0 && (
+            <Stage
             className="border-none outline-none shadow-none"
             width={stageSize.width}
             height={stageSize.height}
@@ -838,14 +839,15 @@ export default function DrawingCanvas({
               />
             </Layer>
           </Stage>
-        )}
+          )}
 
-        <div className="pointer-events-none absolute bottom-6 right-6 rounded-2xl bg-white/90 px-4 py-3 text-sm shadow-xl backdrop-blur">
-          <div className="text-base font-semibold text-emerald-900">{drawing.name}</div>
-          <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-            {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
+          <div className="pointer-events-none absolute bottom-6 right-6 rounded-2xl bg-white/90 px-4 py-3 text-sm shadow-xl backdrop-blur">
+            <div className="text-base font-semibold text-emerald-900">{drawing.name}</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+              {paperSize.toUpperCase()} · {orientation === 'portrait' ? 'Álló' : 'Fekvő'}
+            </div>
+            <div className="mt-1 text-xs text-emerald-500">{strokes.length} rajzelem</div>
           </div>
-          <div className="mt-1 text-xs text-emerald-500">{strokes.length} rajzelem</div>
         </div>
       </div>
       <style jsx global>{`
