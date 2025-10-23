@@ -9,6 +9,7 @@ import React, {
   useLayoutEffect,
   type ReactElement,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type Konva from 'konva';
@@ -84,6 +85,8 @@ export default function DrawingCanvas({
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
   const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
+  const [colorMenuPosition, setColorMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [widthMenuPosition, setWidthMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<Set<string>>(new Set());
   const [lassoPoints, setLassoPoints] = useState<number[]>([]);
   const [lastLassoPolygon, setLastLassoPolygon] = useState<number[]>([]);
@@ -95,6 +98,8 @@ export default function DrawingCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
   const colorDropdownRef = useRef<HTMLDivElement>(null);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
+  const widthButtonRef = useRef<HTMLButtonElement>(null);
   const isStrokeErasing = useRef(false);
   const isDraggingSelection = useRef(false);
   const dragStartPoint = useRef<{ x: number; y: number } | null>(null);
@@ -105,6 +110,7 @@ export default function DrawingCanvas({
     initialDistance: number;
     initialScale: number;
     initialPosition: { x: number; y: number };
+    initialCenter: { x: number; y: number };
   } | null>(null);
   const hasMountedRef = useRef(false);
   const onCanvasChangeRef = useRef(onCanvasChange);
@@ -122,6 +128,21 @@ export default function DrawingCanvas({
     return {
       x: (touch1.clientX + touch2.clientX) / 2 - rect.left,
       y: (touch1.clientY + touch2.clientY) / 2 - rect.top,
+    };
+  }, []);
+
+  const getEventClientPosition = useCallback((evt: MouseEvent | TouchEvent | PointerEvent) => {
+    // Handle TouchEvent
+    if ('touches' in evt && evt.touches && evt.touches.length > 0) {
+      return {
+        x: evt.touches[0].clientX,
+        y: evt.touches[0].clientY,
+      };
+    }
+    // Handle MouseEvent or PointerEvent
+    return {
+      x: (evt as MouseEvent).clientX,
+      y: (evt as MouseEvent).clientY,
     };
   }, []);
 
@@ -219,20 +240,24 @@ export default function DrawingCanvas({
       if (!widthDropdownRef.current) return;
       if (!widthDropdownRef.current.contains(event.target as Node)) {
         setIsWidthMenuOpen(false);
+        setWidthMenuPosition(null);
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsWidthMenuOpen(false);
+        setWidthMenuPosition(null);
       }
     };
 
     document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown as any);
     document.addEventListener('keydown', handleEscape);
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown as any);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isWidthMenuOpen]);
@@ -244,20 +269,24 @@ export default function DrawingCanvas({
       if (!colorDropdownRef.current) return;
       if (!colorDropdownRef.current.contains(event.target as Node)) {
         setIsColorMenuOpen(false);
+        setColorMenuPosition(null);
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsColorMenuOpen(false);
+        setColorMenuPosition(null);
       }
     };
 
     document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown as any);
     document.addEventListener('keydown', handleEscape);
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown as any);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isColorMenuOpen]);
@@ -427,15 +456,15 @@ export default function DrawingCanvas({
       const stage = e.target.getStage();
       if (!stage) return;
 
-      const evt = e.evt as MouseEvent;
+      const clientPos = getEventClientPosition(e.evt);
 
-      // Middle mouse button for panning
-      if (evt.button === 1) {
+      // Middle mouse button for panning (only for MouseEvent)
+      if ('button' in e.evt && (e.evt as MouseEvent).button === 1) {
         e.evt.preventDefault();
         isPanning.current = true;
         panStartPos.current = {
-          x: evt.clientX,
-          y: evt.clientY,
+          x: clientPos.x,
+          y: clientPos.y,
           stageX: stagePos.x,
           stageY: stagePos.y,
         };
@@ -457,8 +486,8 @@ export default function DrawingCanvas({
       if (tool === 'pan' || !isInsideCanvas) {
         isPanning.current = true;
         panStartPos.current = {
-          x: evt.clientX,
-          y: evt.clientY,
+          x: clientPos.x,
+          y: clientPos.y,
           stageX: stagePos.x,
           stageY: stagePos.y,
         };
@@ -507,7 +536,7 @@ export default function DrawingCanvas({
 
       beginStroke(newStroke);
     },
-    [beginStroke, canvasHeight, canvasWidth, color, eraseStrokeAtPoint, eraserMode, findStrokeAtPoint, getCanvasPoint, selectedStrokeIds, stagePos.x, stagePos.y, tool, width]
+    [beginStroke, canvasHeight, canvasWidth, color, eraseStrokeAtPoint, eraserMode, findStrokeAtPoint, getCanvasPoint, getEventClientPosition, isPointInPolygon, lastLassoPolygon, selectedStrokeIds, stagePos.x, stagePos.y, tool, width]
   );
 
   const handlePointerMove = useCallback(
@@ -518,9 +547,9 @@ export default function DrawingCanvas({
       // Handle panning (middle mouse or outside canvas)
       if (isPanning.current && panStartPos.current) {
         e.evt.preventDefault();
-        const evt = e.evt as MouseEvent;
-        const dx = evt.clientX - panStartPos.current.x;
-        const dy = evt.clientY - panStartPos.current.y;
+        const clientPos = getEventClientPosition(e.evt);
+        const dx = clientPos.x - panStartPos.current.x;
+        const dy = clientPos.y - panStartPos.current.y;
         setStagePos({
           x: panStartPos.current.stageX + dx,
           y: panStartPos.current.stageY + dy,
@@ -601,7 +630,7 @@ export default function DrawingCanvas({
       currentStrokeRef.current = updatedStroke;
       setCurrentStroke(updatedStroke);
     },
-    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, selectedStrokeIds, strokes, tool]
+    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, getEventClientPosition, isPointInPolygon, lastLassoPolygon, selectedStrokeIds, strokes, tool]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -683,20 +712,27 @@ export default function DrawingCanvas({
         event.evt.preventDefault();
         const [touch1, touch2] = [touches[0], touches[1]];
         const distance = getTouchDistance(touch1, touch2);
+        const center = getTouchCenter(stage, touch1, touch2);
         pinchState.current = {
           initialDistance: distance,
           initialScale: stageScale,
           initialPosition: { ...stage.position() },
+          initialCenter: center,
         };
+        // Cancel any ongoing drawing
         isDrawing.current = false;
+        isDrawingLasso.current = false;
+        isDraggingSelection.current = false;
+        isPanning.current = false;
         currentStrokeRef.current = null;
         setCurrentStroke(null);
         return;
       }
 
+      // Only handle single touch for drawing
       handlePointerDown(event as KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>);
     },
-    [getTouchDistance, handlePointerDown, stageScale]
+    [getTouchCenter, getTouchDistance, handlePointerDown, stageScale]
   );
 
   const handleStageTouchMove = useCallback(
@@ -708,26 +744,52 @@ export default function DrawingCanvas({
       if (touches && touches.length === 2 && pinchState.current) {
         event.evt.preventDefault();
         const [touch1, touch2] = [touches[0], touches[1]];
-        const distance = getTouchDistance(touch1, touch2);
-        if (distance === 0) return;
+        const currentDistance = getTouchDistance(touch1, touch2);
+        const currentCenter = getTouchCenter(stage, touch1, touch2);
 
-        const scaleFactor = distance / pinchState.current.initialDistance;
-        const newScale = clampZoom(pinchState.current.initialScale * scaleFactor);
-        const center = getTouchCenter(stage, touch1, touch2);
-        const pointTo = {
-          x: (center.x - pinchState.current.initialPosition.x) /
-            pinchState.current.initialScale,
-          y: (center.y - pinchState.current.initialPosition.y) /
-            pinchState.current.initialScale,
-        };
+        if (currentDistance === 0) return;
 
-        const newPosition = {
-          x: center.x - pointTo.x * newScale,
-          y: center.y - pointTo.y * newScale,
-        };
+        // Calculate distance change for zoom detection
+        const distanceChange = Math.abs(currentDistance - pinchState.current.initialDistance);
+        const distanceChangeRatio = Math.abs(currentDistance / pinchState.current.initialDistance - 1);
 
-        setStageScale(newScale);
-        setStagePos(newPosition);
+        // Calculate center movement for pan detection
+        const centerDx = currentCenter.x - pinchState.current.initialCenter.x;
+        const centerDy = currentCenter.y - pinchState.current.initialCenter.y;
+        const centerMovement = Math.sqrt(centerDx * centerDx + centerDy * centerDy);
+
+        // If significant pinch/spread detected (> 5% change), apply zoom
+        if (distanceChangeRatio > 0.05) {
+          const scaleFactor = currentDistance / pinchState.current.initialDistance;
+          const newScale = clampZoom(pinchState.current.initialScale * scaleFactor);
+          const pointTo = {
+            x: (currentCenter.x - pinchState.current.initialPosition.x) /
+              pinchState.current.initialScale,
+            y: (currentCenter.y - pinchState.current.initialPosition.y) /
+              pinchState.current.initialScale,
+          };
+
+          const newPosition = {
+            x: currentCenter.x - pointTo.x * newScale,
+            y: currentCenter.y - pointTo.y * newScale,
+          };
+
+          setStageScale(newScale);
+          setStagePos(newPosition);
+        }
+        // If fingers moving together (pan), apply translation
+        else if (centerMovement > 3) {
+          const newPosition = {
+            x: pinchState.current.initialPosition.x + centerDx,
+            y: pinchState.current.initialPosition.y + centerDy,
+          };
+          setStagePos(newPosition);
+
+          // Update initial center for smooth continuous panning
+          pinchState.current.initialCenter = currentCenter;
+          pinchState.current.initialPosition = newPosition;
+        }
+
         return;
       }
 
@@ -741,7 +803,8 @@ export default function DrawingCanvas({
       const touches = (event.evt as TouchEvent).touches;
       if (!touches || touches.length < 2) {
         pinchState.current = null;
-        isDrawing.current = false;
+        // DON'T set isDrawing.current = false here!
+        // Let handlePointerUp handle it properly to ensure stroke commit
       }
 
       handlePointerUp();
@@ -979,7 +1042,11 @@ export default function DrawingCanvas({
       </div>
 
       <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] w-auto max-w-[98vw] -translate-x-1/2 rounded-2xl border border-gray-200 bg-white/95 shadow-xl backdrop-blur">
-        <div className="flex items-center gap-2 px-3 py-2 text-[0.7rem] sm:text-[0.75rem] md:text-sm max-xl:overflow-x-auto max-xl:scrollbar-thin max-xl:scrollbar-thumb-gray-300 max-xl:scrollbar-track-transparent">
+        <div className={`flex items-center gap-2 px-3 py-2 text-[0.7rem] sm:text-[0.75rem] md:text-sm ${
+          isColorMenuOpen || isWidthMenuOpen
+            ? 'overflow-visible'
+            : 'max-xl:overflow-x-auto max-xl:scrollbar-thin max-xl:scrollbar-thumb-gray-300 max-xl:scrollbar-track-transparent'
+        }`}>
         <div className="flex flex-shrink-0 items-center gap-1.5">
           {drawingsUrl && (
             <Link
@@ -1060,6 +1127,7 @@ export default function DrawingCanvas({
         <div className="flex flex-shrink-0 items-center gap-2">
           <div className="relative flex-shrink-0" ref={colorDropdownRef}>
             <button
+              ref={colorButtonRef}
               onClick={() => setIsColorMenuOpen((prev) => !prev)}
               aria-label="Szín választó"
               className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
@@ -1128,6 +1196,7 @@ export default function DrawingCanvas({
 
           <div className="relative flex-shrink-0" ref={widthDropdownRef}>
             <button
+              ref={widthButtonRef}
               onClick={() => setIsWidthMenuOpen((prev) => !prev)}
               className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 isWidthMenuOpen ? 'bg-blue-50 text-blue-700' : ''
