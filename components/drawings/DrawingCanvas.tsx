@@ -9,7 +9,6 @@ import React, {
   useLayoutEffect,
   type ReactElement,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type Konva from 'konva';
@@ -85,8 +84,6 @@ export default function DrawingCanvas({
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
   const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
-  const [colorMenuPosition, setColorMenuPosition] = useState<{ top: number; left: number } | null>(null);
-  const [widthMenuPosition, setWidthMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<Set<string>>(new Set());
   const [lassoPoints, setLassoPoints] = useState<number[]>([]);
   const [lastLassoPolygon, setLastLassoPolygon] = useState<number[]>([]);
@@ -98,8 +95,6 @@ export default function DrawingCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
   const colorDropdownRef = useRef<HTMLDivElement>(null);
-  const colorButtonRef = useRef<HTMLButtonElement>(null);
-  const widthButtonRef = useRef<HTMLButtonElement>(null);
   const isStrokeErasing = useRef(false);
   const isDraggingSelection = useRef(false);
   const dragStartPoint = useRef<{ x: number; y: number } | null>(null);
@@ -240,14 +235,12 @@ export default function DrawingCanvas({
       if (!widthDropdownRef.current) return;
       if (!widthDropdownRef.current.contains(event.target as Node)) {
         setIsWidthMenuOpen(false);
-        setWidthMenuPosition(null);
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsWidthMenuOpen(false);
-        setWidthMenuPosition(null);
       }
     };
 
@@ -269,14 +262,12 @@ export default function DrawingCanvas({
       if (!colorDropdownRef.current) return;
       if (!colorDropdownRef.current.contains(event.target as Node)) {
         setIsColorMenuOpen(false);
-        setColorMenuPosition(null);
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsColorMenuOpen(false);
-        setColorMenuPosition(null);
       }
     };
 
@@ -1127,7 +1118,6 @@ export default function DrawingCanvas({
         <div className="flex flex-shrink-0 items-center gap-2">
           <div className="relative flex-shrink-0" ref={colorDropdownRef}>
             <button
-              ref={colorButtonRef}
               onClick={() => setIsColorMenuOpen((prev) => !prev)}
               aria-label="Szín választó"
               className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
@@ -1196,7 +1186,6 @@ export default function DrawingCanvas({
 
           <div className="relative flex-shrink-0" ref={widthDropdownRef}>
             <button
-              ref={widthButtonRef}
               onClick={() => setIsWidthMenuOpen((prev) => !prev)}
               className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 isWidthMenuOpen ? 'bg-blue-50 text-blue-700' : ''
