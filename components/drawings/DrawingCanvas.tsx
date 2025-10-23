@@ -38,7 +38,7 @@ const WIDTH_PRESETS = [1, 2, 3, 5, 8, 10];
 const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
   { id: 'pen', label: 'Toll', icon: '✏️' },
   { id: 'eraser', label: 'Radír', icon: '🧽' },
-  { id: 'select', label: 'Kijelölés', icon: '👆' },
+  { id: 'select', label: 'Kijelölés', icon: '🪢' },
   { id: 'pan', label: 'Mozgatás', icon: '🖐️' },
 ];
 
@@ -83,8 +83,10 @@ export default function DrawingCanvas({
   const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
   const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<Set<string>>(new Set());
+  const [lassoPoints, setLassoPoints] = useState<number[]>([]);
 
   const isDrawing = useRef(false);
+  const isDrawingLasso = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
@@ -93,6 +95,7 @@ export default function DrawingCanvas({
   const isDraggingSelection = useRef(false);
   const dragStartPoint = useRef<{ x: number; y: number } | null>(null);
   const isPanning = useRef(false);
+  const panStartPos = useRef<{ x: number; y: number; stageX: number; stageY: number } | null>(null);
   const pinchState = useRef<{
     initialDistance: number;
     initialScale: number;
@@ -316,6 +319,43 @@ export default function DrawingCanvas({
     return Math.sqrt(distX * distX + distY * distY);
   }, []);
 
+  const isPointInPolygon = useCallback((point: { x: number; y: number }, polygon: number[]) => {
+    // Ray casting algorithm
+    let inside = false;
+    for (let i = 0, j = polygon.length - 2; i < polygon.length; j = i, i += 2) {
+      const xi = polygon[i];
+      const yi = polygon[i + 1];
+      const xj = polygon[j];
+      const yj = polygon[j + 1];
+
+      const intersect =
+        yi > point.y !== yj > point.y &&
+        point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }, []);
+
+  const findStrokesInLasso = useCallback(
+    (lassoPolygon: number[]) => {
+      const selectedIds = new Set<string>();
+
+      for (const stroke of strokes) {
+        // Check if any point of the stroke is inside the lasso
+        for (let i = 0; i < stroke.points.length; i += 2) {
+          const point = { x: stroke.points[i], y: stroke.points[i + 1] };
+          if (isPointInPolygon(point, lassoPolygon)) {
+            selectedIds.add(stroke.id);
+            break; // Found one point inside, no need to check more
+          }
+        }
+      }
+
+      return selectedIds;
+    },
+    [isPointInPolygon, strokes]
+  );
+
   const findStrokeAtPoint = useCallback(
     (point: { x: number; y: number }) => {
       for (let index = strokes.length - 1; index >= 0; index--) {
@@ -377,47 +417,53 @@ export default function DrawingCanvas({
 
   const handlePointerDown = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
+      const stage = e.target.getStage();
+      if (!stage) return;
+
+      const evt = e.evt as MouseEvent;
+
       // Middle mouse button for panning
-      if ((e.evt as MouseEvent).button === 1) {
+      if (evt.button === 1) {
         e.evt.preventDefault();
         isPanning.current = true;
+        panStartPos.current = {
+          x: evt.clientX,
+          y: evt.clientY,
+          stageX: stagePos.x,
+          stageY: stagePos.y,
+        };
         return;
       }
 
       if (tool === 'pan') return;
 
       e.evt.preventDefault();
-      const stage = e.target.getStage();
-      if (!stage) return;
 
       const canvasPos = getCanvasPoint(stage);
 
       // Click outside canvas - enable panning
       if (!canvasPos || !isPointInsideCanvas(canvasPos, canvasWidth, canvasHeight)) {
         isPanning.current = true;
+        panStartPos.current = {
+          x: evt.clientX,
+          y: evt.clientY,
+          stageX: stagePos.x,
+          stageY: stagePos.y,
+        };
         return;
       }
 
-      // Select tool
+      // Select tool - lasso mode
       if (tool === 'select') {
+        // Check if clicking on selected stroke to drag
         const strokeId = findStrokeAtPoint(canvasPos);
-
-        if (strokeId) {
-          // If clicking on selected stroke, start dragging
-          if (selectedStrokeIds.has(strokeId)) {
-            isDraggingSelection.current = true;
-            dragStartPoint.current = canvasPos;
-          } else {
-            // If shift key, add to selection, otherwise replace
-            if (e.evt.shiftKey) {
-              setSelectedStrokeIds(prev => new Set([...prev, strokeId]));
-            } else {
-              setSelectedStrokeIds(new Set([strokeId]));
-            }
-          }
+        if (strokeId && selectedStrokeIds.has(strokeId)) {
+          isDraggingSelection.current = true;
+          dragStartPoint.current = canvasPos;
         } else {
-          // Clicked empty space - clear selection
-          setSelectedStrokeIds(new Set());
+          // Start drawing lasso
+          isDrawingLasso.current = true;
+          setLassoPoints([canvasPos.x, canvasPos.y]);
         }
         return;
       }
@@ -443,7 +489,7 @@ export default function DrawingCanvas({
 
       beginStroke(newStroke);
     },
-    [beginStroke, canvasHeight, canvasWidth, color, eraseStrokeAtPoint, eraserMode, findStrokeAtPoint, getCanvasPoint, selectedStrokeIds, tool, width]
+    [beginStroke, canvasHeight, canvasWidth, color, eraseStrokeAtPoint, eraserMode, findStrokeAtPoint, getCanvasPoint, selectedStrokeIds, stagePos.x, stagePos.y, tool, width]
   );
 
   const handlePointerMove = useCallback(
@@ -452,13 +498,25 @@ export default function DrawingCanvas({
       if (!stage) return;
 
       // Handle panning (middle mouse or outside canvas)
-      if (isPanning.current) {
+      if (isPanning.current && panStartPos.current) {
         e.evt.preventDefault();
         const evt = e.evt as MouseEvent;
-        setStagePos((prev) => ({
-          x: prev.x + evt.movementX,
-          y: prev.y + evt.movementY,
-        }));
+        const dx = evt.clientX - panStartPos.current.x;
+        const dy = evt.clientY - panStartPos.current.y;
+        setStagePos({
+          x: panStartPos.current.stageX + dx,
+          y: panStartPos.current.stageY + dy,
+        });
+        return;
+      }
+
+      // Handle lasso drawing
+      if (tool === 'select' && isDrawingLasso.current) {
+        e.evt.preventDefault();
+        const canvasPos = getCanvasPoint(stage);
+        if (!canvasPos) return;
+
+        setLassoPoints((prev) => [...prev, canvasPos.x, canvasPos.y]);
         return;
       }
 
@@ -524,8 +582,23 @@ export default function DrawingCanvas({
 
   const handlePointerUp = useCallback(() => {
     isPanning.current = false;
+    panStartPos.current = null;
     isDraggingSelection.current = false;
     dragStartPoint.current = null;
+
+    // Handle lasso selection completion
+    if (isDrawingLasso.current && lassoPoints.length > 4) {
+      const selectedIds = findStrokesInLasso(lassoPoints);
+      setSelectedStrokeIds(selectedIds);
+      setLassoPoints([]);
+      isDrawingLasso.current = false;
+      return;
+    }
+
+    if (isDrawingLasso.current) {
+      isDrawingLasso.current = false;
+      setLassoPoints([]);
+    }
 
     if (tool === 'eraser' && eraserMode === 'stroke') {
       isStrokeErasing.current = false;
@@ -534,7 +607,7 @@ export default function DrawingCanvas({
     if (!isDrawing.current) return;
     isDrawing.current = false;
     commitStroke();
-  }, [commitStroke, eraserMode, tool]);
+  }, [commitStroke, eraserMode, findStrokesInLasso, lassoPoints, tool]);
 
   const handleStageWheel = useCallback(
     (event: KonvaEventObject<WheelEvent>) => {
@@ -820,6 +893,20 @@ export default function DrawingCanvas({
                   lineJoin="round"
                   tension={0.35}
                   globalCompositeOperation={currentStroke.compositeOperation ?? 'source-over'}
+                />
+              )}
+              {/* Lasso selection line */}
+              {lassoPoints.length > 0 && (
+                <Line
+                  points={lassoPoints}
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  dash={[10, 5]}
+                  lineCap="round"
+                  lineJoin="round"
+                  opacity={0.8}
+                  listening={false}
+                  closed={false}
                 />
               )}
             </Layer>
