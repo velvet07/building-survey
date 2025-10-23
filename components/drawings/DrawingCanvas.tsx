@@ -72,8 +72,8 @@ export default function DrawingCanvas({
   const currentStrokeRef = useRef<Stroke | null>(null);
 
   const [tool, setTool] = useState<DrawingTool>('pen');
-  const [color, setColor] = useState('#000000');
-  const [width, setWidth] = useState(2);
+  const [color, setColor] = useState('#3B82F6'); // Default blue
+  const [width, setWidth] = useState(4); // Default 4px
   const [eraserMode, setEraserMode] = useState<EraserMode>('stroke');
 
   const [paperSize, setPaperSize] = useState<PaperSize>(drawing.paper_size);
@@ -109,6 +109,8 @@ export default function DrawingCanvas({
   } | null>(null);
   const hasMountedRef = useRef(false);
   const onCanvasChangeRef = useRef(onCanvasChange);
+  const renderFrameId = useRef<number | null>(null);
+  const pendingStrokeUpdate = useRef(false);
 
   const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
 
@@ -289,6 +291,15 @@ export default function DrawingCanvas({
     }
   }, [tool]);
 
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (renderFrameId.current !== null) {
+        cancelAnimationFrame(renderFrameId.current);
+      }
+    };
+  }, []);
+
   const getCanvasPoint = useCallback(
     (stage: Konva.Stage, options: { requireInside?: boolean } = {}) => {
       const pointer = stage.getPointerPosition();
@@ -316,9 +327,35 @@ export default function DrawingCanvas({
   const beginStroke = useCallback((stroke: Stroke) => {
     currentStrokeRef.current = stroke;
     setCurrentStroke(stroke);
+    pendingStrokeUpdate.current = false;
+  }, []);
+
+  // Throttled update for smooth rendering during drawing
+  const scheduleStrokeUpdate = useCallback(() => {
+    if (pendingStrokeUpdate.current) return;
+
+    pendingStrokeUpdate.current = true;
+    if (renderFrameId.current !== null) {
+      cancelAnimationFrame(renderFrameId.current);
+    }
+
+    renderFrameId.current = requestAnimationFrame(() => {
+      if (currentStrokeRef.current) {
+        setCurrentStroke({ ...currentStrokeRef.current });
+      }
+      pendingStrokeUpdate.current = false;
+      renderFrameId.current = null;
+    });
   }, []);
 
   const commitStroke = useCallback(() => {
+    // Cancel any pending render frame
+    if (renderFrameId.current !== null) {
+      cancelAnimationFrame(renderFrameId.current);
+      renderFrameId.current = null;
+    }
+    pendingStrokeUpdate.current = false;
+
     const stroke = currentStrokeRef.current;
     if (stroke && stroke.points.length >= 4) {
       setHistory((prev) => [...prev, strokes]);
@@ -619,9 +656,10 @@ export default function DrawingCanvas({
       };
 
       currentStrokeRef.current = updatedStroke;
-      setCurrentStroke(updatedStroke);
+      // Use throttled update instead of direct setState to avoid micro-freezes
+      scheduleStrokeUpdate();
     },
-    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, getEventClientPosition, isPointInPolygon, lastLassoPolygon, selectedStrokeIds, strokes, tool]
+    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, getEventClientPosition, isPointInPolygon, lastLassoPolygon, scheduleStrokeUpdate, selectedStrokeIds, strokes, tool]
   );
 
   const handlePointerUp = useCallback(() => {
