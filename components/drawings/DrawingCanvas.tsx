@@ -719,8 +719,8 @@ export default function DrawingCanvas({
         </div>
       </div>
 
-      <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] w-[min(95vw,1180px)] max-w-5xl -translate-x-1/2 rounded-2xl border border-gray-200 bg-white/95 shadow-xl backdrop-blur">
-        <div className="flex items-center gap-2 overflow-x-auto px-3 py-2 text-[0.7rem] sm:text-[0.75rem] md:text-sm scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+      <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] w-auto max-w-[98vw] -translate-x-1/2 rounded-2xl border border-gray-200 bg-white/95 shadow-xl backdrop-blur">
+        <div className="flex items-center gap-2 px-3 py-2 text-[0.7rem] sm:text-[0.75rem] md:text-sm max-xl:overflow-x-auto max-xl:scrollbar-thin max-xl:scrollbar-thumb-gray-300 max-xl:scrollbar-track-transparent">
         <div className="flex flex-shrink-0 items-center gap-1.5">
           {drawingsUrl && (
             <Link
@@ -994,24 +994,24 @@ export default function DrawingCanvas({
         </div>
       </div>
       <style jsx global>{`
-        .toolbar-container .scrollbar-thin::-webkit-scrollbar {
-          height: 6px;
-        }
-
-        .toolbar-container .scrollbar-thin::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .toolbar-container .scrollbar-thin::-webkit-scrollbar-thumb {
-          background: #d1d5db;
-          border-radius: 3px;
-        }
-
-        .toolbar-container .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-          background: #9ca3af;
-        }
-
         @media (max-width: 1280px) {
+          .toolbar-container .scrollbar-thin::-webkit-scrollbar {
+            height: 6px;
+          }
+
+          .toolbar-container .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+          }
+
+          .toolbar-container .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+          }
+
+          .toolbar-container .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+          }
+
           .toolbar-button {
             min-width: 44px;
             min-height: 44px;
