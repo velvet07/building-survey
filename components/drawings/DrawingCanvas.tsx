@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useCallback,
   useLayoutEffect,
+  useTransition,
   type ReactElement,
 } from 'react';
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
@@ -70,6 +71,7 @@ export default function DrawingCanvas({
   const [history, setHistory] = useState<Stroke[][]>([]);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const currentStrokeRef = useRef<Stroke | null>(null);
+  const [, startTransition] = useTransition();
 
   const [tool, setTool] = useState<DrawingTool>('pen');
   const [color, setColor] = useState('#3B82F6'); // Default blue
@@ -111,6 +113,7 @@ export default function DrawingCanvas({
   const onCanvasChangeRef = useRef(onCanvasChange);
   const renderFrameId = useRef<number | null>(null);
   const pendingStrokeUpdate = useRef(false);
+  const historySaveTimeoutId = useRef<NodeJS.Timeout | null>(null);
 
   const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
 
@@ -297,6 +300,9 @@ export default function DrawingCanvas({
       if (renderFrameId.current !== null) {
         cancelAnimationFrame(renderFrameId.current);
       }
+      if (historySaveTimeoutId.current !== null) {
+        clearTimeout(historySaveTimeoutId.current);
+      }
     };
   }, []);
 
@@ -357,13 +363,41 @@ export default function DrawingCanvas({
     pendingStrokeUpdate.current = false;
 
     const stroke = currentStrokeRef.current;
-    if (stroke && stroke.points.length >= 4) {
-      setHistory((prev) => [...prev, strokes]);
-      setStrokes((prev) => [...prev, stroke]);
+    if (!stroke || stroke.points.length < 4) {
+      currentStrokeRef.current = null;
+      setCurrentStroke(null);
+      return;
     }
+
+    // Immediately add stroke to array for instant visual feedback
+    setStrokes((prevStrokes) => {
+      const newStrokes = [...prevStrokes, stroke];
+
+      // Defer history save to avoid blocking the UI
+      // This allows rapid consecutive strokes without freezing
+      if (historySaveTimeoutId.current !== null) {
+        clearTimeout(historySaveTimeoutId.current);
+      }
+
+      historySaveTimeoutId.current = setTimeout(() => {
+        startTransition(() => {
+          setHistory((prevHistory) => {
+            // Use the previous strokes as history checkpoint
+            if (prevHistory.length === 0 || prevHistory[prevHistory.length - 1].length !== prevStrokes.length) {
+              return [...prevHistory, prevStrokes];
+            }
+            return prevHistory;
+          });
+        });
+        historySaveTimeoutId.current = null;
+      }, 300); // 300ms delay for history - batches rapid strokes
+
+      return newStrokes;
+    });
+
     currentStrokeRef.current = null;
     setCurrentStroke(null);
-  }, [strokes]);
+  }, [startTransition]);
 
   const distanceToSegment = useCallback((
     point: { x: number; y: number },
