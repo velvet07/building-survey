@@ -31,7 +31,6 @@ import {
   clampPointToCanvas,
   isPointInsideCanvas,
 } from '@/lib/drawings/canvas-utils';
-import ColorPicker from './ColorPicker';
 import StrokeWidthSlider from './StrokeWidthSlider';
 import { CompactPaperSizeSelector } from './PaperSizeSelector';
 
@@ -81,11 +80,13 @@ export default function DrawingCanvas({
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
+  const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
 
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const widthDropdownRef = useRef<HTMLDivElement>(null);
+  const colorDropdownRef = useRef<HTMLDivElement>(null);
   const isStrokeErasing = useRef(false);
   const pinchState = useRef<{
     initialDistance: number;
@@ -222,6 +223,31 @@ export default function DrawingCanvas({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isWidthMenuOpen]);
+
+  useEffect(() => {
+    if (!isColorMenuOpen || typeof document === 'undefined') return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!colorDropdownRef.current) return;
+      if (!colorDropdownRef.current.contains(event.target as Node)) {
+        setIsColorMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsColorMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isColorMenuOpen]);
 
   const getCanvasPoint = useCallback(
     (stage: Konva.Stage, options: { requireInside?: boolean } = {}) => {
@@ -693,7 +719,8 @@ export default function DrawingCanvas({
         </div>
       </div>
 
-      <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] flex w-[min(95vw,1180px)] max-w-5xl -translate-x-1/2 flex-nowrap items-center gap-2 whitespace-nowrap rounded-2xl border border-gray-200 bg-white/95 px-3 py-2 text-[0.7rem] shadow-xl backdrop-blur sm:text-[0.75rem] md:text-sm">
+      <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] w-[min(95vw,1180px)] max-w-5xl -translate-x-1/2 rounded-2xl border border-gray-200 bg-white/95 shadow-xl backdrop-blur">
+        <div className="flex items-center gap-2 overflow-x-auto px-3 py-2 text-[0.7rem] sm:text-[0.75rem] md:text-sm scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
         <div className="flex flex-shrink-0 items-center gap-1.5">
           {drawingsUrl && (
             <Link
@@ -772,11 +799,73 @@ export default function DrawingCanvas({
         )}
 
         <div className="flex flex-shrink-0 items-center gap-2">
-          <ColorPicker
-            selectedColor={color}
-            onChange={setColor}
-            className="min-w-[7.5rem] flex-shrink-0"
-          />
+          <div className="relative flex-shrink-0" ref={colorDropdownRef}>
+            <button
+              onClick={() => setIsColorMenuOpen((prev) => !prev)}
+              aria-label="Szín választó"
+              className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                isColorMenuOpen ? 'bg-blue-50 text-blue-700' : ''
+              }`}
+            >
+              <div
+                className="h-6 w-6 flex-shrink-0 rounded-full border-2 border-gray-300"
+                style={{ backgroundColor: color }}
+              />
+              <span className="hidden lg:inline text-[0.7rem] font-semibold">Szín</span>
+            </button>
+
+            {isColorMenuOpen && (
+              <div className="absolute right-0 top-full z-[99999] mt-2 w-72 rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                  Szín választó
+                </h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { name: 'Fekete', hex: '#000000' },
+                    { name: 'Piros', hex: '#EF4444' },
+                    { name: 'Kék', hex: '#3B82F6' },
+                    { name: 'Zöld', hex: '#10B981' },
+                    { name: 'Sárga', hex: '#F59E0B' },
+                    { name: 'Szürke', hex: '#6B7280' },
+                    { name: 'Barna', hex: '#92400E' },
+                    { name: 'Lila', hex: '#8B5CF6' },
+                  ].map((colorOption) => (
+                    <button
+                      key={colorOption.hex}
+                      onClick={() => {
+                        setColor(colorOption.hex);
+                        setIsColorMenuOpen(false);
+                      }}
+                      className={`toolbar-button group relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                        color === colorOption.hex
+                          ? 'ring-2 ring-blue-500 ring-offset-2'
+                          : ''
+                      }`}
+                      style={{ backgroundColor: colorOption.hex }}
+                      title={colorOption.name}
+                      aria-label={colorOption.name}
+                    >
+                      {color === colorOption.hex && (
+                        <svg
+                          className="h-6 w-6 text-white drop-shadow-lg"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="relative flex-shrink-0" ref={widthDropdownRef}>
             <button
@@ -902,13 +991,27 @@ export default function DrawingCanvas({
             </span>
           </div>
         </div>
+        </div>
       </div>
       <style jsx global>{`
-        @media (max-width: 1280px) {
-          .toolbar-container {
-            gap: 0.5rem;
-          }
+        .toolbar-container .scrollbar-thin::-webkit-scrollbar {
+          height: 6px;
+        }
 
+        .toolbar-container .scrollbar-thin::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .toolbar-container .scrollbar-thin::-webkit-scrollbar-thumb {
+          background: #d1d5db;
+          border-radius: 3px;
+        }
+
+        .toolbar-container .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
+
+        @media (max-width: 1280px) {
           .toolbar-button {
             min-width: 44px;
             min-height: 44px;
@@ -916,9 +1019,8 @@ export default function DrawingCanvas({
         }
 
         @media (max-width: 768px) {
-          .toolbar-container {
-            gap: 0.35rem;
-            padding: 0.5rem 0.75rem;
+          .toolbar-container > div {
+            gap: 0.5rem;
           }
         }
       `}</style>
