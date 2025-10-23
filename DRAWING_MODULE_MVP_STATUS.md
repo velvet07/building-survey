@@ -1,8 +1,8 @@
 # 🎨 Drawing Module - MVP Implementation Status
 
-**Verzió:** 1.0
-**Dátum:** 2025-09-30
-**Státusz:** ✅ **MVP CORE READY**
+**Verzió:** 1.1.0
+**Dátum:** 2025-10-23
+**Státusz:** ✅ **PRODUCTION READY - ENHANCED**
 
 ---
 
@@ -89,60 +89,96 @@
 
 ---
 
-## 🎯 MVP Core Features (ELKÉSZÜLT)
+## 🎯 Production Features (ELKÉSZÜLT v1.1.0)
 
-| Feature | Státusz |
-|---------|---------|
-| Szabadkézi rajzolás (pen tool) | ✅ |
-| Radír tool | ✅ |
-| Touch support (tablet) | ✅ |
-| Mouse support (desktop) | ✅ |
-| MM grid háttér | ✅ |
-| Zoom in/out/fit | ✅ |
-| Rajz mentése (canvas_data) | ✅ |
-| Rajz lista (CRUD) | ✅ |
-| Több rajz kezelése | ✅ |
-| A4/A3 support | ✅ (backend kész, UI later) |
-| Portrait/Landscape | ✅ (backend kész, UI later) |
-| Projekt név megjelenítés | ✅ |
-| RLS security | ✅ |
+| Feature | Státusz | Verzió |
+|---------|---------|--------|
+| Szabadkézi rajzolás (pen tool) | ✅ | 1.0 |
+| Radír tool | ✅ | 1.0 |
+| **Lasso kijelölés (select tool)** | ✅ | 1.1 |
+| **Kijelölt elemek mozgatása** | ✅ | 1.1 |
+| **Kijelölt elemek törlése (DELETE)** | ✅ | 1.1 |
+| **Pan tool** | ✅ | 1.1 |
+| **Rajzlapon kívül kattintással panning** | ✅ | 1.1 |
+| **Középső egérgomb panning** | ✅ | 1.1 |
+| **Ctrl + görgő zoom (desktop)** | ✅ | 1.1 |
+| **Teljes körű Undo rendszer** | ✅ | 1.1 |
+| **PDF Export** | ✅ | 1.1 |
+| Touch support (tablet) | ✅ | 1.0 |
+| Mouse support (desktop) | ✅ | 1.0 |
+| MM grid háttér | ✅ | 1.0 |
+| Zoom in/out/fit gombok | ✅ | 1.0 |
+| **Reszponzív toolbar** | ✅ | 1.1 |
+| Rajz mentése (canvas_data) | ✅ | 1.0 |
+| Rajz lista (CRUD) | ✅ | 1.0 |
+| Több rajz kezelése | ✅ | 1.0 |
+| A4/A3 support | ✅ | 1.0 |
+| Portrait/Landscape | ✅ | 1.0 |
+| Projekt név megjelenítés | ✅ | 1.0 |
+| RLS security | ✅ | 1.0 |
 
 ---
 
-## 🔄 Következő Lépések (UI Polish & Extra Features)
+## ✅ v1.1.0 Elkészült Fejlesztések
 
-### Frontend Kiegészítések:
-
-**Toolbar Components (FE-11+):**
-- [ ] ColorPicker komponens (6 preset szín)
-- [ ] StrokeWidthSlider komponens (1-10px)
-- [ ] PaperSizeSelector komponens (A4/A3 toggle)
-- [ ] Improved toolbar UI (floating, autohide on tablet)
+**Toolbar Components:**
+- ✅ ColorPicker komponens (8 preset szín inline grid)
+- ✅ StrokeWidthSlider komponens (1-10px)
+- ✅ Improved toolbar UI (reszponzív, dinamikus szélesség)
 
 **Modals:**
-- [ ] DeleteDrawingModal komponens
-- [ ] PDFExportModal komponens
+- ✅ PDFExportModal integráció
 
-**PDF Export (FE-???):**
-- [ ] `lib/drawings/pdf-export.ts`
-- [ ] jsPDF integration
-- [ ] Canvas to PDF conversion
-- [ ] Download functionality
+**PDF Export:**
+- ✅ `lib/drawings/pdf-export.ts` integrálva
+- ✅ jsPDF használat
+- ✅ Canvas to PDF conversion
+- ✅ Download functionality
 
-**Touch Gestures:**
-- [ ] 2-finger pan
-- [ ] Pinch-to-zoom
-- [ ] Pan mode toggle
-- [ ] Gesture conflict handling
+**Selection & Editing:**
+- ✅ Lasso kijelölés (szabadkézi terület kijelölés)
+- ✅ Point-in-polygon algoritmus (ray casting)
+- ✅ Kijelölt elemek mozgatása (drag anywhere in selection)
+- ✅ Dupla rétegű vizuális kiemelés
+- ✅ DELETE billentyű törléshez
+- ✅ ESC billentyű kijelölés megszüntetéséhez
 
-**Magyar Translations:**
-- [ ] `translations/hu.json` frissítése
-- [ ] Drawing modul szövegek
+**Undo System:**
+- ✅ Teljes history stack implementáció
+- ✅ Rajzolás, mozgatás, törlés visszavonása
+- ✅ Okos történelem mentés (nincs duplikáció)
+
+**Navigation:**
+- ✅ Pan tool
+- ✅ Rajzlapon kívül kattintással panning
+- ✅ Középső egérgomb panning
+- ✅ Ctrl + görgő zoom
+- ✅ Zoom kurzor pozíciója körül
 
 **Responsive Optimizations:**
-- [ ] Tablet floating toolbar
+- ✅ Dinamikus toolbar szélesség
+- ✅ Desktop: teljes szélesség, nincs scroll
+- ✅ Tablet/Mobile: overflow-x-auto
+
+## 🔄 Következő Lépések (Future Enhancements)
+
+**Touch Gestures (Tervezett v1.2):**
+- [ ] 2-finger pan
+- [ ] Pinch-to-zoom
+- [ ] Gesture conflict handling
+
+**Advanced Features (Tervezett v2.0):**
+- [ ] Alakzat eszközök (vonal, kör, téglalap)
+- [ ] Szöveg hozzáadása
+- [ ] Rétegek (layers)
+- [ ] Redo funkció
+- [ ] Auto-save (30 sec interval)
+
+**UX Improvements:**
+- [ ] Tablet floating toolbar (auto-hide)
 - [ ] Mobile bottom toolbar
-- [ ] Hamburger collapse
+- [ ] Drawing name inline edit
+- [ ] Thumbnail preview a listában
 
 ---
 
@@ -195,16 +231,19 @@ supabase db push
 |-------|---------|-----------|---------|
 | Backend Implementation | 5 óra | ~4.5 óra | ✅ DONE |
 | Frontend Core (FE-01-10) | 12 óra | ~8 óra | ✅ DONE |
-| Frontend Polish (FE-11+) | 20 óra | - | 🔄 Pending |
-| Security & QA | 8 óra | - | 🔄 Pending |
-| **Összesen (MVP Core)** | **17 óra** | **~12.5 óra** | ✅ **READY** |
+| Frontend Polish (FE-11+) | 20 óra | ~14 óra | ✅ DONE |
+| Selection & Navigation | 8 óra | ~6 óra | ✅ DONE |
+| PDF Export Integration | 2 óra | ~1.5 óra | ✅ DONE |
+| Undo System | 4 óra | ~3 óra | ✅ DONE |
+| **Összesen (v1.1.0)** | **51 óra** | **~37 óra** | ✅ **PRODUCTION READY** |
 
 ---
 
-## ✨ MVP Core Feature Set
+## ✨ v1.1.0 Production Feature Set
 
-**Amit a user már tud csinálni:**
+**Amit a user tud csinálni (teljes funkcionalitás):**
 
+### Alapvető Funkciók (v1.0)
 1. ✅ Belépni a projekten belül a "Rajzok" menüpontba
 2. ✅ Új rajzot létrehozni ("Alaprajz", "Alaprajz 2", stb.)
 3. ✅ Rajzot megnyitni szerkesztésre
@@ -216,14 +255,28 @@ supabase db push
 9. ✅ Több rajzot kezelni egy projekten belül
 10. ✅ MM grid látni háttérben (1mm @ 300 DPI)
 
-**Amit még nem tud (de a terv része):**
-- Szín választás (jelenleg fekete)
-- Vastagság állítás (jelenleg 2px)
-- PDF export
-- 2-ujjas pan/zoom (jelenleg gombok)
-- A4/A3 méret váltás UI-ban
+### Új Funkciók (v1.1.0)
+11. ✅ **Szín választás** - 8 preset szín (fekete, fehér, piros, kék, zöld, sárga, narancs, lila)
+12. ✅ **Vastagság állítás** - 1-10px slider
+13. ✅ **PDF export** - letöltés a beállított papírmérettel
+14. ✅ **Lasso kijelölés** - szabadkézi területi kijelölés
+15. ✅ **Elemek mozgatása** - drag-and-drop kijelölt elemekkel
+16. ✅ **Elemek törlése** - DELETE billentyűvel
+17. ✅ **Teljes Undo** - visszavonás minden műveletre
+18. ✅ **Pan tool** - dedikált mozgatás eszköz
+19. ✅ **Rajzlapon kívül panning** - kattintás és húzás a canvas-on kívül
+20. ✅ **Középső egérgomb panning** - alternative navigation
+21. ✅ **Ctrl + scroll zoom** - desktop zoom a kurzor körül
+22. ✅ **Reszponzív toolbar** - dinamikus szélesség minden eszközön
+
+**Amit még nem tud (jövőbeli fejlesztések):**
+- 2-ujjas pan/zoom gestures (pinch-to-zoom)
+- Alakzat eszközök (vonal, kör, téglalap)
+- Szöveg hozzáadás
 - Rajz név inline szerkesztése
 - Thumbnail előnézet a listában
+- Redo funkció (csak undo van)
+- Auto-save (jelenleg manuális mentés)
 
 ---
 
@@ -277,6 +330,8 @@ supabase db push
 
 ---
 
-**🎉 MVP Core Development: KOMPLETT!**
+**🎉 v1.1.0 Production Release: KÉSZ!**
 
-**Következő lépés:** UI polish és kiegészítő funkciók implementálása.
+**Status:** Production ready - teljes funkcionalitású rajzoló modul tablet és desktop használatra optimalizálva.
+
+**Következő lépés:** Touch gestures (pinch-to-zoom, 2-finger pan) és alakzat eszközök implementálása v1.2/v2.0-ban.

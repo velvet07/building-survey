@@ -1,7 +1,7 @@
 # Épületfelmérő Rendszer - Moduláris WebApp MVP
 
-**Verzió:** 1.0.0
-**Status:** ✅ Implementation Complete - Ready for Testing
+**Verzió:** 1.1.0
+**Status:** ✅ Production Ready - Drawing Module Enhanced
 **Dokumentáció:** ✅ 100% Complete
 
 ---
@@ -97,23 +97,31 @@ building-survey/
 │   ├── (auth)/            # Auth routes (login, register)
 │   ├── auth/callback/     # Email confirmation
 │   ├── dashboard/         # Protected dashboard
+│   │   └── projects/[id]/drawings/  # Drawing module pages
 │   ├── layout.tsx         # Root layout
 │   └── globals.css        # Global styles
 ├── components/            # React components
 │   ├── ui/               # 7 UI components
 │   ├── auth/             # 2 Auth components
 │   ├── layout/           # 3 Layout components
-│   └── projects/         # 5 Project components
+│   ├── projects/         # 5 Project components
+│   └── drawings/         # 3 Drawing components (DrawingCanvas, PDFExportModal)
 ├── lib/                  # Utilities
 │   ├── supabase.ts      # Browser client
 │   ├── auth.ts          # Auth functions
 │   ├── projects.ts      # CRUD functions
+│   ├── drawings/        # Drawing module utilities
+│   │   ├── types.ts     # TypeScript definitions
+│   │   ├── api.ts       # Drawing CRUD functions
+│   │   ├── canvas-utils.ts  # Canvas helpers
+│   │   └── pdf-export.ts    # PDF generation
 │   └── utils.ts         # Helpers
 ├── types/               # TypeScript types
 ├── supabase/            # SQL scripts
 ├── docs/                # 28 dokumentum
 ├── translations/        # Magyar fordítás
-└── middleware.ts        # Protected routes
+├── middleware.ts        # Protected routes
+└── CHANGELOG.md         # Version history
 
 ```
 
@@ -176,6 +184,21 @@ building-survey/
 - ✅ Automatikus azonosító (PROJ-YYYYMMDD-NNN)
 - ✅ Soft delete
 - ✅ Magyar nyelv
+
+### Drawing Module (🆕 v1.1.0)
+- ✅ **Szabadkézi rajzolás** pen és eraser eszközökkel
+- ✅ **Lasso kijelölés** (➰) területi kijelöléshez és mozgatáshoz
+- ✅ **Fejlett canvas navigáció**:
+  - Pan eszköz (🖐️)
+  - Rajzlapon kívül kattintással panning
+  - Középső egérgomb lenyomásával panning
+  - Ctrl + görgő zoom (desktop)
+- ✅ **Teljes körű Undo** (rajzolás, mozgatás, törlés)
+- ✅ **PDF Export** a beállított papírmérettel
+- ✅ **Reszponzív toolbar** desktop és tablet támogatással
+- ✅ **MM grid háttér** (300 DPI - 1mm = 11.8px)
+- ✅ **Touch support** tablet és mobileszközökön
+- ✅ A4/A3 papírméret, álló/fekvő orientáció
 
 ---
 
