@@ -12,6 +12,7 @@ import React, {
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type Konva from 'konva';
+import KonvaLib from 'konva';
 import type {
   Drawing,
   CanvasData,
@@ -38,7 +39,7 @@ const WIDTH_PRESETS = [1, 2, 3, 5, 8, 10];
 const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
   { id: 'pen', label: 'Toll', icon: '✏️' },
   { id: 'eraser', label: 'Radír', icon: '🧽' },
-  { id: 'select', label: 'Kijelölés', icon: '⭕' },
+  { id: 'select', label: 'Kijelölés', icon: '➰' },
   { id: 'pan', label: 'Mozgatás', icon: '🖐️' },
 ];
 
@@ -84,6 +85,7 @@ export default function DrawingCanvas({
   const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<Set<string>>(new Set());
   const [lassoPoints, setLassoPoints] = useState<number[]>([]);
+  const [lastLassoPolygon, setLastLassoPolygon] = useState<number[]>([]);
 
   const isDrawing = useRef(false);
   const isDrawingLasso = useRef(false);
@@ -435,14 +437,12 @@ export default function DrawingCanvas({
         return;
       }
 
-      if (tool === 'pan') return;
-
       e.evt.preventDefault();
 
       const canvasPos = getCanvasPoint(stage);
 
-      // Click outside canvas - enable panning
-      if (!canvasPos || !isPointInsideCanvas(canvasPos, canvasWidth, canvasHeight)) {
+      // Pan tool OR click outside canvas - enable panning
+      if (tool === 'pan' || !canvasPos || !isPointInsideCanvas(canvasPos, canvasWidth, canvasHeight)) {
         isPanning.current = true;
         panStartPos.current = {
           x: evt.clientX,
@@ -455,16 +455,18 @@ export default function DrawingCanvas({
 
       // Select tool - lasso mode
       if (tool === 'select') {
-        // Check if clicking on selected stroke to drag
-        const strokeId = findStrokeAtPoint(canvasPos);
-        if (strokeId && selectedStrokeIds.has(strokeId)) {
-          isDraggingSelection.current = true;
-          dragStartPoint.current = canvasPos;
-        } else {
-          // Start drawing lasso
-          isDrawingLasso.current = true;
-          setLassoPoints([canvasPos.x, canvasPos.y]);
+        // Check if clicking inside the last lasso area to drag selection
+        if (selectedStrokeIds.size > 0 && lastLassoPolygon.length > 0) {
+          if (isPointInPolygon(canvasPos, lastLassoPolygon)) {
+            isDraggingSelection.current = true;
+            dragStartPoint.current = canvasPos;
+            return;
+          }
         }
+
+        // Start drawing new lasso
+        isDrawingLasso.current = true;
+        setLassoPoints([canvasPos.x, canvasPos.y]);
         return;
       }
 
@@ -590,6 +592,7 @@ export default function DrawingCanvas({
     if (isDrawingLasso.current && lassoPoints.length > 4) {
       const selectedIds = findStrokesInLasso(lassoPoints);
       setSelectedStrokeIds(selectedIds);
+      setLastLassoPolygon(lassoPoints); // Store lasso area for dragging
       setLassoPoints([]);
       isDrawingLasso.current = false;
       return;
@@ -723,6 +726,58 @@ export default function DrawingCanvas({
     },
     [handlePointerUp]
   );
+
+  const handleExportPDF = useCallback(() => {
+    if (!stageRef.current) return;
+
+    const stage = stageRef.current;
+
+    // Get only the canvas layer (not the entire stage)
+    const layers = stage.getLayers();
+    const canvasLayer = layers.find((layer, idx) => idx === 2); // The drawing layer
+
+    if (!canvasLayer) return;
+
+    // Create a temporary stage with just the canvas content
+    const tempStage = new KonvaLib.Stage({
+      container: document.createElement('div'),
+      width: canvasWidth,
+      height: canvasHeight,
+    });
+
+    // Clone all layers
+    const bgLayer = new KonvaLib.Layer();
+    const bgRect = new KonvaLib.Rect({
+      x: 0,
+      y: 0,
+      width: canvasWidth,
+      height: canvasHeight,
+      fill: '#f8fff4',
+    });
+    bgLayer.add(bgRect);
+    tempStage.add(bgLayer);
+
+    // Clone the drawing layer
+    const clonedLayer = canvasLayer.clone();
+    tempStage.add(clonedLayer);
+
+    // Export as data URL
+    const dataURL = tempStage.toDataURL({
+      pixelRatio: 3, // High quality
+      mimeType: 'image/png',
+    });
+
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `${drawing.name || 'rajz'}.png`;
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Cleanup
+    tempStage.destroy();
+  }, [canvasWidth, canvasHeight, drawing.name]);
 
   const handleUndo = useCallback(() => {
     if (strokes.length === 0) return;
@@ -1189,6 +1244,14 @@ export default function DrawingCanvas({
         </div>
 
         <div className="flex flex-shrink-0 items-center gap-1.5">
+          <button
+            onClick={handleExportPDF}
+            aria-label="Exportálás PNG-ként"
+            className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 active:bg-emerald-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            <span aria-hidden className="text-base">📥</span>
+            <span className="hidden xl:inline whitespace-nowrap">Export</span>
+          </button>
           <button
             onClick={handleUndo}
             disabled={strokes.length === 0}
