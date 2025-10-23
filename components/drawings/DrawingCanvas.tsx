@@ -12,7 +12,6 @@ import React, {
 import { Stage, Layer, Line, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type Konva from 'konva';
-import KonvaLib from 'konva';
 import type {
   Drawing,
   CanvasData,
@@ -34,6 +33,7 @@ import {
 } from '@/lib/drawings/canvas-utils';
 import StrokeWidthSlider from './StrokeWidthSlider';
 import { CompactPaperSizeSelector } from './PaperSizeSelector';
+import PDFExportModal from './PDFExportModal';
 
 const WIDTH_PRESETS = [1, 2, 3, 5, 8, 10];
 const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
@@ -67,6 +67,7 @@ export default function DrawingCanvas({
   drawingsUrl,
 }: DrawingCanvasProps) {
   const [strokes, setStrokes] = useState<Stroke[]>(drawing.canvas_data.strokes || []);
+  const [history, setHistory] = useState<Stroke[][]>([]);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const currentStrokeRef = useRef<Stroke | null>(null);
 
@@ -86,6 +87,7 @@ export default function DrawingCanvas({
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<Set<string>>(new Set());
   const [lassoPoints, setLassoPoints] = useState<number[]>([]);
   const [lastLassoPolygon, setLastLassoPolygon] = useState<number[]>([]);
+  const [isPDFExportOpen, setIsPDFExportOpen] = useState(false);
 
   const isDrawing = useRef(false);
   const isDrawingLasso = useRef(false);
@@ -98,6 +100,7 @@ export default function DrawingCanvas({
   const dragStartPoint = useRef<{ x: number; y: number } | null>(null);
   const isPanning = useRef(false);
   const panStartPos = useRef<{ x: number; y: number; stageX: number; stageY: number } | null>(null);
+  const selectionMoveHistorySaved = useRef(false);
   const pinchState = useRef<{
     initialDistance: number;
     initialScale: number;
@@ -285,6 +288,11 @@ export default function DrawingCanvas({
     [canvasWidth, canvasHeight]
   );
 
+  const saveToHistory = useCallback((newStrokes: Stroke[]) => {
+    setHistory((prev) => [...prev, strokes]);
+    setStrokes(newStrokes);
+  }, [strokes]);
+
   const beginStroke = useCallback((stroke: Stroke) => {
     currentStrokeRef.current = stroke;
     setCurrentStroke(stroke);
@@ -293,11 +301,12 @@ export default function DrawingCanvas({
   const commitStroke = useCallback(() => {
     const stroke = currentStrokeRef.current;
     if (stroke && stroke.points.length >= 4) {
+      setHistory((prev) => [...prev, strokes]);
       setStrokes((prev) => [...prev, stroke]);
     }
     currentStrokeRef.current = null;
     setCurrentStroke(null);
-  }, []);
+  }, [strokes]);
 
   const distanceToSegment = useCallback((
     point: { x: number; y: number },
@@ -380,7 +389,6 @@ export default function DrawingCanvas({
 
   const eraseStrokeAtPoint = useCallback(
     (point: { x: number; y: number }) => {
-      let removed = false;
       setStrokes((prev) => {
         let targetIndex = -1;
 
@@ -406,13 +414,10 @@ export default function DrawingCanvas({
           return prev;
         }
 
-        removed = true;
+        // Save to history before erasing
+        setHistory((h) => [...h, prev]);
         return prev.filter((_, idx) => idx !== targetIndex);
       });
-
-      if (removed) {
-        // noop - state effect will propagate change
-      }
     },
     [distanceToSegment, width]
   );
@@ -439,10 +444,17 @@ export default function DrawingCanvas({
 
       e.evt.preventDefault();
 
-      const canvasPos = getCanvasPoint(stage);
+      // Get raw canvas point without clamping
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+
+      const transform = stage.getAbsoluteTransform().copy();
+      const inverted = transform.invert();
+      const rawCanvasPoint = inverted.point(pointer);
+      const isInsideCanvas = isPointInsideCanvas(rawCanvasPoint, canvasWidth, canvasHeight);
 
       // Pan tool OR click outside canvas - enable panning
-      if (tool === 'pan' || !canvasPos || !isPointInsideCanvas(canvasPos, canvasWidth, canvasHeight)) {
+      if (tool === 'pan' || !isInsideCanvas) {
         isPanning.current = true;
         panStartPos.current = {
           x: evt.clientX,
@@ -453,6 +465,9 @@ export default function DrawingCanvas({
         return;
       }
 
+      // Now get clamped point for drawing
+      const canvasPos = clampPointToCanvas(rawCanvasPoint, canvasWidth, canvasHeight);
+
       // Select tool - lasso mode
       if (tool === 'select') {
         // Check if clicking inside the last lasso area to drag selection
@@ -460,6 +475,7 @@ export default function DrawingCanvas({
           if (isPointInPolygon(canvasPos, lastLassoPolygon)) {
             isDraggingSelection.current = true;
             dragStartPoint.current = canvasPos;
+            selectionMoveHistorySaved.current = false; // Reset history flag
             return;
           }
         }
@@ -531,6 +547,12 @@ export default function DrawingCanvas({
         const dx = canvasPos.x - dragStartPoint.current.x;
         const dy = canvasPos.y - dragStartPoint.current.y;
 
+        // Save to history only once at the start of dragging
+        if (!selectionMoveHistorySaved.current) {
+          setHistory((prev) => [...prev, strokes]);
+          selectionMoveHistorySaved.current = true;
+        }
+
         setStrokes((prev) =>
           prev.map((stroke) => {
             if (selectedStrokeIds.has(stroke.id)) {
@@ -579,7 +601,7 @@ export default function DrawingCanvas({
       currentStrokeRef.current = updatedStroke;
       setCurrentStroke(updatedStroke);
     },
-    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, selectedStrokeIds, tool]
+    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, selectedStrokeIds, strokes, tool]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -610,7 +632,7 @@ export default function DrawingCanvas({
     if (!isDrawing.current) return;
     isDrawing.current = false;
     commitStroke();
-  }, [commitStroke, eraserMode, findStrokesInLasso, lassoPoints, tool]);
+  }, [commitStroke, eraserMode, findStrokesInLasso, lassoPoints, strokes, tool]);
 
   const handleStageWheel = useCallback(
     (event: KonvaEventObject<WheelEvent>) => {
@@ -727,69 +749,24 @@ export default function DrawingCanvas({
     [handlePointerUp]
   );
 
-  const handleExportPDF = useCallback(() => {
-    if (!stageRef.current) return;
-
-    const stage = stageRef.current;
-
-    // Get only the canvas layer (not the entire stage)
-    const layers = stage.getLayers();
-    const canvasLayer = layers.find((layer, idx) => idx === 2); // The drawing layer
-
-    if (!canvasLayer) return;
-
-    // Create a temporary stage with just the canvas content
-    const tempStage = new KonvaLib.Stage({
-      container: document.createElement('div'),
-      width: canvasWidth,
-      height: canvasHeight,
-    });
-
-    // Clone all layers
-    const bgLayer = new KonvaLib.Layer();
-    const bgRect = new KonvaLib.Rect({
-      x: 0,
-      y: 0,
-      width: canvasWidth,
-      height: canvasHeight,
-      fill: '#f8fff4',
-    });
-    bgLayer.add(bgRect);
-    tempStage.add(bgLayer);
-
-    // Clone the drawing layer
-    const clonedLayer = canvasLayer.clone();
-    tempStage.add(clonedLayer);
-
-    // Export as data URL
-    const dataURL = tempStage.toDataURL({
-      pixelRatio: 3, // High quality
-      mimeType: 'image/png',
-    });
-
-    // Create download link
-    const link = document.createElement('a');
-    link.download = `${drawing.name || 'rajz'}.png`;
-    link.href = dataURL;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // Cleanup
-    tempStage.destroy();
-  }, [canvasWidth, canvasHeight, drawing.name]);
+  const handleOpenPDFExport = useCallback(() => {
+    setIsPDFExportOpen(true);
+  }, []);
 
   const handleUndo = useCallback(() => {
-    if (strokes.length === 0) return;
-    setStrokes((prev) => prev.slice(0, -1));
-  }, [strokes.length]);
+    if (history.length === 0) return;
+    const previousState = history[history.length - 1];
+    setHistory((prev) => prev.slice(0, -1));
+    setStrokes(previousState);
+  }, [history]);
 
   const handleClear = useCallback(() => {
     if (strokes.length === 0) return;
     if (window.confirm('Biztosan törölni szeretnéd az összes rajzelemet?')) {
+      setHistory((prev) => [...prev, strokes]);
       setStrokes([]);
     }
-  }, [strokes.length]);
+  }, [strokes]);
 
   const handleZoomIn = () => {
     setStageScale((prev) => clampZoom(prev * 1.2));
@@ -1245,16 +1222,16 @@ export default function DrawingCanvas({
 
         <div className="flex flex-shrink-0 items-center gap-1.5">
           <button
-            onClick={handleExportPDF}
-            aria-label="Exportálás PNG-ként"
+            onClick={handleOpenPDFExport}
+            aria-label="Exportálás PDF-ként"
             className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 active:bg-emerald-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
-            <span aria-hidden className="text-base">📥</span>
-            <span className="hidden xl:inline whitespace-nowrap">Export</span>
+            <span aria-hidden className="text-base">📄</span>
+            <span className="hidden xl:inline whitespace-nowrap">PDF</span>
           </button>
           <button
             onClick={handleUndo}
-            disabled={strokes.length === 0}
+            disabled={history.length === 0}
             aria-label="Visszavonás"
             className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -1283,6 +1260,16 @@ export default function DrawingCanvas({
         </div>
         </div>
       </div>
+
+      {/* PDF Export Modal */}
+      {isPDFExportOpen && (
+        <PDFExportModal
+          drawing={drawing}
+          onClose={() => setIsPDFExportOpen(false)}
+          isOpen={isPDFExportOpen}
+        />
+      )}
+
       <style jsx global>{`
         @media (max-width: 1280px) {
           .toolbar-container .scrollbar-thin::-webkit-scrollbar {
