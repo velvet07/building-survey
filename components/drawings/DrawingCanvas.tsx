@@ -38,7 +38,7 @@ const WIDTH_PRESETS = [1, 2, 3, 5, 8, 10];
 const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
   { id: 'pen', label: 'Toll', icon: '✏️' },
   { id: 'eraser', label: 'Radír', icon: '🧽' },
-  { id: 'select', label: 'Kijelölés', icon: '🪢' },
+  { id: 'select', label: 'Kijelölés', icon: '⭕' },
   { id: 'pan', label: 'Mozgatás', icon: '🖐️' },
 ];
 
@@ -858,18 +858,30 @@ export default function DrawingCanvas({
                 const isSelected = selectedStrokeIds.has(stroke.id);
                 return (
                   <React.Fragment key={stroke.id}>
-                    {/* Selection highlight */}
+                    {/* Selection highlight - outer glow */}
                     {isSelected && (
-                      <Line
-                        points={stroke.points}
-                        stroke="#3B82F6"
-                        strokeWidth={stroke.width + 6}
-                        lineCap="round"
-                        lineJoin="round"
-                        tension={0.35}
-                        opacity={0.3}
-                        listening={false}
-                      />
+                      <>
+                        <Line
+                          points={stroke.points}
+                          stroke="#3B82F6"
+                          strokeWidth={stroke.width + 16}
+                          lineCap="round"
+                          lineJoin="round"
+                          tension={0.35}
+                          opacity={0.25}
+                          listening={false}
+                        />
+                        <Line
+                          points={stroke.points}
+                          stroke="#2563EB"
+                          strokeWidth={stroke.width + 8}
+                          lineCap="round"
+                          lineJoin="round"
+                          tension={0.35}
+                          opacity={0.5}
+                          listening={false}
+                        />
+                      </>
                     )}
                     {/* Actual stroke */}
                     <Line
@@ -1195,15 +1207,15 @@ export default function DrawingCanvas({
             <span aria-hidden className="text-base">🗑️</span>
             <span className="hidden xl:inline whitespace-nowrap">Törlés</span>
           </button>
-          <div className="flex min-w-[180px] flex-shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-semibold text-gray-700">
+          <div
+            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2"
+            title={saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
+          >
             <span
-              className={`h-2.5 w-2.5 rounded-full ${
+              className={`h-3 w-3 rounded-full ${
                 saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
               }`}
             />
-            <span className="text-[0.7rem] sm:text-xs md:text-sm">
-              {saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
-            </span>
           </div>
         </div>
         </div>
