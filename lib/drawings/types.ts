@@ -10,7 +10,7 @@ export type PaperSize = 'a4' | 'a3';
 export type PaperOrientation = 'portrait' | 'landscape';
 
 // Drawing tool types
-export type DrawingTool = 'pen' | 'eraser' | 'pan';
+export type DrawingTool = 'pen' | 'eraser' | 'select' | 'pan';
 
 // Point interface for coordinates
 export interface Point {

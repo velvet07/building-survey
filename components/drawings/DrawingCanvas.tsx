@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {
+import React, {
   useState,
   useRef,
   useEffect,
@@ -38,6 +38,7 @@ const WIDTH_PRESETS = [1, 2, 3, 5, 8, 10];
 const TOOLBAR_TOOLS: { id: DrawingTool; label: string; icon: string }[] = [
   { id: 'pen', label: 'Toll', icon: '✏️' },
   { id: 'eraser', label: 'Radír', icon: '🧽' },
+  { id: 'select', label: 'Kijelölés', icon: '👆' },
   { id: 'pan', label: 'Mozgatás', icon: '🖐️' },
 ];
 
@@ -81,6 +82,7 @@ export default function DrawingCanvas({
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isWidthMenuOpen, setIsWidthMenuOpen] = useState(false);
   const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
+  const [selectedStrokeIds, setSelectedStrokeIds] = useState<Set<string>>(new Set());
 
   const isDrawing = useRef(false);
   const stageRef = useRef<Konva.Stage>(null);
@@ -88,6 +90,9 @@ export default function DrawingCanvas({
   const widthDropdownRef = useRef<HTMLDivElement>(null);
   const colorDropdownRef = useRef<HTMLDivElement>(null);
   const isStrokeErasing = useRef(false);
+  const isDraggingSelection = useRef(false);
+  const dragStartPoint = useRef<{ x: number; y: number } | null>(null);
+  const isPanning = useRef(false);
   const pinchState = useRef<{
     initialDistance: number;
     initialScale: number;
@@ -249,6 +254,13 @@ export default function DrawingCanvas({
     };
   }, [isColorMenuOpen]);
 
+  // Clear selection when changing tools
+  useEffect(() => {
+    if (tool !== 'select') {
+      setSelectedStrokeIds(new Set());
+    }
+  }, [tool]);
+
   const getCanvasPoint = useCallback(
     (stage: Konva.Stage, options: { requireInside?: boolean } = {}) => {
       const pointer = stage.getPointerPosition();
@@ -304,6 +316,26 @@ export default function DrawingCanvas({
     return Math.sqrt(distX * distX + distY * distY);
   }, []);
 
+  const findStrokeAtPoint = useCallback(
+    (point: { x: number; y: number }) => {
+      for (let index = strokes.length - 1; index >= 0; index--) {
+        const stroke = strokes[index];
+        const pts = stroke.points;
+        for (let i = 0; i < pts.length - 2; i += 2) {
+          const segmentStart = { x: pts[i], y: pts[i + 1] };
+          const segmentEnd = { x: pts[i + 2], y: pts[i + 3] };
+          const distance = distanceToSegment(point, segmentStart, segmentEnd);
+          const tolerance = Math.max(stroke.width * 2, 16);
+          if (distance <= tolerance) {
+            return stroke.id;
+          }
+        }
+      }
+      return null;
+    },
+    [distanceToSegment, strokes]
+  );
+
   const eraseStrokeAtPoint = useCallback(
     (point: { x: number; y: number }) => {
       let removed = false;
@@ -345,14 +377,50 @@ export default function DrawingCanvas({
 
   const handlePointerDown = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
+      // Middle mouse button for panning
+      if ((e.evt as MouseEvent).button === 1) {
+        e.evt.preventDefault();
+        isPanning.current = true;
+        return;
+      }
+
       if (tool === 'pan') return;
 
       e.evt.preventDefault();
       const stage = e.target.getStage();
       if (!stage) return;
 
-      const canvasPos = getCanvasPoint(stage, { requireInside: true });
-      if (!canvasPos) return;
+      const canvasPos = getCanvasPoint(stage);
+
+      // Click outside canvas - enable panning
+      if (!canvasPos || !isPointInsideCanvas(canvasPos, canvasWidth, canvasHeight)) {
+        isPanning.current = true;
+        return;
+      }
+
+      // Select tool
+      if (tool === 'select') {
+        const strokeId = findStrokeAtPoint(canvasPos);
+
+        if (strokeId) {
+          // If clicking on selected stroke, start dragging
+          if (selectedStrokeIds.has(strokeId)) {
+            isDraggingSelection.current = true;
+            dragStartPoint.current = canvasPos;
+          } else {
+            // If shift key, add to selection, otherwise replace
+            if (e.evt.shiftKey) {
+              setSelectedStrokeIds(prev => new Set([...prev, strokeId]));
+            } else {
+              setSelectedStrokeIds(new Set([strokeId]));
+            }
+          }
+        } else {
+          // Clicked empty space - clear selection
+          setSelectedStrokeIds(new Set());
+        }
+        return;
+      }
 
       if (tool === 'eraser' && eraserMode === 'stroke') {
         isStrokeErasing.current = true;
@@ -375,13 +443,51 @@ export default function DrawingCanvas({
 
       beginStroke(newStroke);
     },
-    [beginStroke, color, eraseStrokeAtPoint, eraserMode, getCanvasPoint, tool, width]
+    [beginStroke, canvasHeight, canvasWidth, color, eraseStrokeAtPoint, eraserMode, findStrokeAtPoint, getCanvasPoint, selectedStrokeIds, tool, width]
   );
 
   const handlePointerMove = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>) => {
       const stage = e.target.getStage();
       if (!stage) return;
+
+      // Handle panning (middle mouse or outside canvas)
+      if (isPanning.current) {
+        e.evt.preventDefault();
+        const evt = e.evt as MouseEvent;
+        setStagePos((prev) => ({
+          x: prev.x + evt.movementX,
+          y: prev.y + evt.movementY,
+        }));
+        return;
+      }
+
+      // Handle selection dragging
+      if (tool === 'select' && isDraggingSelection.current && dragStartPoint.current) {
+        e.evt.preventDefault();
+        const canvasPos = getCanvasPoint(stage);
+        if (!canvasPos) return;
+
+        const dx = canvasPos.x - dragStartPoint.current.x;
+        const dy = canvasPos.y - dragStartPoint.current.y;
+
+        setStrokes((prev) =>
+          prev.map((stroke) => {
+            if (selectedStrokeIds.has(stroke.id)) {
+              return {
+                ...stroke,
+                points: stroke.points.map((val, idx) =>
+                  idx % 2 === 0 ? val + dx : val + dy
+                ),
+              };
+            }
+            return stroke;
+          })
+        );
+
+        dragStartPoint.current = canvasPos;
+        return;
+      }
 
       if (tool === 'eraser' && eraserMode === 'stroke') {
         if (!isStrokeErasing.current) return;
@@ -413,10 +519,14 @@ export default function DrawingCanvas({
       currentStrokeRef.current = updatedStroke;
       setCurrentStroke(updatedStroke);
     },
-    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, tool]
+    [eraseStrokeAtPoint, eraserMode, getCanvasPoint, selectedStrokeIds, tool]
   );
 
   const handlePointerUp = useCallback(() => {
+    isPanning.current = false;
+    isDraggingSelection.current = false;
+    dragStartPoint.current = null;
+
     if (tool === 'eraser' && eraserMode === 'stroke') {
       isStrokeErasing.current = false;
       return;
@@ -671,18 +781,36 @@ export default function DrawingCanvas({
               clipWidth={canvasWidth}
               clipHeight={canvasHeight}
             >
-              {strokes.map((stroke) => (
-                <Line
-                  key={stroke.id}
-                  points={stroke.points}
-                  stroke={stroke.color}
-                  strokeWidth={stroke.width}
-                  lineCap="round"
-                  lineJoin="round"
-                  tension={0.35}
-                  globalCompositeOperation={stroke.compositeOperation ?? 'source-over'}
-                />
-              ))}
+              {strokes.map((stroke) => {
+                const isSelected = selectedStrokeIds.has(stroke.id);
+                return (
+                  <React.Fragment key={stroke.id}>
+                    {/* Selection highlight */}
+                    {isSelected && (
+                      <Line
+                        points={stroke.points}
+                        stroke="#3B82F6"
+                        strokeWidth={stroke.width + 6}
+                        lineCap="round"
+                        lineJoin="round"
+                        tension={0.35}
+                        opacity={0.3}
+                        listening={false}
+                      />
+                    )}
+                    {/* Actual stroke */}
+                    <Line
+                      points={stroke.points}
+                      stroke={stroke.color}
+                      strokeWidth={stroke.width}
+                      lineCap="round"
+                      lineJoin="round"
+                      tension={0.35}
+                      globalCompositeOperation={stroke.compositeOperation ?? 'source-over'}
+                    />
+                  </React.Fragment>
+                );
+              })}
               {currentStroke && (
                 <Line
                   points={currentStroke.points}
