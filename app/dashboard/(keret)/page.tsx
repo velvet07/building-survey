@@ -1,14 +1,30 @@
-import { Metadata } from 'next';
+'use client';
+
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-
-export const metadata: Metadata = {
-  title: 'Dashboard | Épületfelmérő Rendszer',
-  description: 'Főoldal és statisztikák',
-};
+import { getProjects } from '@/lib/projects';
+import { Project } from '@/types/project.types';
 
 export default function DashboardPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  const loadProjects = async () => {
+    const { data } = await getProjects();
+    setProjects(data || []);
+    setIsLoading(false);
+  };
+
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter((p) => p.status === 'active').length;
+  const completedProjects = projects.filter((p) => p.status === 'completed').length;
+
   return (
     <div>
       <div className="mb-8">
@@ -26,7 +42,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Projektek</p>
-              <p className="text-3xl font-bold text-secondary-900 mt-2">-</p>
+              <p className="text-3xl font-bold text-secondary-900 mt-2">
+                {isLoading ? '...' : totalProjects}
+              </p>
             </div>
             <div className="p-3 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl shadow-sm">
               <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,7 +59,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Aktív felmérések</p>
-              <p className="text-3xl font-bold text-secondary-900 mt-2">-</p>
+              <p className="text-3xl font-bold text-secondary-900 mt-2">
+                {isLoading ? '...' : activeProjects}
+              </p>
             </div>
             <div className="p-3 bg-gradient-to-br from-success-100 to-success-200 rounded-xl shadow-sm">
               <svg className="h-6 w-6 text-success-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -56,7 +76,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Befejezett</p>
-              <p className="text-3xl font-bold text-secondary-900 mt-2">-</p>
+              <p className="text-3xl font-bold text-secondary-900 mt-2">
+                {isLoading ? '...' : completedProjects}
+              </p>
             </div>
             <div className="p-3 bg-gradient-to-br from-warning-100 to-warning-200 rounded-xl shadow-sm">
               <svg className="h-6 w-6 text-warning-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -1,6 +1,6 @@
 'use client';
 
-import { Project } from '@/types/project.types';
+import { Project, PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS } from '@/types/project.types';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -27,7 +27,12 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
           {project.name}
         </h3>
 
-        <Badge variant="default" className="mb-3 inline-block">{project.auto_identifier}</Badge>
+        <div className="flex gap-2 mb-3">
+          <Badge variant="default" className="inline-block">{project.auto_identifier}</Badge>
+          <Badge variant={PROJECT_STATUS_COLORS[project.status] as any} className="inline-block">
+            {PROJECT_STATUS_LABELS[project.status]}
+          </Badge>
+        </div>
 
         <div className="text-xs text-secondary-500 space-y-1 font-medium">
           <p className="flex items-center gap-1.5">

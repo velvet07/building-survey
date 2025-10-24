@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import type { Project } from '@/types/project.types';
+import { PROJECT_STATUS_LABELS } from '@/types/project.types';
+import { getDrawings } from '@/lib/drawings/api';
 import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
 
 export default function ProjectDashboardPage() {
@@ -17,11 +19,13 @@ export default function ProjectDashboardPage() {
   const projectId = params.id as string;
 
   const [project, setProject] = useState<Project | null>(null);
+  const [drawingsCount, setDrawingsCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   useEffect(() => {
     loadProject();
+    loadDrawingsCount();
   }, [projectId]);
 
   const loadProject = async () => {
@@ -39,6 +43,15 @@ export default function ProjectDashboardPage() {
       console.error('Error loading project:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDrawingsCount = async () => {
+    try {
+      const drawings = await getDrawings(projectId);
+      setDrawingsCount(drawings.length);
+    } catch (error) {
+      console.error('Error loading drawings count:', error);
     }
   };
 
@@ -270,7 +283,7 @@ export default function ProjectDashboardPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Rajzok száma</p>
-                <p className="text-2xl font-bold text-gray-900">-</p>
+                <p className="text-2xl font-bold text-gray-900">{drawingsCount}</p>
               </div>
             </div>
           </div>
@@ -289,7 +302,9 @@ export default function ProjectDashboardPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Státusz</p>
-                <p className="text-lg font-bold text-gray-900">Aktív</p>
+                <p className="text-lg font-bold text-gray-900">
+                  {project ? PROJECT_STATUS_LABELS[project.status] : 'Aktív'}
+                </p>
               </div>
             </div>
           </div>
