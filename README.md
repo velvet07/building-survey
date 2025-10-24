@@ -1,7 +1,7 @@
 # Épületfelmérő Rendszer - Moduláris WebApp MVP
 
-**Verzió:** 1.1.0
-**Status:** ✅ Production Ready - Drawing Module Enhanced
+**Verzió:** 1.2.0
+**Status:** ✅ Production Ready - Tablet Optimized & Performance Enhanced
 **Dokumentáció:** ✅ 100% Complete
 
 ---
@@ -185,19 +185,22 @@ building-survey/
 - ✅ Soft delete
 - ✅ Magyar nyelv
 
-### Drawing Module (🆕 v1.1.0)
-- ✅ **Szabadkézi rajzolás** pen és eraser eszközökkel
+### Drawing Module (🆕 v1.2.0 - Tablet & Performance)
+- ✅ **Szabadkézi rajzolás** pen és eraser eszközökkel (kék toll, 4px alapértelmezett)
 - ✅ **Lasso kijelölés** (➰) területi kijelöléshez és mozgatáshoz
 - ✅ **Fejlett canvas navigáció**:
   - Pan eszköz (🖐️)
   - Rajzlapon kívül kattintással panning
   - Középső egérgomb lenyomásával panning
   - Ctrl + görgő zoom (desktop)
+  - **🆕 Két ujjas panning** (tablet)
+  - **🆕 Pinch-to-zoom** (tablet)
 - ✅ **Teljes körű Undo** (rajzolás, mozgatás, törlés)
 - ✅ **PDF Export** a beállított papírmérettel
 - ✅ **Reszponzív toolbar** desktop és tablet támogatással
+- ✅ **Teljesítmény optimalizált** (~60 fps, nincs lag kézírásnál)
 - ✅ **MM grid háttér** (300 DPI - 1mm = 11.8px)
-- ✅ **Touch support** tablet és mobileszközökön
+- ✅ **Teljes touch support** tablet és mobileszközökön
 - ✅ A4/A3 papírméret, álló/fekvő orientáció
 
 ---

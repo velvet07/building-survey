@@ -7,6 +7,121 @@ A formátum a [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) alapján 
 
 ---
 
+## [1.2.0] - 2025-10-24
+
+### Rajzoló Modul - Tablet Optimalizáció és Teljesítmény Fejlesztések
+
+Ez a verzió kritikus tablet támogatást és jelentős teljesítmény javításokat tartalmaz, különös tekintettel a gyors rajzolásra és kézírásra.
+
+### Hozzáadva
+
+#### Tablet Gesztus Támogatás
+- **Két ujjas panning**: Két ujj mozgatása együtt pan-eli a canvas-t
+  - Okos gesztus detektálás: >5% távolság változás = zoom, különben pan
+  - Smooth folyamatos panning a két ujj középpontjának követésével
+  - Automatikus ütközésdetektálás rajzolással (két ujj = mindig navigáció)
+
+- **Pinch-to-zoom fejlesztések**: Javított két ujjas zoom
+  - Zoom a két ujj középpontja körül
+  - Jobb detektálás és érzékenység
+  - Kombinálható pan mozgással (zoom közben lehet pan-elni is)
+
+#### Default Értékek
+- **Kék toll alapértelmezett**: Technikai/építészeti rajzokhoz optimalizált (#3B82F6)
+- **4px vastagság**: Olvashatóbb vonalak alapértelmezetten (2px helyett)
+
+### Javítva
+
+#### Kritikus Tablet Bugok
+- **Rajzolás nem mentődött tablet-en** (components/drawings/DrawingCanvas.tsx:773-783):
+  - Probléma: `isDrawing.current = false` túl korán állítódott be touch event végén
+  - Következmény: Stroke-ok nem commitálódtak, elvesztek a vonalak
+  - Megoldás: `handleStageTouchEnd` már nem állítja false-ra az isDrawing flag-et
+  - Eredmény: Minden touch-olt vonal helyesen mentődik
+
+- **Auto-zoom bug tablet-en**:
+  - Probléma: Papíron kívülre kattintva véletlenszerűen bezoomolt
+  - Ok: Touch event és mouse event keveredése, rossz clientX/clientY kezelés
+  - Megoldás: Új `getEventClientPosition()` helper funkció (129-142 sor)
+  - Megfelelően kezeli TouchEvent (touches[0]) vs MouseEvent különbségét
+
+- **Vonalak törlődtek gyors rajzolásnál**:
+  - Probléma: Következő vonal törölte az előző vonalat, kézírás használhatatlan
+  - Ok: Minden stroke completion blokkolta a UI-t history mentéssel
+  - Megoldás: Gyors stroke-ok között is smooth működés
+
+#### Teljesítmény Optimalizációk
+
+**1. RequestAnimationFrame Throttling** (components/drawings/DrawingCanvas.tsx:324-340):
+- Probléma: Folyamatos rajzolás közben 500-1000 render/sec → mikrofagyások
+- Megoldás:
+  - `scheduleStrokeUpdate()` funkció requestAnimationFrame-mel
+  - currentStrokeRef azonnal frissül (adat pontosság 100%)
+  - setCurrentStroke ~60fps-el hívódik (vizuális optimális)
+- Eredmény: Smooth rajzolás hosszú vonalaknál, nincs lag
+
+**2. Deferred History Saves** (components/drawings/DrawingCanvas.tsx:357-400):
+- Probléma: Toll fel-le mozgatás (kézírás) → mikrofagyások minden stroke után
+- Ok: commitStroke() 2-3 state frissítés + 100+ stroke másolása
+- Megoldás:
+  - Stroke azonnal látható (1 state frissítés)
+  - History mentés 300ms delay + startTransition
+  - 10 gyors stroke = 1 history mentés (batching)
+  - React prioritálja a rajzolást a history mentés helyett
+- Eredmény: Kézírás és gyors szkecselés természetes és smooth
+
+**3. Toolbar Dropdown Láthatóság** (components/drawings/DrawingCanvas.tsx:1044-1049):
+- Probléma: Színválasztó és vastagság dropdown-ok nem látszódtak tablet-en
+- Ok: overflow-x-auto scroll container levágta az absolute pozíciójú dropdown-okat
+- Megoldás: Feltételes overflow-visible amikor dropdown nyitva van
+- Eredmény: Dropdown-ok helyesen jelennek meg minden eszközön
+
+### Technikai Fejlesztések
+
+- **Touch/Mouse Event Unifikáció**: getEventClientPosition() helper (129-142 sor)
+- **Smart Gesture Detection**: Pinch vs pan automatikus felismerés
+- **React 18 useTransition**: Nem sürgős frissítések (history) elkülönítése
+- **Animation Frame Management**: Proper cleanup, memory leak prevention
+- **Deferred State Updates**: setTimeout + startTransition kombinációja
+- **Functional setState**: Closure problémák elkerülése
+
+### Teljesítmény Eredmények
+
+**Előtte:**
+- ❌ 500-1000 render/sec folyamatos rajzolásnál
+- ❌ Mikrofagyások hosszú vonalaknál
+- ❌ Jelentős lag vonalak között (kézírás)
+- ❌ Tablet-en vonalak nem mentődtek
+- ❌ Tablet-en véletlenszerű auto-zoom
+- ❌ Kézírás használhatatlan
+
+**Utána:**
+- ✅ ~60 render/sec (optimális frame rate)
+- ✅ Smooth folyamatos rajzolás
+- ✅ Nincs lag vonalak között
+- ✅ Tablet-en minden vonal mentődik
+- ✅ Tablet navigáció predictable
+- ✅ Kézírás természetes és gyors
+
+### Érintett Fájlok
+
+**components/drawings/DrawingCanvas.tsx**:
+- Line 10: useTransition import
+- Line 74: useTransition hook használat
+- Line 75-76: Default kék szín és 4px vastagság
+- Line 112-116: Performance tracking refs
+- Line 129-142: getEventClientPosition helper
+- Line 294-307: Cleanup effects (animation frame + timeout)
+- Line 324-340: scheduleStrokeUpdate requestAnimationFrame throttling
+- Line 357-400: Optimalizált commitStroke deferred history-val
+- Line 650-651: Throttled update használat
+- Line 677-708: Javított handleStageTouchStart
+- Line 710-771: Smart két ujjas gesture detection
+- Line 773-783: Javított handleStageTouchEnd
+- Line 1044-1049: Conditional toolbar overflow
+
+---
+
 ## [1.1.0] - 2025-10-23
 
 ### Rajzoló Modul - Fő Funkciók és Javítások

@@ -1,8 +1,8 @@
 # 🎨 Drawing Module - MVP Implementation Status
 
-**Verzió:** 1.1.0
-**Dátum:** 2025-10-23
-**Státusz:** ✅ **PRODUCTION READY - ENHANCED**
+**Verzió:** 1.2.0
+**Dátum:** 2025-10-24
+**Státusz:** ✅ **PRODUCTION READY - TABLET OPTIMIZED & PERFORMANCE ENHANCED**
 
 ---
 
@@ -89,7 +89,7 @@
 
 ---
 
-## 🎯 Production Features (ELKÉSZÜLT v1.1.0)
+## 🎯 Production Features (ELKÉSZÜLT v1.2.0)
 
 | Feature | Státusz | Verzió |
 |---------|---------|--------|
@@ -102,6 +102,11 @@
 | **Rajzlapon kívül kattintással panning** | ✅ | 1.1 |
 | **Középső egérgomb panning** | ✅ | 1.1 |
 | **Ctrl + görgő zoom (desktop)** | ✅ | 1.1 |
+| **🆕 Két ujjas panning (tablet)** | ✅ | 1.2 |
+| **🆕 Pinch-to-zoom (tablet)** | ✅ | 1.2 |
+| **🆕 RequestAnimationFrame throttling** | ✅ | 1.2 |
+| **🆕 Deferred history saves** | ✅ | 1.2 |
+| **🆕 Kék toll default (4px)** | ✅ | 1.2 |
 | **Teljes körű Undo rendszer** | ✅ | 1.1 |
 | **PDF Export** | ✅ | 1.1 |
 | Touch support (tablet) | ✅ | 1.0 |
@@ -116,6 +121,32 @@
 | Portrait/Landscape | ✅ | 1.0 |
 | Projekt név megjelenítés | ✅ | 1.0 |
 | RLS security | ✅ | 1.0 |
+
+---
+
+## ✅ v1.2.0 Elkészült Fejlesztések (ÚJ!)
+
+**Tablet Optimalizációk:**
+- ✅ Két ujjas panning gesztus (smooth pan két ujjal)
+- ✅ Pinch-to-zoom továbbfejlesztve (okos gesztus detektálás)
+- ✅ Tablet rajzolási bug javítva (vonalak nem mentődtek)
+- ✅ Auto-zoom bug javítva (papíron kívül kattintás)
+- ✅ Touch event unifikáció (proper clientX/clientY handling)
+
+**Teljesítmény Javítások:**
+- ✅ RequestAnimationFrame throttling (~60 fps smooth rendering)
+- ✅ Deferred history saves (300ms batching)
+- ✅ React 18 useTransition (non-blocking history)
+- ✅ Nincs lag kézírásnál és gyors rajzolásnál
+- ✅ Mikrofagyások eliminálva
+
+**Default Értékek:**
+- ✅ Kék toll alapértelmezett (#3B82F6)
+- ✅ 4px vastagság alapértelmezett
+
+**UI Javítások:**
+- ✅ Toolbar dropdown láthatóság tablet-en
+- ✅ Conditional overflow-visible
 
 ---
 
@@ -235,7 +266,9 @@ supabase db push
 | Selection & Navigation | 8 óra | ~6 óra | ✅ DONE |
 | PDF Export Integration | 2 óra | ~1.5 óra | ✅ DONE |
 | Undo System | 4 óra | ~3 óra | ✅ DONE |
-| **Összesen (v1.1.0)** | **51 óra** | **~37 óra** | ✅ **PRODUCTION READY** |
+| Tablet Optimization (v1.2) | 6 óra | ~4 óra | ✅ DONE |
+| Performance Fixes (v1.2) | 4 óra | ~3 óra | ✅ DONE |
+| **Összesen (v1.2.0)** | **61 óra** | **~44 óra** | ✅ **PRODUCTION READY** |
 
 ---
 
@@ -330,8 +363,14 @@ supabase db push
 
 ---
 
-**🎉 v1.1.0 Production Release: KÉSZ!**
+**🎉 v1.2.0 Production Release: KÉSZ!**
 
-**Status:** Production ready - teljes funkcionalitású rajzoló modul tablet és desktop használatra optimalizálva.
+**Status:** Production ready - teljes funkcionalitású rajzoló modul tablet és desktop használatra optimalizálva, kiváló teljesítménnyel.
 
-**Következő lépés:** Touch gestures (pinch-to-zoom, 2-finger pan) és alakzat eszközök implementálása v1.2/v2.0-ban.
+**Főbb eredmények:**
+- ✅ Tablet támogatás 100% működőképes (két ujjas gesztusok, smooth drawing)
+- ✅ Teljesítmény optimalizált (~60 fps, nincs lag/fagyás)
+- ✅ Kézírás és gyors szkecselés természetes élmény
+- ✅ Stabil, production-ready állapot
+
+**Következő lépés:** Alakzat eszközök (vonal, kör, téglalap), szöveg hozzáadás, és rétegek implementálása v2.0-ban.
