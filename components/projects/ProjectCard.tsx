@@ -23,12 +23,11 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
   return (
     <Card padding="md" className="group hover:border-primary-300 transition-colors">
       <div className="mb-4">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <h3 className="text-lg font-bold text-secondary-900 group-hover:text-primary-600 transition-colors leading-tight flex-1 min-w-0 break-words">
-            {project.name}
-          </h3>
-          <Badge variant="default" className="shrink-0">{project.auto_identifier}</Badge>
-        </div>
+        <h3 className="text-lg font-bold text-secondary-900 group-hover:text-primary-600 transition-colors leading-tight mb-2">
+          {project.name}
+        </h3>
+
+        <Badge variant="default" className="mb-3 inline-block">{project.auto_identifier}</Badge>
 
         <div className="text-xs text-secondary-500 space-y-1 font-medium">
           <p className="flex items-center gap-1.5">
