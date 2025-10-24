@@ -8,10 +8,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import type { Project } from '@/types/project.types';
+import type { Project, ProjectStatus } from '@/types/project.types';
 import { PROJECT_STATUS_LABELS } from '@/types/project.types';
 import { getDrawings } from '@/lib/drawings/api';
+import { updateProject } from '@/lib/projects';
 import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
+import toast from 'react-hot-toast';
 
 export default function ProjectDashboardPage() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function ProjectDashboardPage() {
   const [drawingsCount, setDrawingsCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     loadProject();
@@ -52,6 +55,25 @@ export default function ProjectDashboardPage() {
       setDrawingsCount(drawings.length);
     } catch (error) {
       console.error('Error loading drawings count:', error);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: ProjectStatus) => {
+    if (!project) return;
+
+    setIsUpdatingStatus(true);
+    try {
+      const { error } = await updateProject(project.id, project.name, newStatus);
+      if (error) {
+        toast.error('Hiba történt a státusz frissítése során');
+      } else {
+        toast.success('Projekt státusz sikeresen frissítve!');
+        setProject({ ...project, status: newStatus });
+      }
+    } catch (err) {
+      toast.error('Hiba történt a státusz frissítése során');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -191,12 +213,27 @@ export default function ProjectDashboardPage() {
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{project.name}</h1>
                 <p className="text-gray-600">
                   Azonosító:{' '}
                   <span className="font-mono text-sm font-medium sm:text-base">{project.auto_identifier}</span>
                 </p>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Státusz:</label>
+                  <select
+                    value={project.status}
+                    onChange={(e) => handleStatusChange(e.target.value as ProjectStatus)}
+                    disabled={isUpdatingStatus}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
                 <button
