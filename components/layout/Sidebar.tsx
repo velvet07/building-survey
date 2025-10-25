@@ -29,6 +29,12 @@ const navItems: NavItem[] = [
     icon: '👥',
     adminOnly: true,
   },
+  {
+    href: '/dashboard/admin/policies',
+    label: 'Admin',
+    icon: '⚙️',
+    adminOnly: true,
+  },
 ];
 
 export function Sidebar() {
