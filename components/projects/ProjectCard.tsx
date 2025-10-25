@@ -1,6 +1,6 @@
 'use client';
 
-import { Project } from '@/types/project.types';
+import { Project, PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS } from '@/types/project.types';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -23,11 +23,15 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
   return (
     <Card padding="md" className="group hover:border-primary-300 transition-colors">
       <div className="mb-4">
-        <div className="flex items-start justify-between mb-3">
-          <h3 className="text-lg font-bold text-secondary-900 group-hover:text-primary-600 transition-colors leading-tight">
-            {project.name}
-          </h3>
-          <Badge variant="default" className="ml-2 shrink-0">{project.auto_identifier}</Badge>
+        <h3 className="text-lg font-bold text-secondary-900 group-hover:text-primary-600 transition-colors leading-tight mb-2">
+          {project.name}
+        </h3>
+
+        <div className="flex gap-2 mb-3">
+          <Badge variant="default" className="inline-block">{project.auto_identifier}</Badge>
+          <Badge variant={PROJECT_STATUS_COLORS[project.status] as any} className="inline-block">
+            {PROJECT_STATUS_LABELS[project.status]}
+          </Badge>
         </div>
 
         <div className="text-xs text-secondary-500 space-y-1 font-medium">
@@ -48,12 +52,12 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
         </div>
       </div>
 
-      <div className="flex gap-2 pt-4 border-t border-secondary-200/80">
+      <div className="flex flex-wrap gap-2 pt-4 border-t border-secondary-200/80">
         <Button
           variant="primary"
           size="sm"
           onClick={handleOpenProject}
-          className="flex-1"
+          className="flex-1 md:flex-none md:min-w-0"
         >
           <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -65,6 +69,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
           variant="secondary"
           size="sm"
           onClick={() => onEdit(project)}
+          className="flex-1 md:flex-none"
         >
           <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -75,6 +80,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
           variant="danger"
           size="sm"
           onClick={() => onDelete(project)}
+          className="flex-1 md:flex-none"
         >
           <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

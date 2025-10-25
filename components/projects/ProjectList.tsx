@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getProjects } from '@/lib/projects';
-import { Project } from '@/types/project.types';
+import { Project, ProjectStatus } from '@/types/project.types';
 import { ProjectCard } from './ProjectCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -13,9 +13,11 @@ export interface ProjectListProps {
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
   onCreate: () => void;
+  filterStatus?: ProjectStatus | 'all' | 'non-archived';
+  searchQuery?: string;
 }
 
-export function ProjectList({ onEdit, onDelete, onCreate }: ProjectListProps) {
+export function ProjectList({ onEdit, onDelete, onCreate, filterStatus = 'non-archived', searchQuery = '' }: ProjectListProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -30,7 +32,26 @@ export function ProjectList({ onEdit, onDelete, onCreate }: ProjectListProps) {
     if (error) {
       toast.error('Hiba történt a projektek betöltése során');
     } else {
-      setProjects(data || []);
+      let filteredProjects = data || [];
+
+      // Apply status filter
+      if (filterStatus === 'non-archived') {
+        filteredProjects = filteredProjects.filter((p) => p.status !== 'archived');
+      } else if (filterStatus !== 'all') {
+        filteredProjects = filteredProjects.filter((p) => p.status === filterStatus);
+      }
+
+      // Apply search filter
+      if (searchQuery.trim()) {
+        const searchTerms = searchQuery.toLowerCase().trim().split(/\s+/);
+        filteredProjects = filteredProjects.filter((project) => {
+          const searchableText = `${project.name} ${project.auto_identifier}`.toLowerCase();
+          // All search terms must match (AND logic)
+          return searchTerms.every((term) => searchableText.includes(term));
+        });
+      }
+
+      setProjects(filteredProjects);
     }
 
     setIsLoading(false);
@@ -45,6 +66,21 @@ export function ProjectList({ onEdit, onDelete, onCreate }: ProjectListProps) {
   }
 
   if (projects.length === 0) {
+    // Check if empty due to search
+    if (searchQuery.trim()) {
+      return (
+        <EmptyState
+          icon={
+            <svg className="h-16 w-16 text-secondary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          }
+          title="Nincs találat"
+          description={`Nem található projekt a keresési feltételnek megfelelően: "${searchQuery}"`}
+        />
+      );
+    }
+
     return (
       <EmptyState
         icon={

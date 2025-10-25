@@ -7,6 +7,27 @@ import jsPDF from 'jspdf';
 import type { Drawing, PaperSize, PaperOrientation } from './types';
 import { getCanvasSize, GRID_SIZE_PX } from './canvas-utils';
 
+const PAPER_DIMENSIONS_MM: Record<
+  PaperSize,
+  Record<PaperOrientation, { width: number; height: number }>
+> = {
+  a4: {
+    portrait: { width: 210, height: 297 },
+    landscape: { width: 297, height: 210 },
+  },
+  a3: {
+    portrait: { width: 297, height: 420 },
+    landscape: { width: 420, height: 297 },
+  },
+};
+
+export function getPaperDimensionsInMillimeters(
+  paperSize: PaperSize,
+  orientation: PaperOrientation
+): { width: number; height: number } {
+  return PAPER_DIMENSIONS_MM[paperSize][orientation];
+}
+
 /**
  * Export drawing to PDF
  * Rajz exportálása PDF-be
@@ -17,12 +38,12 @@ export async function exportDrawingToPDF(
   orientation: PaperOrientation = drawing.orientation
 ): Promise<void> {
   try {
-    // Get canvas dimensions
-    const { width: canvasWidth, height: canvasHeight } = getCanvasSize(paperSize, orientation);
+    const imageData = renderDrawingToImage(drawing, { includeTitle: true });
 
     // Create jsPDF instance
     // Paper sizes in mm: A4 = 210x297, A3 = 297x420
-    const paperSizeMM = paperSize === 'a4' ? [210, 297] : [297, 420];
+    const { width, height } = getPaperDimensionsInMillimeters(paperSize, orientation);
+    const paperSizeMM: [number, number] = [width, height];
     const orientationFormat = orientation === 'portrait' ? 'p' : 'l';
 
     const pdf = new jsPDF({
@@ -31,63 +52,11 @@ export async function exportDrawingToPDF(
       format: paperSizeMM as [number, number],
     });
 
-    // Get PDF dimensions
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
 
-    // Create canvas for rendering
-    const canvas = document.createElement('canvas');
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) {
-      throw new Error('Canvas context not available');
-    }
-
-    // Fill white background
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-    // Draw MM grid
-    drawGrid(ctx, canvasWidth, canvasHeight, GRID_SIZE_PX);
-
-    // Draw all strokes
-    drawing.canvas_data.strokes.forEach((stroke) => {
-      ctx.beginPath();
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.width;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      // Draw stroke points
-      for (let i = 0; i < stroke.points.length; i += 2) {
-        const x = stroke.points[i];
-        const y = stroke.points[i + 1];
-
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-
-      ctx.stroke();
-    });
-
-    // Add project name (bottom right)
-    ctx.fillStyle = '#000000';
-    ctx.font = '24px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(drawing.name, canvasWidth - 40, canvasHeight - 40);
-
-    // Convert canvas to image data URL
-    const imageData = canvas.toDataURL('image/png');
-
-    // Add image to PDF
     pdf.addImage(imageData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
-    // Add metadata
     pdf.setProperties({
       title: drawing.name,
       subject: `Felmérési rajz - ${paperSize.toUpperCase()} ${orientation}`,
@@ -96,16 +65,68 @@ export async function exportDrawingToPDF(
       creator: 'Building Survey App - Drawing Module',
     });
 
-    // Generate filename
     const date = new Date().toISOString().split('T')[0];
     const filename = `${drawing.name.replace(/\s+/g, '_')}_${date}.pdf`;
 
-    // Save PDF
     pdf.save(filename);
   } catch (error) {
     console.error('PDF export error:', error);
     throw new Error('PDF generálása sikertelen');
   }
+}
+
+export function renderDrawingToImage(
+  drawing: Drawing,
+  options: { includeTitle?: boolean } = {}
+): string {
+  const { width: canvasWidth, height: canvasHeight } = getCanvasSize(
+    drawing.paper_size,
+    drawing.orientation
+  );
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('Canvas context not available');
+  }
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  drawGrid(ctx, canvasWidth, canvasHeight, GRID_SIZE_PX);
+
+  drawing.canvas_data.strokes.forEach((stroke) => {
+    ctx.beginPath();
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (let i = 0; i < stroke.points.length; i += 2) {
+      const x = stroke.points[i];
+      const y = stroke.points[i + 1];
+
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+
+    ctx.stroke();
+  });
+
+  if (options.includeTitle) {
+    ctx.fillStyle = '#000000';
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(drawing.name, canvasWidth - 40, canvasHeight - 40);
+  }
+
+  return canvas.toDataURL('image/png');
 }
 
 /**

@@ -8,7 +8,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import type { Project } from '@/types/project.types';
+import type { Project, ProjectStatus } from '@/types/project.types';
+import { PROJECT_STATUS_LABELS } from '@/types/project.types';
+import { getDrawings } from '@/lib/drawings/api';
+import { updateProject } from '@/lib/projects';
+import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
+import toast from 'react-hot-toast';
 
 export default function ProjectDashboardPage() {
   const router = useRouter();
@@ -16,10 +21,14 @@ export default function ProjectDashboardPage() {
   const projectId = params.id as string;
 
   const [project, setProject] = useState<Project | null>(null);
+  const [drawingsCount, setDrawingsCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     loadProject();
+    loadDrawingsCount();
   }, [projectId]);
 
   const loadProject = async () => {
@@ -37,6 +46,34 @@ export default function ProjectDashboardPage() {
       console.error('Error loading project:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDrawingsCount = async () => {
+    try {
+      const drawings = await getDrawings(projectId);
+      setDrawingsCount(drawings.length);
+    } catch (error) {
+      console.error('Error loading drawings count:', error);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: ProjectStatus) => {
+    if (!project) return;
+
+    setIsUpdatingStatus(true);
+    try {
+      const { error } = await updateProject(project.id, project.name, newStatus);
+      if (error) {
+        toast.error('Hiba történt a státusz frissítése során');
+      } else {
+        toast.success('Projekt státusz sikeresen frissítve!');
+        setProject({ ...project, status: newStatus });
+      }
+    } catch (err) {
+      toast.error('Hiba történt a státusz frissítése során');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -69,22 +106,28 @@ export default function ProjectDashboardPage() {
 
   const modules = [
     {
-      id: 'data',
-      name: 'Adatok',
-      description: 'Projekt adatok, mérések és paraméterek',
+      id: 'aquapol-form',
+      name: 'Aquapol űrlap',
+      description: 'Nedvességfelmérő kérdőív és telepítési adatok rögzítése',
       icon: (
         <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+            d="M9 4h6a2 2 0 012 2v12a2 2 0 01-2 2H9a2 2 0 01-2-2V6a2 2 0 012-2z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 8h6M9 12h6M9 16h3"
           />
         </svg>
       ),
-      color: 'indigo',
-      href: '#',
-      available: false,
+      color: 'emerald',
+      href: `/dashboard/projects/${projectId}/forms/aquapol`,
+      available: true,
     },
     {
       id: 'drawings',
@@ -125,44 +168,8 @@ export default function ProjectDashboardPage() {
         </svg>
       ),
       color: 'green',
-      href: '#',
-      available: false,
-    },
-    {
-      id: 'documents',
-      name: 'Dokumentumok',
-      description: 'Szerződések, engedélyek és egyéb dokumentumok',
-      icon: (
-        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-      ),
-      color: 'purple',
-      href: '#',
-      available: false,
-    },
-    {
-      id: 'notes',
-      name: 'Jegyzetek',
-      description: 'Megfigyelések és megjegyzések',
-      icon: (
-        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-          />
-        </svg>
-      ),
-      color: 'yellow',
-      href: '#',
-      available: false,
+      href: `/dashboard/projects/${projectId}/photos`,
+      available: true,
     },
   ];
 
@@ -186,18 +193,41 @@ export default function ProjectDashboardPage() {
             Vissza a projektekhez
           </button>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{project.name}</h1>
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-3">
+                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{project.name}</h1>
                 <p className="text-gray-600">
-                  Azonosító: <span className="font-mono font-medium">{project.auto_identifier}</span>
+                  Azonosító:{' '}
+                  <span className="font-mono text-sm font-medium sm:text-base">{project.auto_identifier}</span>
                 </p>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Státusz:</label>
+                  <select
+                    value={project.status}
+                    onChange={(e) => handleStatusChange(e.target.value as ProjectStatus)}
+                    disabled={isUpdatingStatus}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+                <button
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 px-4 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
+                >
+                  <span aria-hidden className="text-lg">📄</span>
+                  Modul PDF export
+                </button>
                 <button
                   onClick={() => router.push('/dashboard/projects')}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Bezárás
                 </button>
@@ -272,7 +302,7 @@ export default function ProjectDashboardPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Rajzok száma</p>
-                <p className="text-2xl font-bold text-gray-900">-</p>
+                <p className="text-2xl font-bold text-gray-900">{drawingsCount}</p>
               </div>
             </div>
           </div>
@@ -291,7 +321,9 @@ export default function ProjectDashboardPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Státusz</p>
-                <p className="text-lg font-bold text-gray-900">Aktív</p>
+                <p className="text-lg font-bold text-gray-900">
+                  {project ? PROJECT_STATUS_LABELS[project.status] : 'Aktív'}
+                </p>
               </div>
             </div>
           </div>
@@ -318,6 +350,13 @@ export default function ProjectDashboardPage() {
           </div>
         </div>
       </div>
+      {project && (
+        <ProjectPDFExportModal
+          project={project}
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

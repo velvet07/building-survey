@@ -3,49 +3,34 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ProjectList } from '@/components/projects/ProjectList';
-import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { EditProjectModal } from '@/components/projects/EditProjectModal';
 import { DeleteProjectModal } from '@/components/projects/DeleteProjectModal';
 import { Project } from '@/types/project.types';
+import { useRouter } from 'next/navigation';
 
-export default function ProjectsPage() {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+export default function ArchivedProjectsPage() {
+  const router = useRouter();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleCreate = () => {
-    // Close all other modals first
-    setIsEditModalOpen(false);
-    setIsDeleteModalOpen(false);
-    setSelectedProject(null);
-    setIsCreateModalOpen(true);
-  };
-
   const handleEdit = (project: Project) => {
-    // Close all other modals first
-    setIsCreateModalOpen(false);
     setIsDeleteModalOpen(false);
     setSelectedProject(project);
     setIsEditModalOpen(true);
   };
 
   const handleDelete = (project: Project) => {
-    // Close all other modals first
-    setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
     setSelectedProject(project);
     setIsDeleteModalOpen(true);
   };
 
   const handleSuccess = () => {
-    // Close all modals
-    setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
     setIsDeleteModalOpen(false);
     setSelectedProject(null);
-    // Refresh list
     setRefreshKey((prev) => prev + 1);
   };
 
@@ -54,32 +39,27 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-secondary-900 mb-2">
-            Projektek
+            Archivált Projektek
           </h1>
           <p className="text-secondary-600">
-            Kezelje projektjeit és felméréseit
+            Archivált projektek megtekintése és kezelése
           </p>
         </div>
 
-        <Button onClick={handleCreate}>
+        <Button variant="secondary" onClick={() => router.push('/dashboard/projects')}>
           <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Új projekt
+          Vissza a projektekhez
         </Button>
       </div>
 
       <ProjectList
         key={refreshKey}
-        onCreate={handleCreate}
+        onCreate={() => {}}
         onEdit={handleEdit}
         onDelete={handleDelete}
-      />
-
-      <CreateProjectModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={handleSuccess}
+        filterStatus="archived"
       />
 
       <EditProjectModal
