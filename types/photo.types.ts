@@ -15,6 +15,7 @@ export interface Photo {
   uploaded_by: string;
   created_at: string;
   updated_at: string;
+  signedUrl?: string; // Temporary signed URL for private bucket access
 }
 
 export interface PhotoUploadInput {

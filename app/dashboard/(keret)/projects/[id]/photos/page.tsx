@@ -231,7 +231,7 @@ export default function PhotosPage() {
               </svg>
             </button>
             <img
-              src={getPhotoUrl(selectedPhotoForPreview.file_path)}
+              src={getPhotoUrl(selectedPhotoForPreview)}
               alt={selectedPhotoForPreview.caption || selectedPhotoForPreview.file_name}
               className="max-w-full max-h-screen object-contain"
               onClick={(e) => e.stopPropagation()}

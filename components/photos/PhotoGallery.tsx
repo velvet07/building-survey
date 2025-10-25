@@ -89,7 +89,7 @@ export function PhotoGallery({
                 }`}
               >
                 <img
-                  src={getPhotoUrl(photo.file_path)}
+                  src={getPhotoUrl(photo)}
                   alt={photo.caption || photo.file_name}
                   className="w-full h-full object-cover"
                   loading="lazy"

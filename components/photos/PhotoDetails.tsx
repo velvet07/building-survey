@@ -100,7 +100,7 @@ export function PhotoDetails({
                 <div className="flex-shrink-0">
                   <div className="w-32 h-32 bg-secondary-100 rounded-lg overflow-hidden">
                     <img
-                      src={getPhotoUrl(photo.file_path)}
+                      src={getPhotoUrl(photo)}
                       alt={photo.caption || photo.file_name}
                       className="w-full h-full object-cover"
                     />

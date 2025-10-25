@@ -26,7 +26,23 @@ export async function getPhotos(projectId: string): Promise<Photo[]> {
     throw new Error(`Fotók betöltése sikertelen: ${error.message}`);
   }
 
-  return (data as Photo[]) || [];
+  const photos = (data as Photo[]) || [];
+
+  // Generate signed URLs for private bucket access (valid for 1 hour)
+  const photosWithUrls = await Promise.all(
+    photos.map(async (photo) => {
+      const { data: urlData } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(photo.file_path, 3600); // 1 hour expiry
+
+      return {
+        ...photo,
+        signedUrl: urlData?.signedUrl || '',
+      };
+    })
+  );
+
+  return photosWithUrls;
 }
 
 /**
@@ -137,11 +153,18 @@ export async function uploadPhotos(inputs: PhotoUploadInput[]): Promise<Photo[]>
 }
 
 /**
- * Get public URL for a photo
- * Fotó publikus URL-jének lekérése
+ * Get photo URL - returns signed URL if available, otherwise generates public URL
+ * Fotó URL lekérése - signed URL-t ad vissza ha elérhető
  */
-export function getPhotoUrl(filePath: string): string {
+export function getPhotoUrl(photo: Photo | string): string {
+  // If photo object with signedUrl, return it
+  if (typeof photo === 'object' && photo.signedUrl) {
+    return photo.signedUrl;
+  }
+
+  // Fallback to public URL (won't work for private buckets without auth)
   const supabase = createClient();
+  const filePath = typeof photo === 'string' ? photo : photo.file_path;
 
   const { data } = supabase.storage
     .from(STORAGE_BUCKET)
