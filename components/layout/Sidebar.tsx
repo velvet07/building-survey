@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface NavItem {
   href: string;
@@ -34,33 +33,7 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    checkAdminRole();
-  }, []);
-
-  const checkAdminRole = async () => {
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        setIsAdmin(profile?.role === 'admin');
-      }
-    } catch (error) {
-      console.error('Error checking admin role:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { isAdmin } = useUserRole();
 
   return (
     <aside className="w-40 bg-white border-r border-secondary-200 min-h-screen">

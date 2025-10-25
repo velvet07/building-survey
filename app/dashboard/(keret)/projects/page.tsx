@@ -7,9 +7,11 @@ import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { EditProjectModal } from '@/components/projects/EditProjectModal';
 import { DeleteProjectModal } from '@/components/projects/DeleteProjectModal';
 import { Project, ProjectStatus, PROJECT_STATUS_LABELS } from '@/types/project.types';
+import { useUserRole } from '@/hooks/useUserRole';
 import Link from 'next/link';
 
 export default function ProjectsPage() {
+  const { canCreate, canEdit, canDelete } = useUserRole();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -64,12 +66,14 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        <Button onClick={handleCreate}>
-          <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Új projekt
-        </Button>
+        {canCreate && (
+          <Button onClick={handleCreate}>
+            <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Új projekt
+          </Button>
+        )}
       </div>
 
       {/* Search Bar */}
