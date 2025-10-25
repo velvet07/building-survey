@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface NavItem {
   href: string;
   label: string;
   icon: string;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -21,15 +23,33 @@ const navItems: NavItem[] = [
     label: 'Projektek',
     icon: '📁',
   },
+  {
+    href: '/dashboard/users',
+    label: 'Felhasználók',
+    icon: '👥',
+    adminOnly: true,
+  },
+  {
+    href: '/dashboard/admin/policies',
+    label: 'Admin',
+    icon: '⚙️',
+    adminOnly: true,
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { isAdmin } = useUserRole();
 
   return (
     <aside className="w-40 bg-white border-r border-secondary-200 min-h-screen">
       <nav className="p-2 space-y-1">
         {navItems.map((item) => {
+          // Hide admin-only items for non-admin users
+          if (item.adminOnly && !isAdmin) {
+            return null;
+          }
+
           const isActive = pathname === item.href;
 
           return (

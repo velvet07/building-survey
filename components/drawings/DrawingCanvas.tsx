@@ -57,6 +57,7 @@ interface DrawingCanvasProps {
   projectName?: string;
   projectUrl?: string;
   drawingsUrl?: string;
+  readOnly?: boolean;
 }
 
 export default function DrawingCanvas({
@@ -66,6 +67,7 @@ export default function DrawingCanvas({
   projectName,
   projectUrl,
   drawingsUrl,
+  readOnly = false,
 }: DrawingCanvasProps) {
   const [strokes, setStrokes] = useState<Stroke[]>(drawing.canvas_data.strokes || []);
   const [history, setHistory] = useState<Stroke[][]>([]);
@@ -73,7 +75,7 @@ export default function DrawingCanvas({
   const currentStrokeRef = useRef<Stroke | null>(null);
   const [, startTransition] = useTransition();
 
-  const [tool, setTool] = useState<DrawingTool>('pen');
+  const [tool, setTool] = useState<DrawingTool>(readOnly ? 'pan' : 'pen');
   const [color, setColor] = useState('#3B82F6'); // Default blue
   const [width, setWidth] = useState(4); // Default 4px
   const [eraserMode, setEraserMode] = useState<EraserMode>('stroke');
@@ -543,6 +545,18 @@ export default function DrawingCanvas({
       const inverted = transform.invert();
       const rawCanvasPoint = inverted.point(pointer);
       const isInsideCanvas = isPointInsideCanvas(rawCanvasPoint, canvasWidth, canvasHeight);
+
+      // Read-only mode: only allow panning
+      if (readOnly) {
+        isPanning.current = true;
+        panStartPos.current = {
+          x: clientPos.x,
+          y: clientPos.y,
+          stageX: stagePos.x,
+          stageY: stagePos.y,
+        };
+        return;
+      }
 
       // Pan tool OR click outside canvas - enable panning
       if (tool === 'pan' || !isInsideCanvas) {
@@ -1140,26 +1154,37 @@ export default function DrawingCanvas({
           )}
         </div>
 
-        <div className="flex flex-shrink-0 items-center gap-1.5 rounded-2xl border border-gray-200 bg-gray-50 px-2 py-1.5 shadow-inner">
-          {TOOLBAR_TOOLS.map((toolOption) => (
-            <button
-              key={toolOption.id}
-              onClick={() => setTool(toolOption.id)}
-              aria-pressed={tool === toolOption.id}
-              aria-label={toolOption.label}
-              className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 flex-col items-center justify-center rounded-lg px-2 py-1 font-semibold uppercase tracking-wide transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                tool === toolOption.id ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-700'
-              }`}
-            >
-              <span className="text-lg" aria-hidden>
-                {toolOption.icon}
-              </span>
-              <span className="hidden 2xl:block text-[0.6rem]">{toolOption.label}</span>
-            </button>
-          ))}
-        </div>
+        {!readOnly && (
+          <div className="flex flex-shrink-0 items-center gap-1.5 rounded-2xl border border-gray-200 bg-gray-50 px-2 py-1.5 shadow-inner">
+            {TOOLBAR_TOOLS.map((toolOption) => (
+              <button
+                key={toolOption.id}
+                onClick={() => setTool(toolOption.id)}
+                aria-pressed={tool === toolOption.id}
+                aria-label={toolOption.label}
+                className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 flex-col items-center justify-center rounded-lg px-2 py-1 font-semibold uppercase tracking-wide transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  tool === toolOption.id ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-700'
+                }`}
+              >
+                <span className="text-lg" aria-hidden>
+                  {toolOption.icon}
+                </span>
+                <span className="hidden 2xl:block text-[0.6rem]">{toolOption.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
-        {tool === 'eraser' && (
+        {readOnly && (
+          <div className="flex flex-shrink-0 items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-semibold text-blue-800">Megtekintő mód</span>
+          </div>
+        )}
+
+        {!readOnly && tool === 'eraser' && (
           <div className="flex flex-shrink-0 items-center gap-1.5">
             <span className="hidden xl:inline text-[0.65rem] font-semibold uppercase tracking-wide text-gray-500">
               Radír mód
@@ -1187,15 +1212,16 @@ export default function DrawingCanvas({
           </div>
         )}
 
-        <div className="flex flex-shrink-0 items-center gap-2">
-          <div className="relative flex-shrink-0" ref={colorDropdownRef}>
-            <button
-              onClick={() => setIsColorMenuOpen((prev) => !prev)}
-              aria-label="Szín választó"
-              className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                isColorMenuOpen ? 'bg-blue-50 text-blue-700' : ''
-              }`}
-            >
+        {!readOnly && (
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <div className="relative flex-shrink-0" ref={colorDropdownRef}>
+              <button
+                onClick={() => setIsColorMenuOpen((prev) => !prev)}
+                aria-label="Szín választó"
+                className={`toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  isColorMenuOpen ? 'bg-blue-50 text-blue-700' : ''
+                }`}
+              >
               <div
                 className="h-6 w-6 flex-shrink-0 rounded-full border-2 border-gray-300"
                 style={{ backgroundColor: color }}
@@ -1313,15 +1339,18 @@ export default function DrawingCanvas({
               </div>
             )}
           </div>
-        </div>
+          </div>
+        )}
 
-        <CompactPaperSizeSelector
-          paperSize={paperSize}
-          orientation={orientation}
-          onPaperSizeChange={handlePaperSizeChange}
-          onOrientationChange={handleOrientationChange}
-          className="flex flex-shrink-0 items-center gap-2"
-        />
+        {!readOnly && (
+          <CompactPaperSizeSelector
+            paperSize={paperSize}
+            orientation={orientation}
+            onPaperSizeChange={handlePaperSizeChange}
+            onOrientationChange={handleOrientationChange}
+            className="flex flex-shrink-0 items-center gap-2"
+          />
+        )}
 
         <div className="flex flex-shrink-0 items-center gap-1.5">
           <button
@@ -1359,34 +1388,38 @@ export default function DrawingCanvas({
             <span aria-hidden className="text-base">📄</span>
             <span className="hidden xl:inline whitespace-nowrap">PDF</span>
           </button>
-          <button
-            onClick={handleUndo}
-            disabled={history.length === 0}
-            aria-label="Visszavonás"
-            className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <span aria-hidden className="text-base">↺</span>
-            <span className="hidden xl:inline whitespace-nowrap">Visszavonás</span>
-          </button>
-          <button
-            onClick={handleClear}
-            disabled={strokes.length === 0}
-            aria-label="Minden törlése"
-            className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 font-semibold text-red-700 transition-colors hover:bg-red-100 active:bg-red-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <span aria-hidden className="text-base">🗑️</span>
-            <span className="hidden xl:inline whitespace-nowrap">Törlés</span>
-          </button>
-          <div
-            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2"
-            title={saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
-          >
-            <span
-              className={`h-3 w-3 rounded-full ${
-                saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
-              }`}
-            />
-          </div>
+          {!readOnly && (
+            <>
+              <button
+                onClick={handleUndo}
+                disabled={history.length === 0}
+                aria-label="Visszavonás"
+                className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 font-semibold text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span aria-hidden className="text-base">↺</span>
+                <span className="hidden xl:inline whitespace-nowrap">Visszavonás</span>
+              </button>
+              <button
+                onClick={handleClear}
+                disabled={strokes.length === 0}
+                aria-label="Minden törlése"
+                className="toolbar-button inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 font-semibold text-red-700 transition-colors hover:bg-red-100 active:bg-red-200 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span aria-hidden className="text-base">🗑️</span>
+                <span className="hidden xl:inline whitespace-nowrap">Törlés</span>
+              </button>
+              <div
+                className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2"
+                title={saving ? 'Mentés folyamatban…' : 'Automatikus mentés kész'}
+              >
+                <span
+                  className={`h-3 w-3 rounded-full ${
+                    saving ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                />
+              </div>
+            </>
+          )}
         </div>
         </div>
       </div>

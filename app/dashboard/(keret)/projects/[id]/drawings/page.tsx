@@ -11,11 +11,13 @@ import { getDrawings, createDrawing } from '@/lib/drawings/api';
 import type { Drawing } from '@/lib/drawings/types';
 import { showSuccess, showError } from '@/lib/toast';
 import DrawingList from '@/components/drawings/DrawingList';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export default function DrawingsPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
+  const { canCreate, isViewer } = useUserRole();
 
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,21 +92,36 @@ export default function DrawingsPage() {
             {drawings.length} {drawings.length === 1 ? 'rajz' : 'rajz'}
           </p>
         </div>
-        <button
-          onClick={handleCreateDrawing}
-          disabled={creating}
-          className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          {creating ? (
-            <span className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Létrehozás...
-            </span>
-          ) : (
-            '+ Új rajz'
-          )}
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleCreateDrawing}
+            disabled={creating}
+            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            {creating ? (
+              <span className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Létrehozás...
+              </span>
+            ) : (
+              '+ Új rajz'
+            )}
+          </button>
+        )}
       </div>
+
+      {/* Viewer Notice */}
+      {isViewer && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-blue-800">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-medium">Megtekintő mód</span>
+          </div>
+          <p className="text-sm text-blue-700 mt-1">Csak megtekintési jogosultsággal rendelkezel. Rajzok létrehozása, szerkesztése és törlése nem engedélyezett. A rajzok exportálása elérhető.</p>
+        </div>
+      )}
 
       {/* Drawing List with Cards */}
       <DrawingList

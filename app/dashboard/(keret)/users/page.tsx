@@ -2,45 +2,42 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { ProjectList } from '@/components/projects/ProjectList';
-import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
-import { EditProjectModal } from '@/components/projects/EditProjectModal';
-import { DeleteProjectModal } from '@/components/projects/DeleteProjectModal';
-import { Project, ProjectStatus, PROJECT_STATUS_LABELS } from '@/types/project.types';
-import { useUserRole } from '@/hooks/useUserRole';
-import Link from 'next/link';
+import { UserList } from '@/components/users/UserList';
+import { CreateUserModal } from '@/components/users/CreateUserModal';
+import { EditUserModal } from '@/components/users/EditUserModal';
+import { DeleteUserModal } from '@/components/users/DeleteUserModal';
+import { User, UserRole } from '@/types/user.types';
 
-export default function ProjectsPage() {
-  const { canCreate, canEdit, canDelete } = useUserRole();
+export default function UsersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all' | 'non-archived'>('non-archived');
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleCreate = () => {
     // Close all other modals first
     setIsEditModalOpen(false);
     setIsDeleteModalOpen(false);
-    setSelectedProject(null);
+    setSelectedUser(null);
     setIsCreateModalOpen(true);
   };
 
-  const handleEdit = (project: Project) => {
+  const handleEdit = (user: User) => {
     // Close all other modals first
     setIsCreateModalOpen(false);
     setIsDeleteModalOpen(false);
-    setSelectedProject(project);
+    setSelectedUser(user);
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = (project: Project) => {
+  const handleDelete = (user: User) => {
     // Close all other modals first
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
-    setSelectedProject(project);
+    setSelectedUser(user);
     setIsDeleteModalOpen(true);
   };
 
@@ -49,7 +46,7 @@ export default function ProjectsPage() {
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
     setIsDeleteModalOpen(false);
-    setSelectedProject(null);
+    setSelectedUser(null);
     // Refresh list
     setRefreshKey((prev) => prev + 1);
   };
@@ -59,21 +56,19 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-secondary-900 mb-2">
-            Projektek
+            Felhasználók
           </h1>
           <p className="text-secondary-600">
-            Kezelje projektjeit és felméréseit
+            Kezelje a rendszer felhasználóit és jogosultságaikat
           </p>
         </div>
 
-        {canCreate && (
-          <Button onClick={handleCreate}>
-            <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Új projekt
-          </Button>
-        )}
+        <Button onClick={handleCreate}>
+          <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Új felhasználó
+        </Button>
       </div>
 
       {/* Search Bar */}
@@ -83,7 +78,7 @@ export default function ProjectsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Keresés projekt név vagy azonosító alapján..."
+            placeholder="Keresés név vagy email alapján..."
             className="w-full pl-10 pr-4 py-3 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
           />
           <svg
@@ -112,60 +107,50 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {/* Filter and Actions Bar */}
+      {/* Filter Bar */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white p-4 rounded-lg border border-secondary-200">
         <div className="flex items-center gap-3">
-          <label className="text-sm font-semibold text-secondary-700">Szűrés státusz szerint:</label>
+          <label className="text-sm font-semibold text-secondary-700">Szűrés jogosultság szerint:</label>
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | 'all' | 'non-archived')}
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as UserRole | 'all')}
             className="px-3 py-2 text-sm border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
           >
-            <option value="non-archived">Nem archivált (Alapértelmezett)</option>
-            <option value="all">Összes projekt</option>
-            <option value="active">Csak aktív</option>
-            <option value="completed">Csak befejezett</option>
-            <option value="on_hold">Csak függőben</option>
+            <option value="all">Összes felhasználó</option>
+            <option value="admin">Adminisztrátorok</option>
+            <option value="user">Felhasználók</option>
+            <option value="viewer">Megtekintők</option>
           </select>
         </div>
-
-        <Link href="/dashboard/projects/archived">
-          <Button variant="secondary" size="sm">
-            <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-            </svg>
-            Archivált projektek
-          </Button>
-        </Link>
       </div>
 
-      <ProjectList
-        key={`${refreshKey}-${statusFilter}-${searchQuery}`}
+      <UserList
+        key={`${refreshKey}-${roleFilter}-${searchQuery}`}
         onCreate={handleCreate}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        filterStatus={statusFilter}
+        filterRole={roleFilter}
         searchQuery={searchQuery}
       />
 
-      <CreateProjectModal
+      <CreateUserModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={handleSuccess}
       />
 
-      <EditProjectModal
+      <EditUserModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSuccess={handleSuccess}
-        project={selectedProject}
+        user={selectedUser}
       />
 
-      <DeleteProjectModal
+      <DeleteUserModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onSuccess={handleSuccess}
-        project={selectedProject}
+        user={selectedUser}
       />
     </div>
   );

@@ -13,12 +13,14 @@ import { PROJECT_STATUS_LABELS } from '@/types/project.types';
 import { getDrawings } from '@/lib/drawings/api';
 import { updateProject } from '@/lib/projects';
 import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
+import { useUserRole } from '@/hooks/useUserRole';
 import toast from 'react-hot-toast';
 
 export default function ProjectDashboardPage() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.id as string;
+  const { canEdit } = useUserRole();
 
   const [project, setProject] = useState<Project | null>(null);
   const [drawingsCount, setDrawingsCount] = useState<number>(0);
@@ -168,8 +170,8 @@ export default function ProjectDashboardPage() {
         </svg>
       ),
       color: 'green',
-      href: '#',
-      available: false,
+      href: `/dashboard/projects/${projectId}/photos`,
+      available: true,
     },
   ];
 
@@ -206,7 +208,7 @@ export default function ProjectDashboardPage() {
                   <select
                     value={project.status}
                     onChange={(e) => handleStatusChange(e.target.value as ProjectStatus)}
-                    disabled={isUpdatingStatus}
+                    disabled={isUpdatingStatus || !canEdit}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => (
@@ -215,6 +217,9 @@ export default function ProjectDashboardPage() {
                       </option>
                     ))}
                   </select>
+                  {!canEdit && (
+                    <span className="text-xs text-gray-500 italic">(csak olvasható)</span>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
