@@ -13,6 +13,7 @@ import DeleteDrawingModal from './DeleteDrawingModal';
 import PDFExportModal from './PDFExportModal';
 import type { Drawing } from '@/lib/drawings/types';
 import { showSuccess, showError } from '@/lib/toast';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface DrawingCardProps {
   drawing: Drawing;
@@ -28,6 +29,7 @@ export default function DrawingCard({
   onUpdate,
 }: DrawingCardProps) {
   const router = useRouter();
+  const { canEdit, canDelete } = useUserRole();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(drawing.name);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -123,7 +125,7 @@ export default function DrawingCard({
         {/* Drawing Info */}
         <div className="p-4">
           {/* Name (editable) */}
-          {isEditing ? (
+          {isEditing && canEdit ? (
             <input
               type="text"
               value={editedName}
@@ -143,11 +145,13 @@ export default function DrawingCard({
           ) : (
             <h3
               onClick={(e) => {
-                e.stopPropagation();
-                setIsEditing(true);
+                if (canEdit) {
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }
               }}
-              className="text-lg font-semibold text-gray-900 mb-2 truncate cursor-text hover:text-blue-600 transition-colors"
-              title="Kattints a szerkesztéshez"
+              className={`text-lg font-semibold text-gray-900 mb-2 truncate ${canEdit ? 'cursor-text hover:text-blue-600' : ''} transition-colors`}
+              title={canEdit ? 'Kattints a szerkesztéshez' : drawing.name}
             >
               {drawing.name}
             </h3>
@@ -184,7 +188,7 @@ export default function DrawingCard({
               }}
               className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded hover:bg-blue-100 transition-colors"
             >
-              Szerkesztés
+              {canEdit ? 'Szerkesztés' : 'Megtekintés'}
             </button>
             <button
               onClick={(e) => {
@@ -196,16 +200,18 @@ export default function DrawingCard({
             >
               📄
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDeleteModal(true);
-              }}
-              className="px-3 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
-              title="Törlés"
-            >
-              🗑️
-            </button>
+            {canDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteModal(true);
+                }}
+                className="px-3 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
+                title="Törlés"
+              >
+                🗑️
+              </button>
+            )}
           </div>
         </div>
       </div>

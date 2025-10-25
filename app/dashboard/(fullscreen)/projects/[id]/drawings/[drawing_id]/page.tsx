@@ -17,6 +17,7 @@ import type {
   PaperOrientation,
 } from '@/lib/drawings/types';
 import { showError } from '@/lib/toast';
+import { useUserRole } from '@/hooks/useUserRole';
 
 // Dynamic import - Canvas csak client-side
 const DrawingCanvas = dynamic(
@@ -39,6 +40,7 @@ export default function DrawingEditorPage() {
   const router = useRouter();
   const drawingId = params.drawing_id as string;
   const projectId = params.id as string;
+  const { canEdit } = useUserRole();
 
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -177,6 +179,11 @@ export default function DrawingEditorPage() {
   }
 
   function handleCanvasChange(payload: CanvasChangePayload) {
+    // Viewer cannot save changes
+    if (!canEdit) {
+      return;
+    }
+
     const signature = createSignature(payload);
 
     if (signature === lastSavedSignature.current) {
@@ -232,6 +239,7 @@ export default function DrawingEditorPage() {
       projectName={projectName ?? undefined}
       projectUrl={`/dashboard/projects/${projectId}`}
       drawingsUrl={`/dashboard/projects/${projectId}/drawings`}
+      readOnly={!canEdit}
     />
   );
 }

@@ -12,6 +12,7 @@ import { exportFormToPDF } from '@/lib/forms/pdf-export';
 import type { FormValues } from '@/lib/forms/types';
 import type { Project } from '@/types/project.types';
 import { createClient } from '@/lib/supabase';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const FORM_SLUG = 'aquapol-form';
 
@@ -35,6 +36,7 @@ export default function AquapolFormPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
+  const { canEdit, isViewer } = useUserRole();
 
   const [project, setProject] = useState<Project | null>(null);
   const [formValues, setFormValues] = useState<FormValues>(() => createInitialValues());
@@ -123,6 +125,13 @@ export default function AquapolFormPage() {
   );
 
   const handleSave = useCallback(async () => {
+    // Viewer cannot save
+    if (!canEdit) {
+      setStatusMessage('Nincs jogosultságod a mentéshez.');
+      setStatusType('error');
+      return;
+    }
+
     setSaving(true);
     resetStatus();
 
@@ -142,7 +151,7 @@ export default function AquapolFormPage() {
     } finally {
       setSaving(false);
     }
-  }, [formValues, projectId, resetStatus]);
+  }, [canEdit, formValues, projectId, resetStatus]);
 
   const handleExport = useCallback(() => {
     if (!project) return;
@@ -259,13 +268,23 @@ export default function AquapolFormPage() {
                 <span role="img" aria-hidden="true">📄</span>
                 PDF exportálás
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {saveButtonContent}
-              </button>
+              {canEdit && (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {saveButtonContent}
+                </button>
+              )}
+              {isViewer && (
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-semibold">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Megtekintő mód
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -276,13 +295,15 @@ export default function AquapolFormPage() {
           onChange={handleFieldChange}
           onSubmit={handleSave}
           isSubmitting={saving}
+          readOnly={!canEdit}
           actions={
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 self-end rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saveButtonContent}
+            canEdit && (
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 self-end rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saveButtonContent}
             </button>
           }
         />

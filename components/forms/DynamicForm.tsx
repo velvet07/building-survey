@@ -10,6 +10,7 @@ interface DynamicFormProps {
   onSubmit?: () => void | Promise<void>;
   isSubmitting?: boolean;
   disabled?: boolean;
+  readOnly?: boolean;
   actions?: React.ReactNode;
 }
 
@@ -40,6 +41,7 @@ export default function DynamicForm({
   onSubmit,
   isSubmitting = false,
   disabled = false,
+  readOnly = false,
   actions,
 }: DynamicFormProps) {
   const visibleSections = useMemo(() => {
@@ -90,7 +92,8 @@ export default function DynamicForm({
                     id={field.id}
                     name={field.id}
                     type={field.type === 'number' ? 'number' : 'text'}
-                    disabled={disabled || isSubmitting}
+                    disabled={disabled || isSubmitting || readOnly}
+                    readOnly={readOnly}
                     placeholder={field.placeholder}
                     value={(values[field.id] as string | number | '') ?? ''}
                     onChange={(event) =>
@@ -111,7 +114,8 @@ export default function DynamicForm({
                   <textarea
                     id={field.id}
                     name={field.id}
-                    disabled={disabled || isSubmitting}
+                    disabled={disabled || isSubmitting || readOnly}
+                    readOnly={readOnly}
                     placeholder={field.placeholder}
                     value={(values[field.id] as string) ?? ''}
                     onChange={(event) => onChange(field.id, event.target.value)}
@@ -133,7 +137,7 @@ export default function DynamicForm({
                           value={option.value}
                           checked={values[field.id] === option.value}
                           onChange={() => onChange(field.id, option.value)}
-                          disabled={disabled || isSubmitting}
+                          disabled={disabled || isSubmitting || readOnly}
                           className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                         {option.label}
@@ -146,7 +150,7 @@ export default function DynamicForm({
                   <select
                     id={field.id}
                     name={field.id}
-                    disabled={disabled || isSubmitting}
+                    disabled={disabled || isSubmitting || readOnly}
                     value={(values[field.id] as string | number | '') ?? ''}
                     onChange={(event) => onChange(field.id, event.target.value)}
                     className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-gray-900 transition-shadow focus:border-blue-500 focus:ring focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
@@ -167,7 +171,7 @@ export default function DynamicForm({
                       name={field.id}
                       checked={Boolean(values[field.id])}
                       onChange={(event) => onChange(field.id, event.target.checked)}
-                      disabled={disabled || isSubmitting}
+                      disabled={disabled || isSubmitting || readOnly}
                       className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     {field.placeholder ?? 'Kiválasztás'}
