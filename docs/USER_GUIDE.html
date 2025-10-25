@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Survey - Felhasználói Kézikönyv</title>
+    <style>
+        /* Print-optimized CSS for PDF generation */
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+        }
+
+        /* Headings */
+        h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-top: 0;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 18px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+
+        h4 {
+            color: #666;
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            page-break-after: avoid;
+        }
+
+        /* Cover page */
+        .cover {
+            text-align: center;
+            padding: 100px 20px;
+            page-break-after: always;
+        }
+
+        .cover h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .cover .subtitle {
+            font-size: 24px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .cover .version {
+            font-size: 14px;
+            color: #999;
+            margin-top: 60px;
+        }
+
+        /* Table of Contents */
+        .toc {
+            page-break-after: always;
+        }
+
+        .toc h2 {
+            color: #667eea;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .toc ul li {
+            padding: 8px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+
+        .toc ul li a {
+            text-decoration: none;
+            color: #333;
+        }
+
+        .toc ul li a:hover {
+            color: #667eea;
+        }
+
+        /* Content */
+        p {
+            margin: 10px 0;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+
+        /* Code blocks */
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #667eea;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        /* Boxes */
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        .success-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        .tip-box {
+            background: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+            padding: 15px;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        /* Icons */
+        .icon {
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            margin-right: 5px;
+        }
+
+        /* Page breaks */
+        .page-break {
+            page-break-after: always;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            a {
+                color: #333;
+                text-decoration: none;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* Steps */
+        .step {
+            margin: 15px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .step::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0 5px;
+        }
+
+        .badge-admin {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .badge-user {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .badge-viewer {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Cover Page -->
+<div class="cover">
+    <h1>Building Survey</h1>
+    <div class="subtitle">Felhasználói Kézikönyv</div>
+    <div class="version">
+        <p><strong>Verzió:</strong> 1.0</p>
+        <p><strong>Utolsó frissítés:</strong> 2025. október 25.</p>
+        <p><strong>Készítette:</strong> Building Survey Development Team</p>
+    </div>
+</div>
+
+<!-- Table of Contents -->
+<div class="toc">
+    <h2>Tartalomjegyzék</h2>
+    <ul>
+        <li><a href="#intro">1. Bevezetés</a></li>
+        <li><a href="#getting-started">2. Első lépések</a></li>
+        <li><a href="#roles">3. Felhasználói szerepkörök</a></li>
+        <li><a href="#projects">4. Projektek kezelése</a></li>
+        <li><a href="#drawings">5. Rajzok modul</a></li>
+        <li><a href="#forms">6. Űrlapok modul</a></li>
+        <li><a href="#photos">7. Fotók modul</a></li>
+        <li><a href="#users">8. Felhasználók kezelése (Admin)</a></li>
+        <li><a href="#tablet">9. Tablet használat és ujjmozdulatok</a></li>
+        <li><a href="#faq">10. Gyakori kérdések</a></li>
+        <li><a href="#troubleshooting">11. Hibaelhárítás</a></li>
+    </ul>
+</div>
+
+<!-- Main Content -->
+<div class="content">
+
+<!-- 1. Bevezetés -->
+<h2 id="intro">1. Bevezetés</h2>
+
+<h3>1.1 Mi a Building Survey?</h3>
+<p>A Building Survey egy webalapú alkalmazás épületfelmérések készítéséhez és dokumentálásához. Az alkalmazás lehetővé teszi:</p>
+<ul>
+    <li><strong>Projektek létrehozását és kezelését</strong></li>
+    <li><strong>Helyszíni rajzok készítését</strong> tablet vagy számítógép segítségével</li>
+    <li><strong>Űrlapok kitöltését</strong> (pl. Aquapol felmérés)</li>
+    <li><strong>Fotók csatolását és rendszerezését</strong></li>
+    <li><strong>Csapatmunka támogatását</strong> különböző jogosultsági szintekkel</li>
+</ul>
+
+<h3>1.2 Rendszerkövetelmények</h3>
+
+<div class="info-box">
+    <strong><span class="icon">ℹ️</span> Böngészők:</strong>
+    <ul>
+        <li><strong>Desktop:</strong> Chrome 90+, Firefox 88+, Safari 14+, Edge 90+</li>
+        <li><strong>Tablet/Mobil:</strong> Chrome Mobile, Safari iOS 14+</li>
+    </ul>
+</div>
+
+<div class="tip-box">
+    <strong><span class="icon">💡</span> Ajánlott eszközök helyszíni használatra:</strong>
+    <ul>
+        <li><strong>Tablet:</strong> iPad (2018 vagy újabb), Samsung Galaxy Tab, vagy hasonló</li>
+        <li><strong>Képernyő méret:</strong> Minimum 10 hüvelyk</li>
+        <li><strong>Érintőképernyő támogatás:</strong> Igen (toll/ceruza támogatással előnyös)</li>
+    </ul>
+</div>
+
+<p><strong>Internet kapcsolat:</strong> Aktív internet szükséges (az alkalmazás online működik). Ajánlott sebesség: Minimum 5 Mbps</p>
+
+<div class="page-break"></div>
+
+<!-- 2. Első lépések -->
+<h2 id="getting-started">2. Első lépések</h2>
+
+<h3>2.1 Bejelentkezés</h3>
+
+<ol>
+    <li class="step">Nyisd meg az alkalmazást a böngésződben: <code>https://survey.yourdomain.com</code></li>
+    <li class="step">Add meg az <strong>email címed</strong></li>
+    <li class="step">Add meg a <strong>jelszavad</strong></li>
+    <li class="step">Kattints a <strong>"Bejelentkezés"</strong> gombra</li>
+</ol>
+
+<div class="info-box">
+    <strong><span class="icon">🔑</span> Elfelejtett jelszó:</strong>
+    <ul>
+        <li>Kattints az "Elfelejtetted a jelszavad?" linkre</li>
+        <li>Add meg az email címed</li>
+        <li>Ellenőrizd az email fiókod</li>
+        <li>Kattints az email-ben kapott linkre</li>
+        <li>Adj meg új jelszót</li>
+    </ul>
+</div>
+
+<h3>2.2 Első bejelentkezés után</h3>
+
+<p>A sikeres bejelentkezés után a <strong>Dashboard</strong> (Vezérlőpult) jelenik meg, ahol láthatod:</p>
+
+<ul>
+    <li><span class="icon">📊</span> <strong>Aktív projektek száma:</strong> Az éppen folyamatban lévő projektek</li>
+    <li><span class="icon">✅</span> <strong>Lezárt projektek száma:</strong> Befejezett munkák</li>
+    <li><span class="icon">📦</span> <strong>Archivált projektek száma:</strong> Régi, archivált projektek</li>
+    <li><span class="icon">➕</span> <strong>Gyors műveletek:</strong> Új projekt létrehozása gomb</li>
+</ul>
+
+<h3>2.3 Navigáció az alkalmazásban</h3>
+
+<table>
+    <tr>
+        <th>Menüpont</th>
+        <th>Leírás</th>
+        <th>Hozzáférés</th>
+    </tr>
+    <tr>
+        <td>🏠 Dashboard</td>
+        <td>Kezdőlap, áttekintés</td>
+        <td>Mindenki</td>
+    </tr>
+    <tr>
+        <td>📁 Projektek</td>
+        <td>Összes projekt listája</td>
+        <td>Mindenki</td>
+    </tr>
+    <tr>
+        <td>👥 Felhasználók</td>
+        <td>Felhasználók kezelése</td>
+        <td>Csak Admin</td>
+    </tr>
+    <tr>
+        <td>⚙️ Admin</td>
+        <td>Adminisztrációs beállítások</td>
+        <td>Csak Admin</td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 3. Felhasználói szerepkörök -->
+<h2 id="roles">3. Felhasználói szerepkörök</h2>
+
+<p>A Building Survey három szerepkört támogat különböző jogosultságokkal:</p>
+
+<h3>3.1 <span class="badge badge-admin">Admin</span> (Adminisztrátor)</h3>
+
+<div class="success-box">
+    <strong>Jogosultságok:</strong>
+    <ul>
+        <li>✅ Minden projekt megtekintése (saját + mások projektjei is)</li>
+        <li>✅ Minden projekt szerkesztése és törlése</li>
+        <li>✅ Új projekt létrehozása</li>
+        <li>✅ Rajzok készítése és szerkesztése minden projektben</li>
+        <li>✅ Űrlapok kitöltése és szerkesztése</li>
+        <li>✅ Fotók feltöltése és törlése</li>
+        <li>✅ Felhasználók kezelése (létrehozás, szerkesztés, törlés, jogosultságok)</li>
+        <li>✅ RLS policy-k frissítése</li>
+        <li>✅ Teljes rendszer hozzáférés</li>
+    </ul>
+    <p><strong>Tipikus felhasználó:</strong> Cégvezető, projekt menedzser, rendszergazda</p>
+</div>
+
+<h3>3.2 <span class="badge badge-user">User</span> (Felhasználó)</h3>
+
+<div class="info-box">
+    <strong>Jogosultságok:</strong>
+    <ul>
+        <li>✅ Saját projektek megtekintése</li>
+        <li>✅ Saját projektek szerkesztése és törlése</li>
+        <li>✅ Új projekt létrehozása</li>
+        <li>✅ Rajzok készítése saját projektekben</li>
+        <li>✅ Űrlapok kitöltése saját projektekben</li>
+        <li>✅ Fotók feltöltése saját projektekben</li>
+        <li>❌ Mások projektjeinek megtekintése</li>
+        <li>❌ Felhasználók kezelése</li>
+    </ul>
+    <p><strong>Tipikus felhasználó:</strong> Felmérő mérnök, helyszíni dolgozó</p>
+</div>
+
+<h3>3.3 <span class="badge badge-viewer">Viewer</span> (Megtekintő)</h3>
+
+<div class="warning-box">
+    <strong>Jogosultságok:</strong>
+    <ul>
+        <li>✅ MINDEN projekt megtekintése (read-only)</li>
+        <li>✅ MINDEN rajz megtekintése</li>
+        <li>✅ MINDEN űrlap megtekintése</li>
+        <li>✅ PDF exportálás (projektek, rajzok, űrlapok)</li>
+        <li>❌ Projekt létrehozása, szerkesztése, törlése</li>
+        <li>❌ Rajz készítése vagy módosítása</li>
+        <li>❌ Űrlap kitöltése vagy szerkesztése</li>
+        <li>❌ Fotó feltöltése vagy törlése</li>
+    </ul>
+    <p><strong>Tipikus felhasználó:</strong> Ügyfél, külső auditor, csak olvasási joggal rendelkező partner</p>
+</div>
+
+<div class="page-break"></div>
+
+<!-- 4. Projektek kezelése -->
+<h2 id="projects">4. Projektek kezelése</h2>
+
+<h3>4.1 Projektek listája</h3>
+
+<p>A <strong>"Projektek"</strong> menüpontban láthatod az összes projektet (szerepkörtől függően).</p>
+
+<p><strong>Lista nézet elemei:</strong></p>
+<ul>
+    <li><strong>Projekt név:</strong> Felhasználó által megadott név</li>
+    <li><strong>Azonosító:</strong> Automatikusan generált (pl. <code>PROJ-20251025-001</code>)</li>
+    <li><strong>Állapot:</strong> Aktív / Lezárt / Archivált</li>
+    <li><strong>Létrehozás dátuma:</strong> Projekt létrehozásának időpontja</li>
+    <li><strong>Műveletek:</strong> Szerkesztés, Törlés gombok (jogosultságtól függően)</li>
+</ul>
+
+<div class="tip-box">
+    <strong><span class="icon">🔍</span> Keresés és szűrés:</strong>
+    <ul>
+        <li><strong>Keresőmező:</strong> Projekt név vagy azonosító alapján</li>
+        <li><strong>Állapot szűrő:</strong> Aktív / Lezárt / Archivált szűrés</li>
+    </ul>
+</div>
+
+<h3>4.2 Új projekt létrehozása</h3>
+
+<ol>
+    <li class="step">Kattints a <strong>"+ Új projekt"</strong> gombra (jobb felső sarokban)</li>
+    <li class="step">Add meg a <strong>projekt nevet</strong> (kötelező, minimum 3 karakter)</li>
+    <li class="step">Válaszd ki az <strong>állapotot</strong> (Aktív az alapértelmezett)</li>
+    <li class="step">Kattints a <strong>"Mentés"</strong> gombra</li>
+</ol>
+
+<div class="success-box">
+    <strong><span class="icon">✅</span> Eredmény:</strong>
+    <ul>
+        <li>Automatikus azonosító generálása (pl. <code>PROJ-20251025-001</code>)</li>
+        <li>Átirányítás a projekt részletek oldalára</li>
+    </ul>
+</div>
+
+<h3>4.3 Projekt állapotok</h3>
+
+<table>
+    <tr>
+        <th>Állapot</th>
+        <th>Leírás</th>
+        <th>Használat</th>
+    </tr>
+    <tr>
+        <td><strong>Aktív</strong></td>
+        <td>Folyamatban lévő projekt</td>
+        <td>Jelenleg dolgozol rajta</td>
+    </tr>
+    <tr>
+        <td><strong>Lezárt</strong></td>
+        <td>Befejezett projekt</td>
+        <td>Munka befejeződött, de még elérhető</td>
+    </tr>
+    <tr>
+        <td><strong>Archivált</strong></td>
+        <td>Régi, archivált projekt</td>
+        <td>Hosszú távú tárolás</td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 5. Rajzok modul -->
+<h2 id="drawings">5. Rajzok modul</h2>
+
+<h3>5.1 Rajzok áttekintése</h3>
+
+<p>A Rajzok modul lehetővé teszi helyszíni vázlatok, alaprajzok, részletek digitális rögzítését.</p>
+
+<div class="info-box">
+    <strong><span class="icon">🎨</span> Funkciók:</strong>
+    <ul>
+        <li>Kézzel rajzolás tablet/egér használatával</li>
+        <li>Többféle rajzeszköz (toll, radír, kijelölés)</li>
+        <li>Zoom és pan (nagyítás, görgetés)</li>
+        <li>Exportálás PNG/PDF formátumba</li>
+        <li>Automatikus mentés (2 másodpercenként)</li>
+    </ul>
+</div>
+
+<h3>5.2 Rajzeszközök</h3>
+
+<table>
+    <tr>
+        <th>Eszköz</th>
+        <th>Ikon</th>
+        <th>Funkció</th>
+        <th>Gyorsbillentyű</th>
+    </tr>
+    <tr>
+        <td><strong>Pan eszköz</strong></td>
+        <td>🖐️ Kéz</td>
+        <td>Vászon mozgatása (görgetés)</td>
+        <td>Space + húzás</td>
+    </tr>
+    <tr>
+        <td><strong>Toll eszköz</strong></td>
+        <td>✏️ Ceruza</td>
+        <td>Rajzolás szabadkézzel</td>
+        <td>P</td>
+    </tr>
+    <tr>
+        <td><strong>Radír eszköz</strong></td>
+        <td>🧹 Radír</td>
+        <td>Rajzelemek törlése</td>
+        <td>E</td>
+    </tr>
+    <tr>
+        <td><strong>Kijelölés</strong></td>
+        <td>↖️ Kurzor</td>
+        <td>Elemek kijelölése és mozgatása</td>
+        <td>V</td>
+    </tr>
+</table>
+
+<h3>5.3 Rajzolás lépései (Desktop)</h3>
+
+<ol>
+    <li class="step">Válaszd ki a <strong>Toll eszközt</strong> (ceruza ikon)</li>
+    <li class="step">Válassz <strong>színt</strong> a felső eszköztáron (8 előre definiált szín)</li>
+    <li class="step">Állítsd be a <strong>vonalvastagságot</strong> (Vékony 2px / Közepes 4px / Vastag 8px)</li>
+    <li class="step">Rajzolj: Kattints és húzd az egeret a vásznon</li>
+    <li class="step">Automatikus mentés 2 másodpercenként</li>
+</ol>
+
+<div class="tip-box">
+    <strong><span class="icon">💡</span> Tipp:</strong> Használd a <strong>Undo</strong> gombot vagy <code>Ctrl+Z</code> billentyűkombinációt az utolsó 50 lépés visszavonásához.
+</div>
+
+<h3>5.4 Rajz exportálása</h3>
+
+<div class="success-box">
+    <strong><span class="icon">📄</span> PDF exportálás:</strong>
+    <ol>
+        <li>Nyisd meg a rajzot szerkesztő módban</li>
+        <li>Kattints a <strong>"PDF exportálás"</strong> gombra</li>
+        <li>Automatikus letöltés: <code>rajz-[projekt-azonosító]-[dátum].pdf</code></li>
+    </ol>
+</div>
+
+<div class="page-break"></div>
+
+<!-- 6. Űrlapok modul -->
+<h2 id="forms">6. Űrlapok modul</h2>
+
+<h3>6.1 Aquapol űrlap</h3>
+
+<p>Az Aquapol űrlap strukturált adatok gyűjtését teszi lehetővé falmenti páramentesítő rendszer felmérési adatlapjához.</p>
+
+<div class="info-box">
+    <strong><span class="icon">📋</span> Az űrlap szakaszai:</strong>
+    <ol>
+        <li>Alapadatok</li>
+        <li>Épület adatok</li>
+        <li>Fal állapot</li>
+        <li>Pince állapot</li>
+        <li>Talajvíz vizsgálat</li>
+        <li>Műszaki adatok</li>
+        <li>Megjegyzések</li>
+    </ol>
+</div>
+
+<h3>6.2 Űrlap kitöltése</h3>
+
+<ol>
+    <li class="step">Nyisd meg a projektet</li>
+    <li class="step">Válaszd az <strong>"Űrlapok"</strong> tabot</li>
+    <li class="step">Kattints az <strong>"Aquapol űrlap"</strong> gombra</li>
+    <li class="step">Töltsd ki a mezőket (szöveg, szám, választó mezők)</li>
+    <li class="step">Automatikus mentés vagy kattints a <strong>"💾 Mentés"</strong> gombra</li>
+</ol>
+
+<h3>6.3 Mező típusok</h3>
+
+<table>
+    <tr>
+        <th>Típus</th>
+        <th>Használat</th>
+        <th>Példa</th>
+    </tr>
+    <tr>
+        <td>Szövegmező</td>
+        <td>Szabadszöveges adatok</td>
+        <td>Cím, név</td>
+    </tr>
+    <tr>
+        <td>Számok</td>
+        <td>Numerikus értékek</td>
+        <td>Terület (m²), magasság (m)</td>
+    </tr>
+    <tr>
+        <td>Választó mezők (Radio)</td>
+        <td>Egy opció kiválasztása</td>
+        <td>Igen / Nem</td>
+    </tr>
+    <tr>
+        <td>Legördülő menü</td>
+        <td>Lista opciókból</td>
+        <td>Építési év intervallum</td>
+    </tr>
+    <tr>
+        <td>Checkbox</td>
+        <td>Bejelölés (igen/nem)</td>
+        <td>Elfogadom a feltételeket</td>
+    </tr>
+    <tr>
+        <td>Többsoros szöveg</td>
+        <td>Hosszabb megjegyzések</td>
+        <td>Megjegyzések, leírás</td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 7. Fotók modul -->
+<h2 id="photos">7. Fotók modul</h2>
+
+<h3>7.1 Fotók áttekintése</h3>
+
+<p>A Fotók modul lehetővé teszi helyszíni képek feltöltését és rendszerezését.</p>
+
+<h3>7.2 Fotó feltöltése</h3>
+
+<div class="info-box">
+    <strong><span class="icon">📷</span> Módszer 1: Drag & Drop (húzd és ejtsd)</strong>
+    <ol>
+        <li>Nyisd meg a projektet → <strong>"Fotók"</strong> tab</li>
+        <li>Húzd a képfájlt az ablakra</li>
+        <li>Ejtsd a fájlt a zónán</li>
+        <li>Automatikus feltöltés és megjelenítés</li>
+    </ol>
+</div>
+
+<div class="info-box">
+    <strong><span class="icon">📁</span> Módszer 2: Fájl tallózó</strong>
+    <ol>
+        <li>Kattints a <strong>"📷 Fotó feltöltése"</strong> gombra</li>
+        <li>Válassz ki egy vagy több képet (Ctrl/Cmd + kattintás)</li>
+        <li>Kattints a <strong>"Megnyitás"</strong> gombra</li>
+        <li>Automatikus feltöltés</li>
+    </ol>
+</div>
+
+<h3>7.3 Támogatott formátumok</h3>
+
+<table>
+    <tr>
+        <th>Formátum</th>
+        <th>Támogatott</th>
+        <th>Max méret</th>
+    </tr>
+    <tr>
+        <td>JPG/JPEG</td>
+        <td>✅ Igen</td>
+        <td>10 MB</td>
+    </tr>
+    <tr>
+        <td>PNG</td>
+        <td>✅ Igen</td>
+        <td>10 MB</td>
+    </tr>
+    <tr>
+        <td>WebP</td>
+        <td>✅ Igen</td>
+        <td>10 MB</td>
+    </tr>
+    <tr>
+        <td>HEIC/HEIF (iOS)</td>
+        <td>✅ Igen</td>
+        <td>10 MB</td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 9. Tablet használat -->
+<h2 id="tablet">9. Tablet használat és ujjmozdulatok</h2>
+
+<h3>9.1 Rajzolás tableten</h3>
+
+<div class="tip-box">
+    <strong><span class="icon">📱</span> Alapvető ujjmozdulatok:</strong>
+    <table>
+        <tr>
+            <th>Ujjak száma</th>
+            <th>Mozdulat</th>
+            <th>Funkció</th>
+        </tr>
+        <tr>
+            <td><strong>1 ujj</strong></td>
+            <td>Húzás</td>
+            <td>Rajzolás (Toll eszköz aktív)</td>
+        </tr>
+        <tr>
+            <td><strong>1 ujj</strong></td>
+            <td>Tap (érintés)</td>
+            <td>Eszköz kiválasztása, gombok</td>
+        </tr>
+        <tr>
+            <td><strong>2 ujj</strong></td>
+            <td>Pinch (csíptetés)</td>
+            <td>Zoom (nagyítás/kicsinyítés)</td>
+        </tr>
+        <tr>
+            <td><strong>2 ujj</strong></td>
+            <td>Pan (húzás)</td>
+            <td>Vászon görgetése</td>
+        </tr>
+        <tr>
+            <td><strong>3 ujj</strong></td>
+            <td>Swipe left/right</td>
+            <td>Undo/Redo (opcionális)</td>
+        </tr>
+    </table>
+</div>
+
+<h3>9.2 Stylus/Ceruza használat</h3>
+
+<div class="success-box">
+    <strong><span class="icon">✏️</span> Apple Pencil / S Pen / hasonló:</strong>
+    <ul>
+        <li><strong>Pontosság:</strong> Nagyon jó (pixelszintű)</li>
+        <li><strong>Nyomásérzékenység:</strong> Támogatott (ha az eszköz támogatja)</li>
+        <li><strong>Palm rejection:</strong> Automatikus (tenyér figyelmen kívül hagyása)</li>
+        <li><strong>Ajánlott:</strong> Részletes rajzokhoz, pontos mérésekhez</li>
+    </ul>
+</div>
+
+<h3>9.3 Tippek a pontosabb rajzoláshoz</h3>
+
+<ol>
+    <li class="step"><strong>Nagyítsd a területet</strong> (pinch zoom) mielőtt részletet rajzolsz</li>
+    <li class="step"><strong>Használj vékonyabb vonalat</strong> finom részletekhez (2px)</li>
+    <li class="step"><strong>Kijelölés eszközzel</strong> mozgasd az elemeket utólag</li>
+    <li class="step"><strong>Undo gomb</strong> közel az ujjhoz (jobb alsó sarok)</li>
+</ol>
+
+<div class="page-break"></div>
+
+<!-- 10. Gyakori kérdések -->
+<h2 id="faq">10. Gyakori kérdések</h2>
+
+<h3>Bejelentkezés és fiók</h3>
+
+<div class="info-box">
+    <p><strong>K: Elfelejtettem a jelszavam, mit tegyek?</strong></p>
+    <p>V: Kattints a bejelentkezési oldalon az "Elfelejtetted a jelszavad?" linkre. Add meg az email címed, és küldünk egy linket jelszó visszaállításhoz.</p>
+</div>
+
+<div class="info-box">
+    <p><strong>K: Miért látok "Megtekintő mód" üzenetet?</strong></p>
+    <p>V: Ez azt jelenti, hogy <span class="badge badge-viewer">Viewer</span> szerepkörrel vagy bejelentkezve, amely csak olvasási jogot biztosít. Nem tudsz szerkeszteni, létrehozni vagy törölni. Kérj egy Admin felhasználót, hogy módosítsa a szerepköröd.</p>
+</div>
+
+<h3>Projektek</h3>
+
+<div class="info-box">
+    <p><strong>K: Látom mások projektjeit?</strong></p>
+    <p>V: Attól függ a szerepköröd:</p>
+    <ul>
+        <li><span class="badge badge-admin">Admin</span> Látja mindenki projektjét</li>
+        <li><span class="badge badge-user">User</span> Csak a saját projektjeit</li>
+        <li><span class="badge badge-viewer">Viewer</span> Látja mindenki projektjét (read-only)</li>
+    </ul>
+</div>
+
+<h3>Rajzok</h3>
+
+<div class="info-box">
+    <p><strong>K: Hány lépést lehet visszavonni?</strong></p>
+    <p>V: Az utolsó <strong>50 lépést</strong> lehet visszavonni (Undo).</p>
+</div>
+
+<div class="info-box">
+    <p><strong>K: Milyen zoom szint érhető el?</strong></p>
+    <p>V: <strong>10% - 500%</strong> között. Pinch zoom vagy scroll wheel használatával.</p>
+</div>
+
+<h3>Fotók</h3>
+
+<div class="info-box">
+    <p><strong>K: Tudok egyszerre több fotót feltölteni?</strong></p>
+    <p>V: Igen, használd a fájlböngészőt és jelölj ki több fájlt <code>Ctrl</code> (vagy <code>Cmd</code>) + kattintással. Vagy húzz be több fájlt drag & drop-pal.</p>
+</div>
+
+<div class="page-break"></div>
+
+<!-- 11. Hibaelhárítás -->
+<h2 id="troubleshooting">11. Hibaelhárítás</h2>
+
+<h3>11.1 Bejelentkezési problémák</h3>
+
+<div class="warning-box">
+    <p><strong>Probléma:</strong> "Érvénytelen email vagy jelszó" hibaüzenet</p>
+    <p><strong>Megoldás:</strong></p>
+    <ol>
+        <li>Ellenőrizd az email cím helyességét (kis/nagybetű nem számít)</li>
+        <li>Ellenőrizd a jelszót (kis/nagybetű SZÁMÍT!)</li>
+        <li>Próbáld meg a jelszó visszaállítást</li>
+        <li>Ha továbbra sem működik, kérj segítséget az Admin-tól</li>
+    </ol>
+</div>
+
+<h3>11.2 Rajzolási problémák</h3>
+
+<div class="warning-box">
+    <p><strong>Probléma:</strong> Nem tudok rajzolni, az ujjam csak görget</p>
+    <p><strong>Megoldás:</strong></p>
+    <ol>
+        <li>Ellenőrizd, hogy a <strong>Toll eszköz</strong> van-e kiválasztva</li>
+        <li>Ha két ujjal próbálsz rajzolni, az zoom/pan lesz - használj egy ujjat</li>
+        <li>Próbáld meg újratölteni az oldalt: <code>F5</code> vagy <code>Ctrl+R</code></li>
+    </ol>
+</div>
+
+<h3>11.3 Feltöltési problémák</h3>
+
+<div class="warning-box">
+    <p><strong>Probléma:</strong> "Fájl méret túl nagy" hibaüzenet</p>
+    <p><strong>Megoldás:</strong></p>
+    <ol>
+        <li>Tömörítsd a képet (pl. TinyPNG, CompressJPEG)</li>
+        <li>Csökkentsd a felbontást (pl. 1920x1080 helyett 1280x720)</li>
+        <li>Konvertáld JPG-re PNG helyett</li>
+    </ol>
+</div>
+
+<h3>11.4 Teljesítmény</h3>
+
+<div class="warning-box">
+    <p><strong>Probléma:</strong> Lassú a rajzolás tableten</p>
+    <p><strong>Megoldás:</strong></p>
+    <ol>
+        <li>Használj vékonyabb vonalat</li>
+        <li>Csökkentsd a zoom szintet</li>
+        <li>Töröld a nem használt elemeket</li>
+        <li>Zárd be a háttér alkalmazásokat</li>
+        <li>Próbáld újra betölteni az oldalt</li>
+    </ol>
+</div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    <p><strong>Building Survey - Felhasználói Kézikönyv</strong></p>
+    <p>Verzió 1.0 | Utolsó frissítés: 2025. október 25.</p>
+    <p>© 2025 Building Survey. Minden jog fenntartva.</p>
+</div>
+
+<script>
+// Print to PDF automatically (optional)
+// Uncomment to enable auto-print on page load
+// window.addEventListener('load', function() {
+//     setTimeout(function() {
+//         window.print();
+//     }, 1000);
+// });
+</script>
+
+</body>
+</html>
