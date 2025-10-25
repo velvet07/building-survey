@@ -28,6 +28,7 @@ export const PAPER_SIZES: Record<PaperSize, Record<PaperOrientation, PaperDimens
 export const GRID_SIZE_MM = 1; // 1mm grid
 export const GRID_SIZE_PX = 11.8; // 1mm at 300 DPI ≈ 11.8px
 export const GRID_MAJOR_INTERVAL = 10; // Major grid lines every 10mm
+export const GRID_MEDIUM_INTERVAL = 5; // Medium grid lines every 5mm
 
 /**
  * Zoom constraints
@@ -147,6 +148,33 @@ export function calculateCenter(
  */
 export function clampZoom(zoom: number): number {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+}
+
+/**
+ * Clamp a point so it remains within the canvas bounds
+ * Pontok koordinátáinak korlátozása, hogy ne hagyják el a vásznat
+ */
+export function clampPointToCanvas(
+  point: { x: number; y: number },
+  canvasWidth: number,
+  canvasHeight: number
+): { x: number; y: number } {
+  return {
+    x: Math.min(Math.max(point.x, 0), canvasWidth),
+    y: Math.min(Math.max(point.y, 0), canvasHeight),
+  };
+}
+
+/**
+ * Check if a point is inside the canvas bounds
+ * Ellenőrizd, hogy egy pont a vászon határain belül van-e
+ */
+export function isPointInsideCanvas(
+  point: { x: number; y: number },
+  canvasWidth: number,
+  canvasHeight: number
+): boolean {
+  return point.x >= 0 && point.x <= canvasWidth && point.y >= 0 && point.y <= canvasHeight;
 }
 
 /**

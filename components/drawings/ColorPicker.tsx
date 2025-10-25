@@ -42,16 +42,16 @@ export default function ColorPicker({
       {/* Selected color button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        className="flex w-full items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-400 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         aria-label="Szín választó"
       >
         <div
-          className="w-6 h-6 rounded-full border-2 border-gray-300 flex-shrink-0"
+          className="h-6 w-6 flex-shrink-0 rounded-full border-2 border-emerald-300"
           style={{ backgroundColor: selectedColor }}
         />
-        <span className="text-sm text-gray-700 flex-1 text-left">Szín</span>
+        <span className="flex-1 text-left">Szín</span>
         <svg
-          className={`w-4 h-4 text-gray-500 transition-transform ${
+          className={`h-4 w-4 text-emerald-500 transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
           fill="none"
@@ -70,25 +70,22 @@ export default function ColorPicker({
       {/* Color palette dropdown */}
       {isOpen && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
+          {/* Háttér a dropdown bezárásához */}
+          <div className="fixed inset-0 z-[55]" onClick={() => setIsOpen(false)} />
 
-          {/* Palette */}
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3 z-20">
-            <p className="text-xs text-gray-500 mb-2 font-medium">
+          {/* Színválasztó lista */}
+          <div className="absolute top-full left-0 right-0 z-[99999] mt-2 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-600">
               Válassz színt
             </p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-4">
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color.hex}
                   onClick={() => handleColorSelect(color.hex)}
-                  className={`group relative w-12 h-12 rounded-lg transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  className={`group relative flex h-14 w-14 items-center justify-center rounded-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
                     selectedColor === color.hex
-                      ? 'ring-2 ring-blue-500 ring-offset-2 scale-105'
+                      ? 'ring-2 ring-emerald-500 ring-offset-2'
                       : ''
                   }`}
                   style={{ backgroundColor: color.hex }}
@@ -98,7 +95,7 @@ export default function ColorPicker({
                   {/* Checkmark for selected color */}
                   {selectedColor === color.hex && (
                     <svg
-                      className="absolute inset-0 m-auto w-6 h-6 text-white drop-shadow-lg"
+                      className="h-6 w-6 text-white drop-shadow-lg"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -113,7 +110,7 @@ export default function ColorPicker({
                   )}
 
                   {/* Tooltip on hover */}
-                  <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                  <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 transform rounded bg-emerald-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap">
                     {color.name}
                   </span>
                 </button>
@@ -121,15 +118,15 @@ export default function ColorPicker({
             </div>
 
             {/* Color info */}
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <div className="flex items-center justify-between text-xs text-gray-600">
+            <div className="mt-4 border-t border-emerald-100 pt-3">
+              <div className="flex items-center justify-between text-xs text-emerald-600">
                 <span>Kiválasztott:</span>
                 <div className="flex items-center gap-2">
                   <div
-                    className="w-4 h-4 rounded border border-gray-300"
+                    className="h-4 w-4 rounded border border-emerald-200"
                     style={{ backgroundColor: selectedColor }}
                   />
-                  <code className="font-mono">{selectedColor}</code>
+                  <code className="font-mono text-emerald-700">{selectedColor}</code>
                 </div>
               </div>
             </div>
@@ -151,15 +148,15 @@ export function CompactColorPicker({
 }: ColorPickerProps) {
   return (
     <div className={className}>
-      <p className="text-xs text-gray-500 mb-2">Szín</p>
-      <div className="grid grid-cols-4 gap-1">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-500">Szín</p>
+      <div className="grid grid-cols-4 gap-2">
         {PRESET_COLORS.map((color) => (
           <button
             key={color.hex}
             onClick={() => onChange(color.hex)}
-            className={`w-10 h-10 rounded-lg transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`h-11 w-11 rounded-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
               selectedColor === color.hex
-                ? 'ring-2 ring-blue-500 scale-105'
+                ? 'ring-2 ring-emerald-500'
                 : ''
             }`}
             style={{ backgroundColor: color.hex }}

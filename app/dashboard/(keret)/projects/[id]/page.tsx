@@ -126,8 +126,8 @@ export default function ProjectDashboardPage() {
         </svg>
       ),
       color: 'emerald',
-      href: '#',
-      available: false,
+      href: `/dashboard/projects/${projectId}/forms/aquapol`,
+      available: true,
     },
     {
       id: 'drawings',
@@ -144,8 +144,8 @@ export default function ProjectDashboardPage() {
         </svg>
       ),
       color: 'blue',
-      href: '#',
-      available: false,
+      href: `/dashboard/projects/${projectId}/drawings`,
+      available: true,
     },
     {
       id: 'photos',
