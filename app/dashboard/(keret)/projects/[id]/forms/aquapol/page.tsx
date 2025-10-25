@@ -297,14 +297,15 @@ export default function AquapolFormPage() {
           isSubmitting={saving}
           readOnly={!canEdit}
           actions={
-            canEdit && (
+            canEdit ? (
               <button
                 type="submit"
                 disabled={saving}
                 className="inline-flex items-center gap-2 self-end rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saveButtonContent}
-            </button>
+              </button>
+            ) : undefined
           }
         />
       </div>
