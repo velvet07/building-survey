@@ -12,6 +12,23 @@
 -- Fontos: HARD DELETE - nincs soft delete (deleted_at mező)
 
 -- =============================================================================
+-- 0. HELPER FÜGGVÉNYEK LÉTREHOZÁSA
+-- =============================================================================
+
+-- Függvény: Automatikusan frissíti az updated_at mezőt
+-- Ha már létezik, nem hozza létre újra (CREATE OR REPLACE)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION update_updated_at_column() IS
+'Automatikusan frissíti az updated_at mezőt a jelenlegi időpontra minden UPDATE művelet előtt';
+
+-- =============================================================================
 -- 1. PHOTOS TÁBLA LÉTREHOZÁSA
 -- =============================================================================
 
