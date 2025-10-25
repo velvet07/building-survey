@@ -47,9 +47,8 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
       newErrors.password = 'A jelszónak legalább 8 karakter hosszúnak kell lennie';
     }
 
-    if (!fullName.trim()) {
-      newErrors.fullName = 'A teljes név kötelező';
-    } else if (fullName.length < 3) {
+    // Full name is optional, but if provided, it should be at least 3 characters
+    if (fullName.trim() && fullName.length < 3) {
       newErrors.fullName = 'A teljes névnek legalább 3 karakter hosszúnak kell lennie';
     }
 
@@ -127,7 +126,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Teljes név"
+          label="Teljes név (opcionális)"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           error={errors.fullName}

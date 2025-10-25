@@ -168,8 +168,8 @@ export default function ProjectDashboardPage() {
         </svg>
       ),
       color: 'green',
-      href: '#',
-      available: false,
+      href: `/dashboard/projects/${projectId}/photos`,
+      available: true,
     },
   ];
 

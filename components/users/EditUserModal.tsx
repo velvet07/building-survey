@@ -29,11 +29,8 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
   }, [user]);
 
   const validate = () => {
-    if (!fullName.trim()) {
-      setError('A teljes név kötelező');
-      return false;
-    }
-    if (fullName.length < 3) {
+    // Full name is optional, but if provided, it should be at least 3 characters
+    if (fullName.trim() && fullName.length < 3) {
       setError('A teljes névnek legalább 3 karakter hosszúnak kell lennie');
       return false;
     }
@@ -99,7 +96,7 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
         </div>
 
         <Input
-          label="Teljes név"
+          label="Teljes név (opcionális)"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           error={error}

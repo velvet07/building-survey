@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase';
 
 interface NavItem {
   href: string;
   label: string;
   icon: string;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -25,16 +28,49 @@ const navItems: NavItem[] = [
     href: '/dashboard/users',
     label: 'Felhasználók',
     icon: '👥',
+    adminOnly: true,
   },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    checkAdminRole();
+  }, []);
+
+  const checkAdminRole = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        setIsAdmin(profile?.role === 'admin');
+      }
+    } catch (error) {
+      console.error('Error checking admin role:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <aside className="w-40 bg-white border-r border-secondary-200 min-h-screen">
       <nav className="p-2 space-y-1">
         {navItems.map((item) => {
+          // Hide admin-only items for non-admin users
+          if (item.adminOnly && !isAdmin) {
+            return null;
+          }
+
           const isActive = pathname === item.href;
 
           return (
