@@ -67,26 +67,25 @@ USING (
   AND deleted_at IS NULL
 );
 
--- Policy: User láthatja az összes nem törölt projektet
-CREATE POLICY "Users can view all non-deleted projects"
+-- Policy: User láthatja saját nem törölt projektjeit
+CREATE POLICY "Users can view own non-deleted projects"
 ON public.projects
 FOR SELECT
 TO authenticated
 USING (
-  deleted_at IS NULL
+  owner_id = auth.uid()
+  AND deleted_at IS NULL
 );
 
--- Policy: Viewer később láthatja a megosztott projekteket (MVP-ben nincs implementálva)
--- Placeholder - későbbi feature-höz
--- CREATE POLICY "Viewers can view shared projects"
--- ON public.projects
--- FOR SELECT
--- TO authenticated
--- USING (
---   (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'viewer'
---   AND deleted_at IS NULL
---   AND id IN (SELECT project_id FROM public.project_shares WHERE user_id = auth.uid())
--- );
+-- Policy: Viewer láthatja az összes nem törölt projektet
+CREATE POLICY "Viewers can view all non-deleted projects"
+ON public.projects
+FOR SELECT
+TO authenticated
+USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'viewer'
+  AND deleted_at IS NULL
+);
 
 -- =============================================================================
 -- 3. PROJECTS TÁBLA - INSERT POLICIES
@@ -284,13 +283,29 @@ USING (
   (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
 
--- Policy: Minden felhasználó megtekintheti az összes űrlap választ
-CREATE POLICY "All users can view form responses"
+-- Policy: Projekt tulajdonos megtekintheti a saját űrlap válaszait
+CREATE POLICY "Project owners can view own form responses"
 ON public.project_form_responses
 FOR SELECT
 TO authenticated
 USING (
   EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.project_form_responses.project_id
+      AND public.projects.owner_id = auth.uid()
+      AND public.projects.deleted_at IS NULL
+  )
+);
+
+-- Policy: Viewer megtekintheti az összes űrlap választ
+CREATE POLICY "Viewers can view all form responses"
+ON public.project_form_responses
+FOR SELECT
+TO authenticated
+USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'viewer'
+  AND EXISTS (
     SELECT 1
     FROM public.projects
     WHERE public.projects.id = public.project_form_responses.project_id

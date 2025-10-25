@@ -5,31 +5,53 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useRouter } from 'next/navigation';
 
 const POLICY_UPDATE_SQL = `-- =============================================================================
--- Update RLS Policies to Allow All Users to View All Projects
+-- Update RLS Policies to Allow Viewer Role to View All Projects
 -- =============================================================================
 
--- 1. PROJECTS TABLE - UPDATE SELECT POLICY
-DROP POLICY IF EXISTS "Users can view own non-deleted projects" ON public.projects;
+-- 1. PROJECTS TABLE - ADD VIEWER SELECT POLICY
+DROP POLICY IF EXISTS "Users can view all non-deleted projects" ON public.projects;
 
-CREATE POLICY "Users can view all non-deleted projects"
+DROP POLICY IF EXISTS "Users can view own non-deleted projects" ON public.projects;
+CREATE POLICY "Users can view own non-deleted projects"
 ON public.projects
 FOR SELECT
 TO authenticated
 USING (
-  deleted_at IS NULL
+  owner_id = auth.uid()
+  AND deleted_at IS NULL
 );
 
-COMMENT ON POLICY "Users can view all non-deleted projects" ON public.projects IS
-'Minden authenticated user láthatja az összes nem törölt projektet';
+DROP POLICY IF EXISTS "Viewers can view all non-deleted projects" ON public.projects;
+CREATE POLICY "Viewers can view all non-deleted projects"
+ON public.projects
+FOR SELECT
+TO authenticated
+USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'viewer'
+  AND deleted_at IS NULL
+);
 
--- 2. DRAWINGS TABLE - UPDATE SELECT POLICY
+-- 2. DRAWINGS TABLE - ADD VIEWER SELECT POLICY
 DROP POLICY IF EXISTS drawings_select_policy ON public.drawings;
 
 CREATE POLICY drawings_select_policy
 ON public.drawings
 FOR SELECT
 USING (
-  (deleted_at IS NULL)
+  (
+    EXISTS (
+      SELECT 1
+      FROM public.projects
+      WHERE public.projects.id = public.drawings.project_id
+        AND public.projects.owner_id = auth.uid()
+        AND public.drawings.deleted_at IS NULL
+    )
+  )
+  OR
+  (
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'viewer'
+    AND deleted_at IS NULL
+  )
   OR
   (
     EXISTS (
@@ -41,13 +63,11 @@ USING (
   )
 );
 
-COMMENT ON POLICY drawings_select_policy ON public.drawings IS
-'Minden user látja az összes aktív rajzot, Admin mindent (törölt rajzokkal együtt)';
+-- 3. FORM RESPONSES TABLE - ADD VIEWER SELECT POLICY
+DROP POLICY IF EXISTS "All users can view form responses" ON public.project_form_responses;
 
--- 3. FORM RESPONSES TABLE - UPDATE SELECT POLICY
 DROP POLICY IF EXISTS "Project owners can view own form responses" ON public.project_form_responses;
-
-CREATE POLICY "All users can view form responses"
+CREATE POLICY "Project owners can view own form responses"
 ON public.project_form_responses
 FOR SELECT
 TO authenticated
@@ -56,12 +76,25 @@ USING (
     SELECT 1
     FROM public.projects
     WHERE public.projects.id = public.project_form_responses.project_id
+      AND public.projects.owner_id = auth.uid()
       AND public.projects.deleted_at IS NULL
   )
 );
 
-COMMENT ON POLICY "All users can view form responses" ON public.project_form_responses IS
-'Minden user láthatja az összes űrlap választ (aktív projektekhez tartozók)';`;
+DROP POLICY IF EXISTS "Viewers can view all form responses" ON public.project_form_responses;
+CREATE POLICY "Viewers can view all form responses"
+ON public.project_form_responses
+FOR SELECT
+TO authenticated
+USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'viewer'
+  AND EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE public.projects.id = public.project_form_responses.project_id
+      AND public.projects.deleted_at IS NULL
+  )
+);`;
 
 export default function AdminPoliciesPage() {
   const { isAdmin, isLoading } = useUserRole();
@@ -130,7 +163,7 @@ export default function AdminPoliciesPage() {
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">RLS Policy Frissítések</h1>
             <p className="text-gray-600">
-              Futtasd le ezt az SQL scriptet a Supabase Dashboard-on, hogy minden felhasználó láthassa az összes projektet.
+              Futtasd le ezt az SQL scriptet a Supabase Dashboard-on, hogy a viewer felhasználók lássák az összes projektet.
             </p>
           </div>
 
@@ -151,14 +184,15 @@ export default function AdminPoliciesPage() {
             <div className="text-yellow-800 text-sm space-y-2">
               <p><strong>Változások:</strong></p>
               <ul className="list-disc list-inside ml-4 space-y-1">
-                <li>Minden user látja az ÖSSZES projektet (nem csak a sajátját)</li>
-                <li>Minden user látja az ÖSSZES rajzot</li>
-                <li>Minden user látja az ÖSSZES űrlap választ</li>
+                <li><strong>VIEWER</strong> látja az ÖSSZES projektet, rajzot és űrlap választ</li>
+                <li><strong>USER</strong> továbbra is CSAK saját projektjeit látja (nem változik)</li>
+                <li><strong>ADMIN</strong> továbbra is mindent lát és szerkeszt (nem változik)</li>
               </ul>
               <p className="mt-3"><strong>Biztonság (nem változik):</strong></p>
               <ul className="list-disc list-inside ml-4 space-y-1">
-                <li>Létrehozni, szerkeszteni, törölni továbbra is csak a tulajdonos tud</li>
-                <li>Viewer user továbbra is csak megtekinteni tud mindent</li>
+                <li>User létrehozni, szerkeszteni, törölni továbbra is csak a saját projektjeit tudja</li>
+                <li>Viewer továbbra is NEM tud létrehozni, szerkeszteni vagy törölni semmit</li>
+                <li>Admin továbbra is mindent tud létrehozni, szerkeszteni és törölni</li>
               </ul>
             </div>
           </div>

@@ -36,18 +36,30 @@
 -- =============================================================================
 
 -- Policy név: drawings_select_policy
--- Célja: Minden felhasználó látja az összes aktív rajzot, Admin mindent
+-- Célja: User látja saját projekt rajzait, Viewer és Admin mindent
 DROP POLICY IF EXISTS drawings_select_policy ON public.drawings;
 CREATE POLICY drawings_select_policy
 ON public.drawings
 FOR SELECT
 USING (
-  -- Feltétel 1: Minden authenticated user látja az aktív rajzokat
+  -- Feltétel 1: User látja saját projektjeihez tartozó aktív rajzokat
   (
-    deleted_at IS NULL
+    EXISTS (
+      SELECT 1
+      FROM public.projects
+      WHERE public.projects.id = public.drawings.project_id
+        AND public.projects.owner_id = auth.uid()
+        AND public.drawings.deleted_at IS NULL
+    )
   )
   OR
-  -- Feltétel 2: Admin mindent lát (törölt rajzokat is)
+  -- Feltétel 2: Viewer látja az összes aktív rajzot
+  (
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'viewer'
+    AND deleted_at IS NULL
+  )
+  OR
+  -- Feltétel 3: Admin mindent lát (törölt rajzokat is)
   (
     EXISTS (
       SELECT 1
@@ -60,7 +72,7 @@ USING (
 
 -- Komment hozzáadása
 COMMENT ON POLICY drawings_select_policy ON public.drawings IS
-'SELECT policy: Minden user látja az összes aktív rajzot, Admin mindent (törölt rajzokkal együtt)';
+'SELECT policy: User látja saját projektjeihez tartozó aktív rajzokat, Viewer látja az összes aktív rajzot, Admin mindent (törölt rajzokkal együtt)';
 
 -- =============================================================================
 -- 2. INSERT POLICY - RAJZ LÉTREHOZÁSA
