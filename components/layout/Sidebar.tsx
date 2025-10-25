@@ -21,6 +21,11 @@ const navItems: NavItem[] = [
     label: 'Projektek',
     icon: '📁',
   },
+  {
+    href: '/dashboard/users',
+    label: 'Felhasználók',
+    icon: '👥',
+  },
 ];
 
 export function Sidebar() {
