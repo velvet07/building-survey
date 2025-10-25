@@ -16,6 +16,7 @@ export default function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all' | 'non-archived'>('non-archived');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleCreate = () => {
     // Close all other modals first
@@ -71,6 +72,42 @@ export default function ProjectsPage() {
         </Button>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-4">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Keresés projekt név vagy azonosító alapján..."
+            className="w-full pl-10 pr-4 py-3 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+          />
+          <svg
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-secondary-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-secondary-400 hover:text-secondary-600 transition-colors"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Filter and Actions Bar */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white p-4 rounded-lg border border-secondary-200">
         <div className="flex items-center gap-3">
@@ -99,11 +136,12 @@ export default function ProjectsPage() {
       </div>
 
       <ProjectList
-        key={`${refreshKey}-${statusFilter}`}
+        key={`${refreshKey}-${statusFilter}-${searchQuery}`}
         onCreate={handleCreate}
         onEdit={handleEdit}
         onDelete={handleDelete}
         filterStatus={statusFilter}
+        searchQuery={searchQuery}
       />
 
       <CreateProjectModal
