@@ -114,7 +114,13 @@ export async function GET(
     const mimeType = mimeTypes[ext] || 'application/octet-stream';
 
     // 8. Return file with appropriate headers
-    return new NextResponse(fileBuffer, {
+    // Convert Buffer to ArrayBuffer for NextResponse compatibility
+    const arrayBuffer = fileBuffer.buffer.slice(
+      fileBuffer.byteOffset,
+      fileBuffer.byteOffset + fileBuffer.byteLength
+    );
+
+    return new NextResponse(arrayBuffer, {
       status: 200,
       headers: {
         'Content-Type': mimeType,
