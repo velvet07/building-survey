@@ -47,6 +47,7 @@ export interface Drawing {
   id: string; // UUID
   project_id: string; // UUID - foreign key to projects table
   name: string; // Drawing name (e.g., "Alaprajz", "Alaprajz 2")
+  slug: string; // URL-friendly slug (e.g., "alaprajz", "alaprajz-2")
   canvas_data: CanvasData; // JSONB - drawing data
   paper_size: PaperSize; // 'a4' | 'a3'
   orientation: PaperOrientation; // 'portrait' | 'landscape'

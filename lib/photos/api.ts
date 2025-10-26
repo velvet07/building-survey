@@ -28,17 +28,28 @@ export async function getPhotos(projectId: string): Promise<Photo[]> {
 
   const photos = (data as Photo[]) || [];
 
-  // Generate signed URLs for private bucket access (valid for 1 hour)
+  // For local storage, no need to generate signed URLs
+  // For legacy Supabase Storage photos, generate signed URLs if needed
   const photosWithUrls = await Promise.all(
     photos.map(async (photo) => {
-      const { data: urlData } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUrl(photo.file_path, 3600); // 1 hour expiry
+      // Skip signed URL generation for local files
+      if (photo.local_file_path) {
+        return photo;
+      }
 
-      return {
-        ...photo,
-        signedUrl: urlData?.signedUrl || '',
-      };
+      // Generate signed URLs for legacy Supabase Storage photos
+      if (photo.file_path) {
+        const { data: urlData } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(photo.file_path, 3600); // 1 hour expiry
+
+        return {
+          ...photo,
+          signedUrl: urlData?.signedUrl || '',
+        };
+      }
+
+      return photo;
     })
   );
 
@@ -71,60 +82,29 @@ export async function getPhoto(photoId: string): Promise<Photo> {
 }
 
 /**
- * Upload a photo to storage and create database record
- * Fotó feltöltése storage-ba és adatbázis rekord létrehozása
+ * Upload a photo to local storage and create database record
+ * Fotó feltöltése lokális storage-ba és adatbázis rekord létrehozása
  */
 export async function uploadPhoto(input: PhotoUploadInput): Promise<Photo> {
-  const supabase = createClient();
+  // Use new local upload API endpoint
+  const formData = new FormData();
+  formData.append('file', input.file);
+  formData.append('project_id', input.project_id);
+  if (input.caption) formData.append('caption', input.caption);
+  if (input.description) formData.append('description', input.description);
 
-  // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
 
-  if (userError || !user) {
-    throw new Error('Felhasználó nem található - kérlek jelentkezz be újra');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Fotó feltöltése sikertelen');
   }
 
-  // Generate unique file name
-  const fileExt = input.file.name.split('.').pop();
-  const fileName = `${input.project_id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-  // Upload file to storage
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(fileName, input.file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
-
-  if (uploadError) {
-    console.error('Storage upload error:', uploadError);
-    throw new Error(`Fotó feltöltése sikertelen: ${uploadError.message}`);
-  }
-
-  // Create database record
-  const { data: photoData, error: dbError } = await supabase
-    .from('photos')
-    .insert({
-      project_id: input.project_id,
-      file_name: input.file.name,
-      file_path: uploadData.path,
-      file_size: input.file.size,
-      mime_type: input.file.type,
-      caption: input.caption,
-      description: input.description,
-      uploaded_by: user.id,
-    })
-    .select()
-    .single();
-
-  if (dbError) {
-    // Rollback: delete uploaded file if database insert fails
-    await supabase.storage.from(STORAGE_BUCKET).remove([uploadData.path]);
-    console.error('Database insert error:', dbError);
-    throw new Error(`Fotó mentése sikertelen: ${dbError.message}`);
-  }
-
-  return photoData as Photo;
+  const result = await response.json();
+  return result.photo as Photo;
 }
 
 /**
@@ -153,18 +133,28 @@ export async function uploadPhotos(inputs: PhotoUploadInput[]): Promise<Photo[]>
 }
 
 /**
- * Get photo URL - returns signed URL if available, otherwise generates public URL
- * Fotó URL lekérése - signed URL-t ad vissza ha elérhető
+ * Get photo URL - returns local file serving URL or legacy signed URL
+ * Fotó URL lekérése - lokális file serving URL vagy régi signed URL
  */
-export function getPhotoUrl(photo: Photo | string): string {
-  // If photo object with signedUrl, return it
+export function getPhotoUrl(photo: Photo | string, thumbnail = false): string {
+  // If photo object with local_file_path, use local file serving
+  if (typeof photo === 'object' && photo.local_file_path) {
+    const filename = thumbnail && photo.thumbnail_path ? photo.thumbnail_path : photo.local_file_path;
+    return `/api/files/${filename}${thumbnail ? '?thumbnail=true' : ''}`;
+  }
+
+  // Legacy: If photo object with signedUrl, return it
   if (typeof photo === 'object' && photo.signedUrl) {
     return photo.signedUrl;
   }
 
-  // Fallback to public URL (won't work for private buckets without auth)
+  // Legacy: Fallback to Supabase Storage public URL (for old photos)
   const supabase = createClient();
   const filePath = typeof photo === 'string' ? photo : photo.file_path;
+
+  if (!filePath) {
+    return '';
+  }
 
   const { data } = supabase.storage
     .from(STORAGE_BUCKET)
@@ -178,6 +168,20 @@ export function getPhotoUrl(photo: Photo | string): string {
  * Fotó letöltése
  */
 export async function downloadPhoto(photo: Photo): Promise<void> {
+  // For local files, use direct download from file serving endpoint
+  if (photo.local_file_path) {
+    const url = getPhotoUrl(photo);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = photo.file_name;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return;
+  }
+
+  // Legacy: Download from Supabase Storage
   const supabase = createClient();
 
   const { data, error } = await supabase.storage

@@ -61,6 +61,36 @@ export async function getDrawing(drawingId: string): Promise<Drawing> {
 }
 
 /**
+ * Get a single drawing by slug
+ * Egyedi rajz lekérése slug alapján (user-friendly URL)
+ */
+export async function getDrawingBySlug(
+  projectId: string,
+  slug: string
+): Promise<Drawing> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('drawings')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('slug', slug)
+    .is('deleted_at', null)
+    .single();
+
+  if (error) {
+    console.error('Error fetching drawing by slug:', error);
+    throw new Error(`Rajz betöltése sikertelen: ${error.message}`, { cause: error });
+  }
+
+  if (!data) {
+    throw new Error('Rajz nem található');
+  }
+
+  return data as Drawing;
+}
+
+/**
  * Create a new drawing
  * Új rajz létrehozása
  */

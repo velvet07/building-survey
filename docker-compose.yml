@@ -48,6 +48,11 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-building_survey}
       # Application settings
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      # File upload directory
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      # Persistent storage for uploaded photos
+      - uploads_data:/app/uploads
     ports:
       # Expose Next.js port
       - "3000:3000"
@@ -92,6 +97,8 @@ services:
 volumes:
   postgres_data:
     name: building-survey-postgres-data
+  uploads_data:
+    name: building-survey-uploads-data
 
 networks:
   building-survey-network:
