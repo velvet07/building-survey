@@ -59,17 +59,21 @@ ssh -p 3241 user@wpmuhely.com
 # (vagy ahogy szokott csatlakozni)
 ```
 
-### 2.2 Fájlok letöltése
+### 2.2 Fájlok letöltése KÖZVETLENÜL a főkönyvtárba
 
 ```bash
-# Válassz egy mappát (pl. home directory)
-cd ~
+# Menj a célmappába (pl. /home/wpmuhel/public_html/felmeres/)
+cd /home/wpmuhel/public_html/felmeres/
 
-# Clone a megfelelő branch
-git clone -b claude/hybrid-urls-local-storage-011CUTyvuEZ7cmVKw7LD1gZi https://github.com/velvet07/building-survey.git felmeres
-cd felmeres
+# Ha már van valami itt, töröld vagy másold át
+# ls -la   # nézd meg mi van
 
-# Ellenőrzés
+# Clone KÖZVETLENÜL IDE (a . jelenti az aktuális mappát!)
+git clone -b claude/hybrid-urls-local-storage-011CUTyvuEZ7cmVKw7LD1gZi https://github.com/velvet07/building-survey.git .
+
+# ⚠️ FONTOS: A végén a PONT (.) azt jelenti hogy NEM hoz létre almappát!
+
+# Ellenőrzés - közvetlenül itt kell lennie a fájloknak:
 ls -la
 # Látszódnia kell: docker-compose.yml, Dockerfile, app/, components/, stb.
 ```
@@ -342,23 +346,27 @@ https://felmeres.wpmuhely.com
 ## 🔧 Hasznos parancsok
 
 ```bash
+# Jelenlegi mappa (ahol a fájlok vannak)
+cd /home/wpmuhel/public_html/felmeres/
+
 # Státusz ellenőrzése
 docker-compose ps
 
 # Logok nézése
-./logs.sh
-./logs.sh app    # Csak app logok
-./logs.sh postgres    # Csak DB logok
+docker-compose logs -f app        # App logok (live)
+docker-compose logs -f postgres   # DB logok (live)
+docker-compose logs               # Összes log
 
 # Újraindítás
-./stop.sh
-./start.sh
+docker-compose restart
+
+# Leállítás és indítás
+docker-compose down
+docker-compose up -d
 
 # Újraépítés (kód változás után)
-./rebuild.sh
-
-# Leállítás
-./stop.sh
+docker-compose down
+docker-compose up -d --build
 
 # Volume-ok listázása
 docker volume ls
@@ -368,28 +376,44 @@ docker volume ls
 
 ## 🐛 Gyakori problémák
 
-### "Connection refused" hiba
+### 1. "Module not found" build hiba
+
+**Hiba:**
+```
+Module not found: Can't resolve '@/lib/supabase/server'
+```
+
+**Megoldás:**
+```bash
+# Pull the latest code (már javítva van)
+git pull origin claude/hybrid-urls-local-storage-011CUTyvuEZ7cmVKw7LD1gZi
+
+# Rebuild
+docker-compose down
+docker-compose up -d --build
+```
+
+### 2. "Connection refused" hiba
 
 ```bash
 # Ellenőrizd hogy futnak a containerek
 docker-compose ps
 
 # Ha nem futnak
-./start.sh
+docker-compose up -d
 ```
 
-### "Auth error" Supabase
+### 3. "Auth error" Supabase
 
 ```bash
 # Ellenőrizd a .env.docker fájlt
 cat .env.docker | grep SUPABASE
 
 # Újraindítás
-./stop.sh
-./start.sh
+docker-compose restart
 ```
 
-### Port 3000 foglalt
+### 4. Port 3000 foglalt
 
 ```bash
 # Nézd meg mi használja
@@ -399,7 +423,7 @@ sudo lsof -i:3000
 # docker-compose.yml → app → ports: "3001:3000"
 ```
 
-### Nginx 502 Bad Gateway
+### 5. Nginx 502 Bad Gateway
 
 ```bash
 # App státusz
@@ -412,16 +436,25 @@ curl http://localhost:3000
 sudo systemctl restart nginx
 ```
 
+### 6. Build nagyon lassú
+
+```bash
+# Docker cache tisztítás
+docker system prune -a
+
+# Majd újra:
+docker-compose up -d --build
+```
+
 ---
 
 ## 📊 Mappa struktúra a szerveren
 
 ```
-~/felmeres/
+/home/wpmuhel/public_html/felmeres/    # <-- KÖZVETLENÜL IDE TELEPÍTETTÜK!
 ├── .env.docker              # Környezeti változók (TITKOS!)
 ├── docker-compose.yml        # Docker szolgáltatások
 ├── Dockerfile               # Next.js image
-├── start.sh, stop.sh        # Helper scriptek
 ├── app/                     # Next.js alkalmazás
 ├── components/              # React komponensek
 ├── lib/                     # Logika
@@ -431,6 +464,8 @@ sudo systemctl restart nginx
 
 **Backup:**
 ```bash
+cd /home/wpmuhel/public_html/felmeres/
+
 # Docker volume backup (adatbázis)
 docker run --rm -v building-survey-postgres-data:/data -v $(pwd):/backup ubuntu tar czf /backup/postgres-backup.tar.gz /data
 
