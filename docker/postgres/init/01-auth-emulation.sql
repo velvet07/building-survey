@@ -55,19 +55,8 @@ AS $$
     )::TEXT;
 $$;
 
--- Grant permissions
-GRANT USAGE ON SCHEMA auth TO postgres, authenticated, anon;
-GRANT ALL ON auth.users TO postgres;
-GRANT SELECT ON auth.users TO authenticated;
-
--- Comments
-COMMENT ON SCHEMA auth IS 'Auth schema emulating Supabase for self-hosted PostgreSQL';
-COMMENT ON TABLE auth.users IS 'Users table synced from Supabase Cloud Auth';
-COMMENT ON FUNCTION auth.uid() IS 'Returns current authenticated user ID';
-COMMENT ON FUNCTION auth.role() IS 'Returns current user role';
-
 -- =============================================================================
--- Create roles if they don't exist
+-- Create roles FIRST (before granting permissions)
 -- =============================================================================
 DO $$
 BEGIN
@@ -83,6 +72,17 @@ BEGIN
         CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
     END IF;
 END$$;
+
+-- Grant permissions (AFTER roles are created)
+GRANT USAGE ON SCHEMA auth TO postgres, authenticated, anon;
+GRANT ALL ON auth.users TO postgres;
+GRANT SELECT ON auth.users TO authenticated;
+
+-- Comments
+COMMENT ON SCHEMA auth IS 'Auth schema emulating Supabase for self-hosted PostgreSQL';
+COMMENT ON TABLE auth.users IS 'Users table synced from Supabase Cloud Auth';
+COMMENT ON FUNCTION auth.uid() IS 'Returns current authenticated user ID';
+COMMENT ON FUNCTION auth.role() IS 'Returns current user role';
 
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
