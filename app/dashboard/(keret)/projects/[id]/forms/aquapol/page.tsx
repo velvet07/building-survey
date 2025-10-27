@@ -11,7 +11,7 @@ import {
 import { exportFormToPDF } from '@/lib/forms/pdf-export';
 import type { FormValues } from '@/lib/forms/types';
 import type { Project } from '@/types/project.types';
-import { createClient } from '@/lib/supabase';
+import { getProjectByIdAction } from '@/app/actions/projects';
 import { useUserRole } from '@/hooks/useUserRole';
 
 const FORM_SLUG = 'aquapol-form';
@@ -59,18 +59,13 @@ export default function AquapolFormPage() {
     setLoadingProject(true);
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
+      const { data, error } = await getProjectByIdAction(projectId);
 
-      if (error) {
-        throw error;
+      if (error || !data) {
+        throw new Error(error?.message || 'Projekt nem található');
       }
 
-      setProject(data as Project);
+      setProject(data);
     } catch (error) {
       console.error('Error loading project:', error);
       setStatusMessage('Nem sikerült betölteni a projektet.');

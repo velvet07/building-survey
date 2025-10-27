@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { getProjects } from '@/lib/projects';
+import { getProjectsAction } from '@/app/actions/projects';
 import { Project } from '@/types/project.types';
 
 export default function DashboardPage() {
@@ -16,7 +16,7 @@ export default function DashboardPage() {
   }, []);
 
   const loadProjects = async () => {
-    const { data } = await getProjects();
+    const { data } = await getProjectsAction();
     setProjects(data || []);
     setIsLoading(false);
   };
