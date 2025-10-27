@@ -374,77 +374,459 @@ docker volume ls
 
 ---
 
-## 🐛 Gyakori problémák
+## 🐛 Részletes Hibaelhárítási Útmutató
 
-### 1. "Module not found" build hiba
+### ⚠️ Docker Build Hibák
+
+#### 1. TypeScript Type Error - Buffer típus
 
 **Hiba:**
 ```
-Module not found: Can't resolve '@/lib/supabase/server'
+Type error: Argument of type 'Buffer' is not assignable to parameter of type 'BodyInit'
+```
+
+**OK:** A Node.js Buffer típus nem kompatibilis a NextResponse-szal.
+
+**Megoldás:** Már javítva van a kódban - pull latest:
+```bash
+git pull origin claude/hybrid-urls-local-storage-011CUTyvuEZ7cmVKw7LD1gZi
+docker-compose up -d --build
+```
+
+#### 2. SQL Init Hiba - Role does not exist
+
+**Hiba:**
+```
+ERROR: role "authenticated" does not exist
+```
+
+**OK:** A role-okat a GRANT előtt kell létrehozni.
+
+**Megoldás:** Már javítva - ha mégis előfordul:
+```bash
+# Töröld a DB volume-ot és indítsd újra
+docker-compose down
+docker volume rm building-survey-postgres-data
+docker-compose up -d
+```
+
+#### 3. Drawings Table Not Found
+
+**Hiba:**
+```
+ERROR: relation "public.drawings" does not exist
+```
+
+**OK:** A drawings táb hiányzott az init szkriptekből.
+
+**Megoldás:** Már javítva - `02.5-drawings.sql` hozzáadva az init-hez.
+
+#### 4. Public Directory Missing
+
+**Hiba:**
+```
+COPY failed: /app/public: not found
+```
+
+**Megoldás:** Már javítva - üres public könyvtár létrehozva.
+
+---
+
+### ⚠️ Docker Container Problémák
+
+#### 5. Container "unhealthy" státusz
+
+**Tünet:**
+```bash
+docker-compose ps
+# STATUS: Up X minutes (unhealthy)
+```
+
+**OK:** A healthcheck curl-t használ, ami nincs az alpine image-ben.
+
+**Megoldás:** Már javítva - healthcheck kikapcsolva mindkét helyen (Dockerfile + docker-compose.yml).
+
+#### 6. Container nem indul / azonnal leáll
+
+**Diagnosztika:**
+```bash
+# Logok részletesen
+docker-compose logs app --tail 100
+
+# Konténer inspektálása
+docker inspect building-survey-app
+```
+
+**Gyakori okok:**
+- Hiányzó környezeti változók → ellenőrizd `.env.docker`
+- Port már foglalt → `netstat -tlnp | grep 3000`
+- Memória probléma → `docker stats`
+
+---
+
+### ⚠️ Docker Networking Problémák
+
+#### 7. "Connection reset by peer" hiba
+
+**Hiba:**
+```bash
+curl http://localhost:3000/api/health
+# curl: (56) Recv failure: Connection reset by peer
+```
+
+**OK:** Docker port mapping nem működik megfelelően bizonyos konfigurációkban (pl. cPanel környezet, firewall, stb).
+
+**Diagnosztika:**
+```bash
+# 1. Konténer státusz
+docker-compose ps
+
+# 2. Port mapping ellenőrzése
+docker port building-survey-app
+# Kimenet: 3000/tcp -> 0.0.0.0:3000
+
+# 3. Konténeren BELÜL működik-e?
+docker exec building-survey-app wget -O- http://127.0.0.1:3000/api/health
+# Ha ez működik, de kívülről nem → networking probléma
+
+# 4. Netstat - hallgatja-e a port?
+netstat -tlnp | grep 3000
+```
+
+**✅ MEGOLDÁS - Nginx Proxy Konténer (AJÁNLOTT):**
+
+Ha a host gépről nem érhető el a Docker port (connection refused, connection reset), használj belső Nginx proxy-t:
+
+```bash
+# 1. Nginx config létrehozása
+cd /home/wpmuhel/public_html/felmeres
+cat > nginx-proxy.conf << 'EOF'
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://app:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        client_max_body_size 50M;
+    }
+}
+EOF
+
+# 2. docker-compose.yml szerkesztése
+nano docker-compose.yml
+```
+
+**Add hozzá az `app:` után (UGYANAZON a behúzási szinten):**
+
+```yaml
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: building-survey-nginx
+    restart: unless-stopped
+    ports:
+      - "8888:80"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - building-survey-network
+```
+
+```bash
+# 3. Indítás
+docker-compose up -d
+
+# 4. Teszt
+curl http://localhost:8888/api/health
+# Kimenet: {"status":"ok",...}
+```
+
+**Most a fő Nginx/Apache ezt a porton keresztül fogja elérni az app-ot!**
+
+#### 8. iptables / Docker network hiba
+
+**Hiba:**
+```
+Failed to Setup IP tables: Unable to enable ACCEPT OUTGOING rule
 ```
 
 **Megoldás:**
 ```bash
-# Pull the latest code (már javítva van)
-git pull origin claude/hybrid-urls-local-storage-011CUTyvuEZ7cmVKw7LD1gZi
+# Docker daemon restart
+systemctl restart docker
 
-# Rebuild
-docker-compose down
-docker-compose up -d --build
-```
-
-### 2. "Connection refused" hiba
-
-```bash
-# Ellenőrizd hogy futnak a containerek
-docker-compose ps
-
-# Ha nem futnak
+# Majd újra
 docker-compose up -d
 ```
 
-### 3. "Auth error" Supabase
+---
 
+### ⚠️ Reverse Proxy Problémák (Nginx/Apache)
+
+#### 9. Nginx 502 Bad Gateway
+
+**Tünet:** Browser: "error code: 502"
+
+**Diagnosztika:**
 ```bash
-# Ellenőrizd a .env.docker fájlt
-cat .env.docker | grep SUPABASE
+# 1. App fut-e?
+docker-compose ps
+curl http://localhost:8888/api/health  # Ha használod az nginx-proxy-t
 
-# Újraindítás
-docker-compose restart
+# 2. Nginx error log
+tail -50 /usr/local/nginx/logs/error.log
+# VAGY
+tail -50 /usr/local/apache/domlogs/felmeres.wpmuhely.com.error.log
+
+# 3. Upstream connection
+grep "upstream" /usr/local/apache/domlogs/felmeres.wpmuhely.com.error.log | tail -5
 ```
 
-### 4. Port 3000 foglalt
+**Gyakori okok:**
+
+**A) Rossz upstream cím az Nginx config-ban**
+
+**cPanel Managed Nginx esetén:**
+
+A cPanel environment-ben **KÉT config fájl** van:
+- **HTTP (80):** `/etc/nginx/conf.d/vhosts/felmeres.wpmuhely.com.conf`
+- **HTTPS (443):** `/usr/local/nginx/conf/conf.d/felmeres.wpmuhely.com.conf`
+
+**MINDKÉT fájlban** módosítani kell a `proxy_pass` direktívát!
+
+```bash
+# HTTPS config szerkesztése
+nano /usr/local/nginx/conf/conf.d/felmeres.wpmuhely.com.conf
+```
+
+Keresd meg a `location /` blokkot és **cseréld le**:
+
+```nginx
+location / {
+    # Docker Next.js app proxy
+    proxy_pass http://127.0.0.1:8888;  # <-- nginx-proxy port
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_cache_bypass $http_upgrade;
+    client_max_body_size 50M;
+}
+```
+
+**Töröld vagy kommenteld ki** az `@backend` és `@custom` location blokkokat!
+
+```bash
+# HTTP config szerkesztése (ha használod a HTTP-t is)
+nano /etc/nginx/conf.d/vhosts/felmeres.wpmuhely.com.conf
+# Ugyanaz a módosítás!
+
+# Nginx reload
+nginx -s reload
+
+# Teszt
+curl https://felmeres.wpmuhely.com/api/health
+```
+
+**B) SELinux blokkolja a proxy kapcsolatot**
+
+```bash
+# Ellenőrzés
+getenforce
+# Ha "Enforcing":
+
+# SELinux engedélyezése HTTP proxy-hoz
+setsebool -P httpd_can_network_connect 1
+
+# Nginx restart
+systemctl restart nginx
+```
+
+**C) Firewall (CSF) blokkolja a portot**
+
+```bash
+# CSF config szerkesztése
+nano /etc/csf/csf.conf
+
+# Keresd meg: TCP_IN
+# Add hozzá: 8888 (nginx-proxy port)
+# Példa: TCP_IN = "20,21,22,25,53,80,110,143,443,8888"
+
+# CSF restart
+csf -r
+
+# Ellenőrzés
+iptables -L -n | grep 8888
+```
+
+---
+
+### ⚠️ Supabase Auth Problémák
+
+#### 10. "Auth session missing" vagy "Invalid JWT"
+
+**OK:** Helytelen Supabase konfiguráció.
+
+**Ellenőrzés:**
+```bash
+# .env.docker értékek
+cat .env.docker | grep SUPABASE
+```
+
+**Megoldás:**
+1. Supabase Dashboard → Settings → API
+2. Másold újra az anon key-t és service role key-t
+3. Frissítsd `.env.docker`-ben
+4. Restart:
+```bash
+docker-compose restart app
+```
+
+#### 11. "Redirect URL not allowed"
+
+**OK:** Hiányzó redirect URL a Supabase-ben.
+
+**Megoldás:**
+1. Supabase Dashboard → Authentication → URL Configuration
+2. Redirect URLs → Add URL:
+   - `https://felmeres.wpmuhely.com/auth/callback`
+   - `https://felmeres.wpmuhely.com/**`
+3. Save
+
+---
+
+### ⚠️ Database Problémák
+
+#### 12. "Connection refused" PostgreSQL
+
+```bash
+# DB státusz
+docker-compose ps postgres
+
+# DB logok
+docker-compose logs postgres | tail -50
+
+# Ha nem healthy, restart
+docker-compose restart postgres
+```
+
+#### 13. "Relation does not exist" SQL error
+
+**OK:** Táblák nem lettek létrehozva.
+
+**Megoldás:**
+```bash
+# Töröld a DB volume-ot és inicializáld újra
+docker-compose down
+docker volume rm building-survey-postgres-data
+docker-compose up -d
+
+# Várj 30 másodpercet az init-re
+sleep 30
+docker-compose logs postgres | grep "init process complete"
+```
+
+---
+
+### ⚠️ Performance Problémák
+
+#### 14. Lassú build (10+ perc)
+
+```bash
+# Docker cache clean
+docker system prune -a
+
+# BuildKit használata (gyorsabb)
+DOCKER_BUILDKIT=1 docker-compose build
+docker-compose up -d
+```
+
+#### 15. Magas CPU/memória használat
+
+```bash
+# Stats
+docker stats
+
+# Ha app túl sokat használ:
+# - Növeld a Docker memória limitet
+# - Csökkentsd a worker számot (docker-compose.yml)
+```
+
+---
+
+### ⚠️ Egyéb Gyakori Hibák
+
+#### 16. "Port already in use"
 
 ```bash
 # Nézd meg mi használja
-sudo lsof -i:3000
+lsof -i:3000  # vagy :8888
 
-# Ha más alkalmazás, kill-eld vagy módosítsd a portot
-# docker-compose.yml → app → ports: "3001:3000"
+# Kill process
+kill -9 <PID>
+
+# Vagy módosítsd a portot docker-compose.yml-ben
 ```
 
-### 5. Nginx 502 Bad Gateway
+#### 17. Git clone / pull problémák
 
 ```bash
-# App státusz
-docker-compose logs app
+# Ha "Permission denied":
+sudo chown -R $USER:$USER /home/wpmuhel/public_html/felmeres/
 
-# Direct teszt
-curl http://localhost:3000
-
-# Nginx restart
-sudo systemctl restart nginx
+# Ha "Already exists":
+# Biztosítsd hogy ÜRES a mappa vagy használj -f flag-et
+rm -rf /home/wpmuhel/public_html/felmeres/*
+git clone ...
 ```
 
-### 6. Build nagyon lassú
+---
+
+## 🔍 Hibakeresési Workflow
+
+Ha valami nem működik, kövesd ezt a sorrendet:
 
 ```bash
-# Docker cache tisztítás
-docker system prune -a
+# 1. Container státusz
+docker-compose ps
+# Minden "Up" és "healthy" legyen
 
-# Majd újra:
-docker-compose up -d --build
+# 2. App logok
+docker-compose logs app --tail 50
+# Keress ERROR, WARN, vagy exception üzeneteket
+
+# 3. DB logok
+docker-compose logs postgres --tail 50
+# "Database system is ready" kell látszódjon
+
+# 4. Konténeren belüli teszt
+docker exec building-survey-app wget -O- http://127.0.0.1:3000/api/health
+# Ennek működnie KELL - ha nem, app probléma
+
+# 5. Nginx proxy teszt (ha használod)
+curl http://localhost:8888/api/health
+# Ennek is működnie kell
+
+# 6. Külső teszt
+curl https://felmeres.wpmuhely.com/api/health
+# Ha ez nem megy, de az előző igen → Nginx config probléma
+
+# 7. Nginx error log
+tail -50 /usr/local/apache/domlogs/felmeres.wpmuhely.com.error.log | grep upstream
 ```
+
+**Lépésről-lépésre haladj** - így pontosan megtalálod hol van a hiba!
 
 ---
 
