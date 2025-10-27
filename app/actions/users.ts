@@ -3,6 +3,35 @@
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { query, getCurrentUserId } from '@/lib/db';
+
+/**
+ * Get current user's role from local PostgreSQL
+ * Used by useUserRole hook
+ */
+export async function getCurrentUserRoleAction() {
+  try {
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      return { role: null, error: null };
+    }
+
+    const result = await query(
+      'SELECT role FROM public.profiles WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return { role: null, error: null };
+    }
+
+    return { role: result.rows[0].role, error: null };
+  } catch (error) {
+    console.error('Error getting user role:', error);
+    return { role: null, error: error instanceof Error ? error : new Error('Unknown error') };
+  }
+}
 
 // Helper function to check if user is admin
 async function isAdmin(supabase: any) {

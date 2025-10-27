@@ -38,16 +38,25 @@ export async function getCurrentUser() {
 }
 
 export async function getUserRole() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { query, getCurrentUserId } = await import('./db');
 
-  if (!user) return null;
+  try {
+    const userId = await getCurrentUserId();
 
-  const { data } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+    if (!userId) return null;
 
-  return data?.role || null;
+    const result = await query(
+      'SELECT role FROM public.profiles WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return result.rows[0].role || null;
+  } catch (error) {
+    console.error('Error getting user role:', error);
+    return null;
+  }
 }
