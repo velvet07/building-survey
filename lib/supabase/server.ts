@@ -1,10 +1,12 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
 /**
  * Create a Supabase client for use in Server Components and Server Actions
+ * Uses dynamic import to avoid build-time issues with next/headers
  */
-export function createClient() {
+export async function createClient() {
+  // Dynamic import to avoid webpack issues during build
+  const { cookies } = await import('next/headers');
   const cookieStore = cookies();
 
   return createServerClient(

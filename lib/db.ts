@@ -119,7 +119,7 @@ export async function getCurrentUserId(): Promise<string | null> {
   try {
     // Import dynamically to avoid circular dependencies
     const { createClient } = await import('@/lib/supabase/server');
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     return user?.id || null;
   } catch (error) {

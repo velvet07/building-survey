@@ -33,7 +33,7 @@ const ALLOWED_MIME_TYPES = [
 export async function POST(request: NextRequest) {
   try {
     // 1. Authentication check
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
