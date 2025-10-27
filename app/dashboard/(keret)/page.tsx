@@ -22,8 +22,6 @@ export default function DashboardPage() {
   };
 
   const totalProjects = projects.length;
-  const activeProjects = projects.filter((p) => p.status === 'active').length;
-  const completedProjects = projects.filter((p) => p.status === 'completed').length;
 
   return (
     <div>
@@ -41,7 +39,7 @@ export default function DashboardPage() {
         <Card className="hover:border-primary-300 transition-colors">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Projektek</p>
+              <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Összes projekt</p>
               <p className="text-3xl font-bold text-secondary-900 mt-2">
                 {isLoading ? '...' : totalProjects}
               </p>
@@ -49,40 +47,6 @@ export default function DashboardPage() {
             <div className="p-3 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl shadow-sm">
               <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-            </div>
-          </div>
-        </Card>
-
-        {/* Stat Card 2 */}
-        <Card className="hover:border-success-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Aktív felmérések</p>
-              <p className="text-3xl font-bold text-secondary-900 mt-2">
-                {isLoading ? '...' : activeProjects}
-              </p>
-            </div>
-            <div className="p-3 bg-gradient-to-br from-success-100 to-success-200 rounded-xl shadow-sm">
-              <svg className="h-6 w-6 text-success-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </Card>
-
-        {/* Stat Card 3 */}
-        <Card className="hover:border-warning-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">Befejezett</p>
-              <p className="text-3xl font-bold text-secondary-900 mt-2">
-                {isLoading ? '...' : completedProjects}
-              </p>
-            </div>
-            <div className="p-3 bg-gradient-to-br from-warning-100 to-warning-200 rounded-xl shadow-sm">
-              <svg className="h-6 w-6 text-warning-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
           </div>
