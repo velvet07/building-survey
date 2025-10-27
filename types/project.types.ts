@@ -5,7 +5,7 @@ export interface Project {
   name: string;
   auto_identifier: string;
   owner_id: string;
-  status: ProjectStatus;
+  status?: ProjectStatus;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

@@ -11,7 +11,7 @@ import { ProjectStatus } from '@/types/project.types';
 export interface Project {
   id: string;
   name: string;
-  status: ProjectStatus;
+  status?: ProjectStatus;
   owner_id: string;
   auto_identifier: string;
   created_at: string;
@@ -64,7 +64,7 @@ export async function getProjectById(id: string) {
  * Create a new project
  * Requires authenticated user
  */
-export async function createProject(name: string, status: ProjectStatus = 'active') {
+export async function createProject(name: string) {
   try {
     const userId = await getCurrentUserId();
 
@@ -73,10 +73,10 @@ export async function createProject(name: string, status: ProjectStatus = 'activ
     }
 
     const result = await query<Project>(
-      `INSERT INTO public.projects (name, owner_id, status)
-       VALUES ($1, $2, $3)
+      `INSERT INTO public.projects (name, owner_id)
+       VALUES ($1, $2)
        RETURNING *`,
-      [name, userId, status]
+      [name, userId]
     );
 
     return { data: result.rows[0], error: null };
@@ -89,24 +89,13 @@ export async function createProject(name: string, status: ProjectStatus = 'activ
 /**
  * Update an existing project
  */
-export async function updateProject(id: string, name: string, status?: ProjectStatus) {
+export async function updateProject(id: string, name: string) {
   try {
-    let queryText: string;
-    let params: any[];
-
-    if (status) {
-      queryText = `UPDATE public.projects
-                   SET name = $1, status = $2, updated_at = NOW()
-                   WHERE id = $3 AND deleted_at IS NULL
-                   RETURNING *`;
-      params = [name, status, id];
-    } else {
-      queryText = `UPDATE public.projects
-                   SET name = $1, updated_at = NOW()
-                   WHERE id = $2 AND deleted_at IS NULL
-                   RETURNING *`;
-      params = [name, id];
-    }
+    const queryText = `UPDATE public.projects
+                 SET name = $1, updated_at = NOW()
+                 WHERE id = $2 AND deleted_at IS NULL
+                 RETURNING *`;
+    const params = [name, id];
 
     const result = await query<Project>(queryText, params);
 
