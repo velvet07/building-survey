@@ -1,9 +1,12 @@
 /**
- * Drawing Module - Supabase API Functions
+ * Drawing Module - PostgreSQL Direct Connection
  * Felmérés Rajzoló Modul - CRUD műveletek
+ *
+ * All drawing data is stored in local PostgreSQL database.
+ * Supabase is only used for authentication.
  */
 
-import { createClient } from '@/lib/supabase';
+import { query, getCurrentUserId } from '@/lib/db';
 import type {
   Drawing,
   CreateDrawingInput,
@@ -17,21 +20,19 @@ import type {
  * Összes rajz lekérése egy projekthez
  */
 export async function getDrawings(projectId: string): Promise<Drawing[]> {
-  const supabase = createClient();
+  try {
+    const result = await query<Drawing>(
+      `SELECT * FROM public.drawings
+       WHERE project_id = $1 AND deleted_at IS NULL
+       ORDER BY created_at DESC`,
+      [projectId]
+    );
 
-  const { data, error } = await supabase
-    .from('drawings')
-    .select('*')
-    .eq('project_id', projectId)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
-
-  if (error) {
+    return result.rows;
+  } catch (error) {
     console.error('Error fetching drawings:', error);
-    throw new Error(`Rajzok betöltése sikertelen: ${error.message}`, { cause: error });
+    throw new Error(`Rajzok betöltése sikertelen: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
-
-  return data as Drawing[];
 }
 
 /**
@@ -39,25 +40,22 @@ export async function getDrawings(projectId: string): Promise<Drawing[]> {
  * Egyedi rajz lekérése ID alapján
  */
 export async function getDrawing(drawingId: string): Promise<Drawing> {
-  const supabase = createClient();
+  try {
+    const result = await query<Drawing>(
+      `SELECT * FROM public.drawings
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [drawingId]
+    );
 
-  const { data, error } = await supabase
-    .from('drawings')
-    .select('*')
-    .eq('id', drawingId)
-    .is('deleted_at', null)
-    .single();
+    if (result.rows.length === 0) {
+      throw new Error('Rajz nem található');
+    }
 
-  if (error) {
+    return result.rows[0];
+  } catch (error) {
     console.error('Error fetching drawing:', error);
-    throw new Error(`Rajz betöltése sikertelen: ${error.message}`, { cause: error });
+    throw new Error(`Rajz betöltése sikertelen: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
-
-  if (!data) {
-    throw new Error('Rajz nem található');
-  }
-
-  return data as Drawing;
 }
 
 /**
@@ -68,26 +66,22 @@ export async function getDrawingBySlug(
   projectId: string,
   slug: string
 ): Promise<Drawing> {
-  const supabase = createClient();
+  try {
+    const result = await query<Drawing>(
+      `SELECT * FROM public.drawings
+       WHERE project_id = $1 AND slug = $2 AND deleted_at IS NULL`,
+      [projectId, slug]
+    );
 
-  const { data, error } = await supabase
-    .from('drawings')
-    .select('*')
-    .eq('project_id', projectId)
-    .eq('slug', slug)
-    .is('deleted_at', null)
-    .single();
+    if (result.rows.length === 0) {
+      throw new Error('Rajz nem található');
+    }
 
-  if (error) {
+    return result.rows[0];
+  } catch (error) {
     console.error('Error fetching drawing by slug:', error);
-    throw new Error(`Rajz betöltése sikertelen: ${error.message}`, { cause: error });
+    throw new Error(`Rajz betöltése sikertelen: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
-
-  if (!data) {
-    throw new Error('Rajz nem található');
-  }
-
-  return data as Drawing;
 }
 
 /**
@@ -95,54 +89,48 @@ export async function getDrawingBySlug(
  * Új rajz létrehozása
  */
 export async function createDrawing(input: CreateDrawingInput): Promise<Drawing> {
-  const supabase = createClient();
+  try {
+    // Get current authenticated user
+    const userId = await getCurrentUserId();
 
-  // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (!userId) {
+      throw new Error('Felhasználó nem található - kérlek jelentkezz be újra');
+    }
 
-  if (userError) {
-    console.error('Auth error:', userError);
-    throw new Error(`Autentikációs hiba: ${userError.message}`, { cause: userError });
-  }
+    // Calculate canvas dimensions based on orientation
+    const orientation = input.orientation || 'portrait';
+    const isLandscape = orientation === 'landscape';
 
-  if (!user) {
-    throw new Error('Felhasználó nem található - kérlek jelentkezz be újra');
-  }
+    // Default canvas dimensions (A4 @ 300 DPI)
+    const defaultCanvasData: CanvasData = {
+      version: '1.0',
+      strokes: [],
+      metadata: {
+        canvas_width: isLandscape ? 3508 : 2480,
+        canvas_height: isLandscape ? 2480 : 3508,
+        grid_size: 11.8, // 1mm @ 300 DPI
+      },
+    };
 
-  // Calculate canvas dimensions based on orientation
-  const orientation = input.orientation || 'portrait';
-  const isLandscape = orientation === 'landscape';
+    const result = await query<Drawing>(
+      `INSERT INTO public.drawings (project_id, name, canvas_data, paper_size, orientation, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        input.project_id,
+        input.name || 'Alaprajz',
+        JSON.stringify(defaultCanvasData),
+        input.paper_size || 'a4',
+        orientation,
+        userId,
+      ]
+    );
 
-  // Default canvas dimensions (A4 @ 300 DPI)
-  const defaultCanvasData: CanvasData = {
-    version: '1.0',
-    strokes: [],
-    metadata: {
-      canvas_width: isLandscape ? 3508 : 2480,
-      canvas_height: isLandscape ? 2480 : 3508,
-      grid_size: 11.8, // 1mm @ 300 DPI
-    },
-  };
-
-  const { data, error } = await supabase
-    .from('drawings')
-    .insert({
-      project_id: input.project_id,
-      name: input.name || 'Alaprajz',
-      canvas_data: defaultCanvasData,
-      paper_size: input.paper_size || 'a4',
-      orientation: orientation,
-      created_by: user.id,
-    })
-    .select()
-    .single();
-
-  if (error) {
+    return result.rows[0];
+  } catch (error) {
     console.error('Error creating drawing:', error);
-    throw new Error(`Rajz létrehozása sikertelen: ${error.message}`, { cause: error });
+    throw new Error(`Rajz létrehozása sikertelen: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
-
-  return data as Drawing;
 }
 
 /**
@@ -153,23 +141,54 @@ export async function updateDrawing(
   drawingId: string,
   input: UpdateDrawingInput
 ): Promise<void> {
-  const supabase = createClient();
+  try {
+    // Build dynamic UPDATE query based on provided fields
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
 
-  // Update only provided fields
-  const updateData: Partial<UpdateDrawingInput> = {};
-  if (input.name !== undefined) updateData.name = input.name;
-  if (input.canvas_data !== undefined) updateData.canvas_data = input.canvas_data;
-  if (input.paper_size !== undefined) updateData.paper_size = input.paper_size;
-  if (input.orientation !== undefined) updateData.orientation = input.orientation;
+    if (input.name !== undefined) {
+      updates.push(`name = $${paramIndex}`);
+      values.push(input.name);
+      paramIndex++;
+    }
 
-  const { error } = await supabase
-    .from('drawings')
-    .update(updateData)
-    .eq('id', drawingId);
+    if (input.canvas_data !== undefined) {
+      updates.push(`canvas_data = $${paramIndex}`);
+      values.push(JSON.stringify(input.canvas_data));
+      paramIndex++;
+    }
 
-  if (error) {
+    if (input.paper_size !== undefined) {
+      updates.push(`paper_size = $${paramIndex}`);
+      values.push(input.paper_size);
+      paramIndex++;
+    }
+
+    if (input.orientation !== undefined) {
+      updates.push(`orientation = $${paramIndex}`);
+      values.push(input.orientation);
+      paramIndex++;
+    }
+
+    if (updates.length === 0) {
+      return; // Nothing to update
+    }
+
+    // Always update updated_at
+    updates.push('updated_at = NOW()');
+
+    // Add drawing ID as last parameter
+    values.push(drawingId);
+
+    const queryText = `UPDATE public.drawings
+                       SET ${updates.join(', ')}
+                       WHERE id = $${paramIndex} AND deleted_at IS NULL`;
+
+    await query(queryText, values);
+  } catch (error) {
     console.error('Error updating drawing:', error);
-    throw new Error(`Rajz mentése sikertelen: ${error.message}`, { cause: error });
+    throw new Error(`Rajz mentése sikertelen: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -178,16 +197,16 @@ export async function updateDrawing(
  * Rajz törlése (soft delete - deleted_at beállítása)
  */
 export async function deleteDrawing(drawingId: string): Promise<void> {
-  const supabase = createClient();
-
-  const { error } = await supabase
-    .from('drawings')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', drawingId);
-
-  if (error) {
+  try {
+    await query(
+      `UPDATE public.drawings
+       SET deleted_at = NOW()
+       WHERE id = $1`,
+      [drawingId]
+    );
+  } catch (error) {
     console.error('Error deleting drawing:', error);
-    throw new Error(`Rajz törlése sikertelen: ${error.message}`, { cause: error });
+    throw new Error(`Rajz törlése sikertelen: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
