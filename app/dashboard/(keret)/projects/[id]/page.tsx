@@ -7,9 +7,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
 import type { Project } from '@/types/project.types';
 import { getDrawings } from '@/lib/drawings/api';
+import { getProjectByIdAction } from '@/app/actions/projects';
 import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import toast from 'react-hot-toast';
@@ -32,17 +32,17 @@ export default function ProjectDashboardPage() {
 
   const loadProject = async () => {
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
+      const { data, error } = await getProjectByIdAction(projectId);
 
-      if (error) throw error;
-      setProject(data);
+      if (error || !data) {
+        toast.error('Projekt nem található');
+        console.error('Error loading project:', error);
+      } else {
+        setProject(data);
+      }
     } catch (error) {
       console.error('Error loading project:', error);
+      toast.error('Hiba történt a projekt betöltése során');
     } finally {
       setLoading(false);
     }

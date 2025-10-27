@@ -12,7 +12,8 @@ import {
   createProject,
   updateProject,
   deleteProject,
-  getProjects
+  getProjects,
+  getProjectById
 } from '@/lib/projects';
 
 export async function createProjectAction(name: string) {
@@ -47,4 +48,8 @@ export async function deleteProjectAction(id: string) {
 
 export async function getProjectsAction() {
   return await getProjects();
+}
+
+export async function getProjectByIdAction(id: string) {
+  return await getProjectById(id);
 }
