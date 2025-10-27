@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { updateProject } from '@/lib/projects';
+import { updateProjectAction } from '@/app/actions/projects';
 import { Project, ProjectStatus, PROJECT_STATUS_LABELS } from '@/types/project.types';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
@@ -53,7 +53,7 @@ export function EditProjectModal({ isOpen, onClose, onSuccess, project }: EditPr
     setIsLoading(true);
 
     try {
-      const { error: updateError } = await updateProject(project.id, name, status);
+      const { error: updateError } = await updateProjectAction(project.id, name);
 
       if (updateError) {
         toast.error('Hiba történt a projekt frissítése során');
