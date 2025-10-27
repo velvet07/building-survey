@@ -114,6 +114,9 @@ export async function closePool(): Promise<void> {
 /**
  * Helper: Get authenticated user ID from Supabase session
  * This is used in Server Components and API routes
+ *
+ * IMPORTANT: This function also syncs the user to local PostgreSQL
+ * if they don't exist yet (first-time login after deployment)
  */
 export async function getCurrentUserId(): Promise<string | null> {
   try {
@@ -121,7 +124,23 @@ export async function getCurrentUserId(): Promise<string | null> {
     const { createClient } = await import('@/lib/supabase/server');
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    return user?.id || null;
+
+    if (!user) {
+      return null;
+    }
+
+    // Sync user to local PostgreSQL if not already synced
+    try {
+      await query(
+        'SELECT public.sync_user_from_supabase($1, $2, $3)',
+        [user.id, user.email, JSON.stringify(user.user_metadata || {})]
+      );
+    } catch (syncError) {
+      console.error('Error syncing user to local database:', syncError);
+      // Don't fail the request if sync fails - user might already exist
+    }
+
+    return user.id;
   } catch (error) {
     console.error('Error getting current user ID:', error);
     return null;
