@@ -59,7 +59,6 @@ export default function ArchivedProjectsPage() {
         onCreate={() => {}}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        filterStatus="archived"
       />
 
       <EditProjectModal
