@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getProjects } from '@/lib/projects';
+import { getProjectsAction } from '@/app/actions/projects';
 import { Project, ProjectStatus } from '@/types/project.types';
 import { ProjectCard } from './ProjectCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -27,7 +27,7 @@ export function ProjectList({ onEdit, onDelete, onCreate, filterStatus = 'non-ar
 
   const loadProjects = async () => {
     setIsLoading(true);
-    const { data, error } = await getProjects();
+    const { data, error } = await getProjectsAction();
 
     if (error) {
       toast.error('Hiba történt a projektek betöltése során');
