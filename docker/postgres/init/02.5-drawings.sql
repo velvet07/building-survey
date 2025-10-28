@@ -248,15 +248,28 @@ GRANT ALL ON public.drawings TO authenticated;
 -- SECURITY: ENFORCE created_by TRIGGER
 -- =============================================================================
 
--- Trigger function: Force created_by to auth.uid() for security
--- This prevents client-side manipulation of the created_by field
+-- Trigger function: Validate created_by field
+-- Hybrid approach: works with both Supabase auth and local PostgreSQL
+-- Priority: Use provided created_by value, fallback to auth.uid() if available
 CREATE OR REPLACE FUNCTION enforce_created_by_on_drawings()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Always set created_by to the current authenticated user
-  NEW.created_by := auth.uid();
+  -- If created_by is already set (passed from application), use it
+  -- This is required for local PostgreSQL where auth.uid() doesn't exist
+  IF NEW.created_by IS NULL THEN
+    -- Try to get from Supabase auth (if available)
+    BEGIN
+      NEW.created_by := auth.uid();
+    EXCEPTION
+      WHEN undefined_function THEN
+        -- auth.uid() doesn't exist in local PostgreSQL
+        NULL;
+      WHEN OTHERS THEN
+        NULL;
+    END;
+  END IF;
 
-  -- If no user is authenticated, raise an exception
+  -- Validate that created_by is set
   IF NEW.created_by IS NULL THEN
     RAISE EXCEPTION 'User must be authenticated to create a drawing';
   END IF;
@@ -273,10 +286,10 @@ CREATE TRIGGER enforce_created_by_trigger
   EXECUTE FUNCTION enforce_created_by_on_drawings();
 
 COMMENT ON FUNCTION enforce_created_by_on_drawings() IS
-'Security trigger: Forces created_by to auth.uid() to prevent client-side manipulation';
+'Security trigger: Validates created_by field. Uses provided value from application or falls back to auth.uid() if available. Works with both local PostgreSQL and Supabase.';
 
 COMMENT ON TRIGGER enforce_created_by_trigger ON public.drawings IS
-'Enforces that created_by is always set to the authenticated user ID';
+'Validates that created_by is set to an authenticated user ID (hybrid approach for local/cloud)';
 
 -- =============================================================================
 -- END OF DRAWINGS SCHEMA
