@@ -206,30 +206,20 @@
                                 $pdo = new PDO("pgsql:host=$dbHost;dbname=$dbName", $dbUser, $dbPass);
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                                // Sync user to local database
-                                $stmt = $pdo->prepare("
-                                    SELECT public.sync_user_from_supabase(:user_id, :email, :metadata)
-                                ");
-                                $stmt->execute([
-                                    ':user_id' => $userId,
-                                    ':email' => $email,
-                                    ':metadata' => json_encode(['full_name' => $fullName])
-                                ]);
-
                                 // Create profile with admin role
+                                // Note: profiles table only has: id, email, role, created_at, updated_at
+                                // full_name is stored in Supabase auth.users metadata
                                 $stmt = $pdo->prepare("
-                                    INSERT INTO public.profiles (id, email, full_name, role, created_at, updated_at)
-                                    VALUES (:id, :email, :full_name, 'admin', NOW(), NOW())
+                                    INSERT INTO public.profiles (id, email, role, created_at, updated_at)
+                                    VALUES (:id, :email, 'admin', NOW(), NOW())
                                     ON CONFLICT (id) DO UPDATE SET
                                         email = EXCLUDED.email,
-                                        full_name = EXCLUDED.full_name,
                                         role = 'admin',
                                         updated_at = NOW()
                                 ");
                                 $stmt->execute([
                                     ':id' => $userId,
-                                    ':email' => $email,
-                                    ':full_name' => $fullName ?: null
+                                    ':email' => $email
                                 ]);
 
                                 // Mark setup as complete
