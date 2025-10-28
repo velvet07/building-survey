@@ -33,7 +33,7 @@ export async function getCurrentUserRoleAction() {
   }
 }
 
-// Helper function to check if user is admin
+// Helper function to check if user is admin (LOCAL POSTGRESQL)
 async function isAdmin(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -41,16 +41,17 @@ async function isAdmin(supabase: any) {
     return false;
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  // Query local PostgreSQL instead of Supabase Cloud
+  const result = await query(
+    'SELECT role FROM public.profiles WHERE id = $1',
+    [user.id]
+  );
 
+  const profile = result.rows[0];
   return profile?.role === 'admin';
 }
 
-// Get all users (admin only)
+// Get all users (admin only) (LOCAL POSTGRESQL)
 export async function getUsersAction() {
   const cookieStore = await cookies();
   const supabase = createServerSupabaseClient(cookieStore);
@@ -59,13 +60,17 @@ export async function getUsersAction() {
     return { data: null, error: new Error('Unauthorized: Admin access required') };
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
-
-  return { data, error };
+  try {
+    const result = await query(
+      `SELECT * FROM public.profiles
+       WHERE deleted_at IS NULL
+       ORDER BY created_at DESC`
+    );
+    return { data: result.rows, error: null };
+  } catch (error) {
+    console.error('getUsersAction error:', error);
+    return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };
+  }
 }
 
 // Create new user (admin only)
@@ -77,7 +82,7 @@ export async function createUserAction(email: string, password: string, fullName
     return { data: null, error: new Error('Unauthorized: Admin access required') };
   }
 
-  // Create auth user
+  // Create auth user in Supabase Cloud Auth
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email,
     password,
@@ -88,25 +93,29 @@ export async function createUserAction(email: string, password: string, fullName
     return { data: null, error: authError };
   }
 
-  // Update profile with full name and role
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      full_name: fullName,
-      role: role
-    })
-    .eq('id', authData.user.id)
-    .select()
-    .single();
+  // Update profile with full name and role (LOCAL POSTGRESQL)
+  try {
+    const result = await query(
+      `UPDATE public.profiles
+       SET full_name = $1, role = $2, updated_at = NOW()
+       WHERE id = $3
+       RETURNING *`,
+      [fullName, role, authData.user.id]
+    );
 
-  if (!error) {
+    if (result.rows.length === 0) {
+      return { data: null, error: new Error('Profile not found or not updated') };
+    }
+
     revalidatePath('/dashboard/users');
+    return { data: result.rows[0], error: null };
+  } catch (error) {
+    console.error('createUserAction error:', error);
+    return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };
   }
-
-  return { data, error };
 }
 
-// Update user (admin only)
+// Update user (admin only) (LOCAL POSTGRESQL)
 export async function updateUserAction(userId: string, fullName: string, role: 'admin' | 'user' | 'viewer') {
   const cookieStore = await cookies();
   const supabase = createServerSupabaseClient(cookieStore);
@@ -115,25 +124,28 @@ export async function updateUserAction(userId: string, fullName: string, role: '
     return { data: null, error: new Error('Unauthorized: Admin access required') };
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      full_name: fullName,
-      role: role,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', userId)
-    .select()
-    .single();
+  try {
+    const result = await query(
+      `UPDATE public.profiles
+       SET full_name = $1, role = $2, updated_at = NOW()
+       WHERE id = $3
+       RETURNING *`,
+      [fullName, role, userId]
+    );
 
-  if (!error) {
+    if (result.rows.length === 0) {
+      return { data: null, error: new Error('User not found') };
+    }
+
     revalidatePath('/dashboard/users');
+    return { data: result.rows[0], error: null };
+  } catch (error) {
+    console.error('updateUserAction error:', error);
+    return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };
   }
-
-  return { data, error };
 }
 
-// Update user role only (admin only)
+// Update user role only (admin only) (LOCAL POSTGRESQL)
 export async function updateUserRoleAction(userId: string, role: 'admin' | 'user' | 'viewer') {
   const cookieStore = await cookies();
   const supabase = createServerSupabaseClient(cookieStore);
@@ -142,24 +154,28 @@ export async function updateUserRoleAction(userId: string, role: 'admin' | 'user
     return { data: null, error: new Error('Unauthorized: Admin access required') };
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      role: role,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', userId)
-    .select()
-    .single();
+  try {
+    const result = await query(
+      `UPDATE public.profiles
+       SET role = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [role, userId]
+    );
 
-  if (!error) {
+    if (result.rows.length === 0) {
+      return { data: null, error: new Error('User not found') };
+    }
+
     revalidatePath('/dashboard/users');
+    return { data: result.rows[0], error: null };
+  } catch (error) {
+    console.error('updateUserRoleAction error:', error);
+    return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };
   }
-
-  return { data, error };
 }
 
-// Soft delete user (admin only)
+// Soft delete user (admin only) (LOCAL POSTGRESQL)
 export async function deleteUserAction(userId: string) {
   const cookieStore = await cookies();
   const supabase = createServerSupabaseClient(cookieStore);
@@ -174,23 +190,28 @@ export async function deleteUserAction(userId: string) {
     return { data: null, error: new Error('Cannot delete your own account') };
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      deleted_at: new Date().toISOString()
-    })
-    .eq('id', userId)
-    .select()
-    .single();
+  try {
+    const result = await query(
+      `UPDATE public.profiles
+       SET deleted_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [userId]
+    );
 
-  if (!error) {
+    if (result.rows.length === 0) {
+      return { data: null, error: new Error('User not found') };
+    }
+
     revalidatePath('/dashboard/users');
+    return { data: result.rows[0], error: null };
+  } catch (error) {
+    console.error('deleteUserAction error:', error);
+    return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };
   }
-
-  return { data, error };
 }
 
-// Restore deleted user (admin only)
+// Restore deleted user (admin only) (LOCAL POSTGRESQL)
 export async function restoreUserAction(userId: string) {
   const cookieStore = await cookies();
   const supabase = createServerSupabaseClient(cookieStore);
@@ -199,18 +220,23 @@ export async function restoreUserAction(userId: string) {
     return { data: null, error: new Error('Unauthorized: Admin access required') };
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      deleted_at: null
-    })
-    .eq('id', userId)
-    .select()
-    .single();
+  try {
+    const result = await query(
+      `UPDATE public.profiles
+       SET deleted_at = NULL
+       WHERE id = $1
+       RETURNING *`,
+      [userId]
+    );
 
-  if (!error) {
+    if (result.rows.length === 0) {
+      return { data: null, error: new Error('User not found') };
+    }
+
     revalidatePath('/dashboard/users');
+    return { data: result.rows[0], error: null };
+  } catch (error) {
+    console.error('restoreUserAction error:', error);
+    return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };
   }
-
-  return { data, error };
 }
