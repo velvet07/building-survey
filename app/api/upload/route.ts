@@ -15,8 +15,8 @@ import sharp from 'sharp';
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
 const THUMBNAIL_DIR = path.join(UPLOAD_DIR, 'thumbnails');
 
-// Maximum file size: 10MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Maximum file size: 20MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 // Allowed MIME types
 const ALLOWED_MIME_TYPES = [
