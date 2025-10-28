@@ -83,8 +83,21 @@ export async function createUserAction(email: string, password: string, fullName
     return { data: null, error: new Error('Unauthorized: Admin access required') };
   }
 
+  // Create admin client for user creation (requires SERVICE_ROLE_KEY)
+  const { createClient } = await import('@supabase/supabase-js');
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+
   // Create auth user in Supabase Cloud Auth
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
@@ -195,11 +208,9 @@ export async function deleteUserAction(userId: string) {
     return { data: null, error: new Error('Unauthorized: Admin access required') };
   }
 
-  // Prevent self-deletion
+  // Check self-deletion (allow but track it)
   const { data: { user } } = await supabase.auth.getUser();
-  if (user?.id === userId) {
-    return { data: null, error: new Error('Cannot delete your own account') };
-  }
+  const isSelfDeletion = user?.id === userId;
 
   try {
     // First, delete from local PostgreSQL
