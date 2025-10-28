@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { query } from '@/lib/db';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -73,23 +74,24 @@ export async function GET(
     }
 
     // Check if user has access to the project
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const profileResult = await query(
+      'SELECT role FROM public.profiles WHERE id = $1',
+      [user.id]
+    );
 
+    const profile = profileResult.rows[0];
     const isAdmin = profile?.role === 'admin';
     const isViewer = profile?.role === 'viewer';
 
     // Admin and Viewer can access all files
     if (!isAdmin && !isViewer) {
       // Regular user - check project ownership
-      const { data: project } = await supabase
-        .from('projects')
-        .select('owner_id')
-        .eq('id', projectId)
-        .single();
+      const projectResult = await query(
+        'SELECT owner_id FROM public.projects WHERE id = $1',
+        [projectId]
+      );
+
+      const project = projectResult.rows[0];
 
       if (!project || project.owner_id !== user.id) {
         return NextResponse.json(

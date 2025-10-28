@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { deleteUserAction } from '@/app/actions/users';
+import { createBrowserClient } from '@/lib/supabase';
 import { User } from '@/types/user.types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +17,19 @@ export interface DeleteUserModalProps {
 
 export function DeleteUserModal({ isOpen, onClose, onSuccess, user }: DeleteUserModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Get current user ID
+  React.useEffect(() => {
+    const getCurrentUser = async () => {
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
+
+  const isSelfDeletion = user?.id === currentUserId;
 
   const handleDelete = async () => {
     if (!user) return;
@@ -71,6 +85,11 @@ export function DeleteUserModal({ isOpen, onClose, onSuccess, user }: DeleteUser
       <p className="text-sm text-secondary-600 mt-2">
         Email: {user.email}
       </p>
+      {isSelfDeletion && (
+        <p className="text-sm text-warning-700 mt-4 p-3 bg-warning-50 border border-warning-300 rounded-lg font-semibold">
+          ⚠️ Saját fiókodat törölöd! Ezután ki fogsz jelentkezni és nem tudsz többé bejelentkezni.
+        </p>
+      )}
       <p className="text-sm text-danger-700 mt-4 p-3 bg-danger-50 border border-danger-200 rounded-lg">
         <strong>⚠️ Figyelem:</strong> Ez a művelet nem visszavonható! A felhasználó véglegesen törlődik mind a Supabase-ből, mind a helyi adatbázisból.
       </p>
