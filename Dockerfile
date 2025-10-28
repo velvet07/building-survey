@@ -73,7 +73,7 @@ EXPOSE 3000
 
 # Set port environment variable
 ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+ENV HOSTNAME=0.0.0.0
 
 # Health check endpoint
 # Disabled temporarily - app works but healthcheck timing issues
