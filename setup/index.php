@@ -150,6 +150,7 @@
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
+            $passwordConfirm = $_POST['password_confirm'] ?? '';
             $fullName = trim($_POST['full_name'] ?? '');
 
             // Validation
@@ -157,6 +158,8 @@
                 $error = 'Érvényes email címet adj meg!';
             } elseif (empty($password) || strlen($password) < 8) {
                 $error = 'A jelszónak legalább 8 karakter hosszúnak kell lennie!';
+            } elseif ($password !== $passwordConfirm) {
+                $error = 'A két jelszó nem egyezik meg!';
             } else {
                 // Create admin user via Supabase Admin API
                 $supabaseUrl = getenv('SUPABASE_URL');
@@ -299,6 +302,19 @@
                         minlength="8"
                     >
                     <div class="help-text">Legalább 8 karakter hosszú jelszó</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password_confirm">Jelszó mégegyszer *</label>
+                    <input
+                        type="password"
+                        id="password_confirm"
+                        name="password_confirm"
+                        required
+                        placeholder="Írd be újra a jelszót"
+                        minlength="8"
+                    >
+                    <div class="help-text">A két jelszónak meg kell egyeznie</div>
                 </div>
 
                 <div class="form-group">

@@ -85,7 +85,9 @@ services:
 
   # Setup PHP Script (temporary - remove after admin user created)
   setup:
-    image: php:8.2-apache
+    build:
+      context: ./setup
+      dockerfile: Dockerfile
     container_name: building-survey-setup
     restart: "no"
     volumes:
@@ -99,6 +101,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     depends_on:
       postgres:
         condition: service_healthy
