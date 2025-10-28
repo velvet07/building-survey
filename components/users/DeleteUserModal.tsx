@@ -71,8 +71,8 @@ export function DeleteUserModal({ isOpen, onClose, onSuccess, user }: DeleteUser
       <p className="text-sm text-secondary-600 mt-2">
         Email: {user.email}
       </p>
-      <p className="text-sm text-secondary-600 mt-4 p-3 bg-warning-50 border border-warning-200 rounded-lg">
-        <strong>Figyelem:</strong> Ez a művelet visszavonható, a felhasználó soft delete-tel kerül törlésre.
+      <p className="text-sm text-danger-700 mt-4 p-3 bg-danger-50 border border-danger-200 rounded-lg">
+        <strong>⚠️ Figyelem:</strong> Ez a művelet nem visszavonható! A felhasználó véglegesen törlődik mind a Supabase-ből, mind a helyi adatbázisból.
       </p>
     </Modal>
   );

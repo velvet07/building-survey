@@ -185,7 +185,8 @@ export async function updateUserRoleAction(userId: string, role: 'admin' | 'user
   }
 }
 
-// Soft delete user (admin only) (LOCAL POSTGRESQL)
+// Delete user (admin only)
+// Permanently deletes from both Supabase Auth and local PostgreSQL
 export async function deleteUserAction(userId: string) {
   const cookieStore = await cookies();
   const supabase = createServerSupabaseClient(cookieStore);
@@ -201,9 +202,10 @@ export async function deleteUserAction(userId: string) {
   }
 
   try {
+    // First, delete from local PostgreSQL
+    // Foreign key CASCADE will handle auth.users deletion
     const result = await query(
-      `UPDATE public.profiles
-       SET deleted_at = NOW()
+      `DELETE FROM public.profiles
        WHERE id = $1
        RETURNING *`,
       [userId]
@@ -211,6 +213,14 @@ export async function deleteUserAction(userId: string) {
 
     if (result.rows.length === 0) {
       return { data: null, error: new Error('User not found') };
+    }
+
+    // Then, delete from Supabase Auth (cloud)
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+
+    if (authError) {
+      console.error('Supabase auth delete error:', authError);
+      // Continue anyway - user is already deleted from local DB
     }
 
     revalidatePath('/dashboard/users');
