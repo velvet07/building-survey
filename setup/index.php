@@ -206,7 +206,19 @@
                                 $pdo = new PDO("pgsql:host=$dbHost;dbname=$dbName", $dbUser, $dbPass);
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                                // Create profile with admin role
+                                // First, insert into auth.users shadow table (to satisfy foreign key)
+                                $stmt = $pdo->prepare("
+                                    INSERT INTO auth.users (id, email, created_at)
+                                    VALUES (:id, :email, NOW())
+                                    ON CONFLICT (id) DO UPDATE SET
+                                        email = EXCLUDED.email
+                                ");
+                                $stmt->execute([
+                                    ':id' => $userId,
+                                    ':email' => $email
+                                ]);
+
+                                // Then, create profile with admin role
                                 // Note: profiles table only has: id, email, role, created_at, updated_at
                                 // full_name is stored in Supabase auth.users metadata
                                 $stmt = $pdo->prepare("
