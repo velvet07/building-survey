@@ -61,9 +61,10 @@ export async function getUsersAction() {
   }
 
   try {
+    // Query profiles table (no deleted_at column - users are never soft deleted)
     const result = await query(
-      `SELECT * FROM public.profiles
-       WHERE deleted_at IS NULL
+      `SELECT id, email, full_name, role, created_at, updated_at
+       FROM public.profiles
        ORDER BY created_at DESC`
     );
     return { data: result.rows, error: null };
@@ -93,19 +94,28 @@ export async function createUserAction(email: string, password: string, fullName
     return { data: null, error: authError };
   }
 
-  // Update profile with full name and role (LOCAL POSTGRESQL)
+  // Create user in local PostgreSQL (auth.users shadow + profiles)
   try {
-    const result = await query(
-      `UPDATE public.profiles
-       SET full_name = $1, role = $2, updated_at = NOW()
-       WHERE id = $3
-       RETURNING *`,
-      [fullName, role, authData.user.id]
+    // First, insert into auth.users shadow table
+    await query(
+      `INSERT INTO auth.users (id, email, created_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email`,
+      [authData.user.id, email]
     );
 
-    if (result.rows.length === 0) {
-      return { data: null, error: new Error('Profile not found or not updated') };
-    }
+    // Then, insert into profiles with full_name and role
+    const result = await query(
+      `INSERT INTO public.profiles (id, email, full_name, role, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, NOW(), NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         email = EXCLUDED.email,
+         full_name = EXCLUDED.full_name,
+         role = EXCLUDED.role,
+         updated_at = NOW()
+       RETURNING *`,
+      [authData.user.id, email, fullName, role]
+    );
 
     revalidatePath('/dashboard/users');
     return { data: result.rows[0], error: null };
