@@ -10,6 +10,7 @@ import { revalidatePath } from 'next/cache';
 import {
   getDrawings,
   getDrawing,
+  getDrawingBySlug,
   createDrawing as createDrawingLib,
   updateDrawing,
   deleteDrawing,
@@ -33,6 +34,16 @@ export async function getDrawingAction(drawingId: string) {
     return { data: drawing, error: null };
   } catch (error) {
     console.error('getDrawingAction error:', error);
+    return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };
+  }
+}
+
+export async function getDrawingBySlugAction(projectId: string, slug: string) {
+  try {
+    const drawing = await getDrawingBySlug(projectId, slug);
+    return { data: drawing, error: null };
+  } catch (error) {
+    console.error('getDrawingBySlugAction error:', error);
     return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };
   }
 }
