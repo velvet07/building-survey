@@ -69,6 +69,20 @@ services:
     #   retries: 3
     #   start_period: 40s
 
+  # Nginx Proxy (for cPanel environments where direct port mapping fails)
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: building-survey-nginx
+    restart: unless-stopped
+    ports:
+      - "8888:80"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - building-survey-network
+
   # Setup PHP Script (temporary - remove after admin user created)
   setup:
     image: php:8.2-apache
