@@ -226,8 +226,20 @@ export async function deleteUserAction(userId: string) {
       return { data: null, error: new Error('User not found') };
     }
 
-    // Then, delete from Supabase Auth (cloud)
-    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    // Then, delete from Supabase Auth (cloud) using admin client
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (authError) {
       console.error('Supabase auth delete error:', authError);
