@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { deleteUserAction } from '@/app/actions/users';
-import { createBrowserClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase';
 import { User } from '@/types/user.types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -22,7 +22,7 @@ export function DeleteUserModal({ isOpen, onClose, onSuccess, user }: DeleteUser
   // Get current user ID
   React.useEffect(() => {
     const getCurrentUser = async () => {
-      const supabase = createBrowserClient();
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
     };
