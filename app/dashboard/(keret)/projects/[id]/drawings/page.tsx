@@ -47,7 +47,7 @@ export default function DrawingsPage() {
     try {
       const newDrawing = await createDrawing({ project_id: projectId });
       showSuccess('Rajz létrehozva!');
-      router.push(`/dashboard/projects/${projectId}/drawings/${newDrawing.id}`);
+      router.push(`/dashboard/projects/${projectId}/drawings/${newDrawing.slug}`);
     } catch (error) {
       showError('Rajz létrehozása sikertelen');
       console.error(error);

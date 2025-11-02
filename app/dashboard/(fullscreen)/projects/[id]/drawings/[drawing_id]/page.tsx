@@ -38,7 +38,7 @@ const DrawingCanvas = dynamic(
 export default function DrawingEditorPage() {
   const params = useParams();
   const router = useRouter();
-  const drawingId = params.drawing_id as string;
+  const drawingIdentifier = params.drawing_id as string; // Can be slug or UUID
   const projectId = params.id as string;
   const { canEdit } = useUserRole();
 
@@ -60,7 +60,7 @@ export default function DrawingEditorPage() {
 
   useEffect(() => {
     loadDrawing();
-  }, [drawingId]);
+  }, [drawingIdentifier]);
 
   useEffect(() => {
     loadProject();
@@ -89,7 +89,7 @@ export default function DrawingEditorPage() {
   const loadDrawing = async () => {
     try {
       setLoading(true);
-      const data = await getDrawing(drawingId);
+      const data = await getDrawing(drawingIdentifier);
       setDrawing(data);
     } catch (error) {
       showError('Rajz betöltése sikertelen');
@@ -134,7 +134,7 @@ export default function DrawingEditorPage() {
   }
 
   async function flushPendingSave() {
-    if (!pendingSaveRef.current || isSavingRef.current) {
+    if (!pendingSaveRef.current || isSavingRef.current || !drawing) {
       return;
     }
 
@@ -144,7 +144,7 @@ export default function DrawingEditorPage() {
     setSaving(true);
 
     try {
-      await updateDrawing(drawingId, {
+      await updateDrawing(drawing.id, {
         canvas_data: payload.canvasData,
         paper_size: payload.paperSize,
         orientation: payload.orientation,
