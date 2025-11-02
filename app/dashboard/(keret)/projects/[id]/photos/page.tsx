@@ -174,7 +174,7 @@ export default function PhotosPage() {
         </div>
 
         {/* Upload Section */}
-        {canCreate && (
+        {canCreate && projectId && (
           <div className="mb-8 bg-white rounded-lg border border-gray-200 p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Új fotók feltöltése</h2>
             <PhotoUpload projectId={projectId} onUploadComplete={loadPhotos} />
