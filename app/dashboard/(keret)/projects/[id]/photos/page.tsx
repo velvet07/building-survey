@@ -15,14 +15,22 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { getPhotos, downloadPhoto, downloadPhotos, deletePhoto, deletePhotos, getPhotoUrl } from '@/lib/photos/api';
 import type { Photo, PhotoViewMode } from '@/types/photo.types';
 import { useUserRole } from '@/hooks/useUserRole';
+import { createClient } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+
+// Helper to check if string is UUID format
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
 
 export default function PhotosPage() {
   const params = useParams();
   const router = useRouter();
-  const projectId = params.id as string;
+  const projectIdentifier = params.id as string; // Can be UUID or auto_identifier
   const { canCreate, canDelete, isViewer } = useUserRole();
 
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<PhotoViewMode>('gallery');
@@ -30,10 +38,38 @@ export default function PhotosPage() {
   const [selectedPhotoForPreview, setSelectedPhotoForPreview] = useState<Photo | null>(null);
 
   useEffect(() => {
-    loadPhotos();
+    loadProject();
+  }, [projectIdentifier]);
+
+  useEffect(() => {
+    if (projectId) {
+      loadPhotos();
+    }
   }, [projectId]);
 
+  const loadProject = async () => {
+    try {
+      const supabase = createClient();
+      const isUUIDFormat = isUUID(projectIdentifier);
+      const column = isUUIDFormat ? 'id' : 'auto_identifier';
+
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id')
+        .eq(column, projectIdentifier)
+        .single();
+
+      if (error) throw error;
+      setProjectId(data.id);
+    } catch (error) {
+      console.error('Error loading project:', error);
+      router.push('/dashboard/projects');
+    }
+  };
+
   const loadPhotos = async () => {
+    if (!projectId) return;
+
     try {
       const data = await getPhotos(projectId);
       setPhotos(data);

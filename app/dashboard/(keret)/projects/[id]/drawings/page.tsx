@@ -12,22 +12,58 @@ import type { Drawing } from '@/lib/drawings/types';
 import { showSuccess, showError } from '@/lib/toast';
 import DrawingList from '@/components/drawings/DrawingList';
 import { useUserRole } from '@/hooks/useUserRole';
+import { createClient } from '@/lib/supabase';
+
+// Helper to check if string is UUID format
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
 
 export default function DrawingsPage() {
   const params = useParams();
   const router = useRouter();
-  const projectId = params.id as string;
+  const projectIdentifier = params.id as string; // Can be UUID or auto_identifier
   const { canCreate, isViewer } = useUserRole();
 
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    loadDrawings();
+    loadProject();
+  }, [projectIdentifier]);
+
+  useEffect(() => {
+    if (projectId) {
+      loadDrawings();
+    }
   }, [projectId]);
 
+  const loadProject = async () => {
+    try {
+      const supabase = createClient();
+      const isUUIDFormat = isUUID(projectIdentifier);
+      const column = isUUIDFormat ? 'id' : 'auto_identifier';
+
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, auto_identifier')
+        .eq(column, projectIdentifier)
+        .single();
+
+      if (error) throw error;
+      setProjectId(data.id);
+    } catch (error) {
+      console.error('Error loading project:', error);
+      router.push('/dashboard/projects');
+    }
+  };
+
   const loadDrawings = async () => {
+    if (!projectId) return;
+
     try {
       setLoading(true);
       const data = await getDrawings(projectId);
@@ -41,13 +77,13 @@ export default function DrawingsPage() {
   };
 
   const handleCreateDrawing = async () => {
-    if (creating) return;
+    if (creating || !projectId) return;
 
     setCreating(true);
     try {
       const newDrawing = await createDrawing({ project_id: projectId });
       showSuccess('Rajz létrehozva!');
-      router.push(`/dashboard/projects/${projectId}/drawings/${newDrawing.slug}`);
+      router.push(`/dashboard/projects/${projectIdentifier}/drawings/${newDrawing.slug}`);
     } catch (error) {
       showError('Rajz létrehozása sikertelen');
       console.error(error);
@@ -70,7 +106,7 @@ export default function DrawingsPage() {
     <div className="container mx-auto px-4 py-8">
       {/* Back Button */}
       <button
-        onClick={() => router.push(`/dashboard/projects/${projectId}`)}
+        onClick={() => router.push(`/dashboard/projects/${projectIdentifier}`)}
         className="text-gray-600 hover:text-gray-900 font-medium mb-6 flex items-center gap-2"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,7 +162,7 @@ export default function DrawingsPage() {
       {/* Drawing List with Cards */}
       <DrawingList
         drawings={drawings}
-        projectId={projectId}
+        projectId={projectIdentifier}
         onRefresh={loadDrawings}
       />
     </div>

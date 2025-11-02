@@ -16,10 +16,16 @@ import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import toast from 'react-hot-toast';
 
+// Helper to check if string is UUID format
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 export default function ProjectDashboardPage() {
   const router = useRouter();
   const params = useParams();
-  const projectId = params.id as string;
+  const projectIdentifier = params.id as string; // Can be UUID or auto_identifier
   const { canEdit } = useUserRole();
 
   const [project, setProject] = useState<Project | null>(null);
@@ -30,30 +36,43 @@ export default function ProjectDashboardPage() {
 
   useEffect(() => {
     loadProject();
-    loadDrawingsCount();
-  }, [projectId]);
+  }, [projectIdentifier]);
+
+  useEffect(() => {
+    if (project) {
+      loadDrawingsCount();
+    }
+  }, [project]);
 
   const loadProject = async () => {
     try {
       const supabase = createClient();
+
+      // Determine if identifier is UUID or auto_identifier
+      const isUUIDFormat = isUUID(projectIdentifier);
+      const column = isUUIDFormat ? 'id' : 'auto_identifier';
+
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('id', projectId)
+        .eq(column, projectIdentifier)
         .single();
 
       if (error) throw error;
       setProject(data);
     } catch (error) {
       console.error('Error loading project:', error);
+      router.push('/dashboard/projects'); // Redirect if not found
     } finally {
       setLoading(false);
     }
   };
 
   const loadDrawingsCount = async () => {
+    if (!project) return;
+
     try {
-      const drawings = await getDrawings(projectId);
+      const drawings = await getDrawings(project.id);
       setDrawingsCount(drawings.length);
     } catch (error) {
       console.error('Error loading drawings count:', error);

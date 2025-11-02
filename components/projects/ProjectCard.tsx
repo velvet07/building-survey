@@ -19,7 +19,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
   const { canEdit, canDelete } = useUserRole();
 
   const handleOpenProject = () => {
-    router.push(`/dashboard/projects/${project.id}`);
+    router.push(`/dashboard/projects/${project.auto_identifier}`);
   };
 
   return (

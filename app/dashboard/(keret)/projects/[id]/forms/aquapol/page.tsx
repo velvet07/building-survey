@@ -16,6 +16,12 @@ import { useUserRole } from '@/hooks/useUserRole';
 
 const FORM_SLUG = 'aquapol-form';
 
+// Helper to check if string is UUID format
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 function createInitialValues(): FormValues {
   const initial: FormValues = {};
 
@@ -35,9 +41,10 @@ function createInitialValues(): FormValues {
 export default function AquapolFormPage() {
   const params = useParams();
   const router = useRouter();
-  const projectId = params.id as string;
+  const projectIdentifier = params.id as string; // Can be UUID or auto_identifier
   const { canEdit, isViewer } = useUserRole();
 
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [formValues, setFormValues] = useState<FormValues>(() => createInitialValues());
   const [loadingProject, setLoadingProject] = useState(true);
@@ -60,10 +67,13 @@ export default function AquapolFormPage() {
 
     try {
       const supabase = createClient();
+      const isUUIDFormat = isUUID(projectIdentifier);
+      const column = isUUIDFormat ? 'id' : 'auto_identifier';
+
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('id', projectId)
+        .eq(column, projectIdentifier)
         .single();
 
       if (error) {
@@ -71,6 +81,7 @@ export default function AquapolFormPage() {
       }
 
       setProject(data as Project);
+      setProjectId(data.id);
     } catch (error) {
       console.error('Error loading project:', error);
       setStatusMessage('Nem sikerült betölteni a projektet.');
@@ -78,7 +89,7 @@ export default function AquapolFormPage() {
     } finally {
       setLoadingProject(false);
     }
-  }, [projectId]);
+  }, [projectIdentifier]);
 
   const loadForm = useCallback(async () => {
     setLoadingForm(true);
