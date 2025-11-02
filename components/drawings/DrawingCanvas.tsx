@@ -1118,11 +1118,11 @@ export default function DrawingCanvas({
         </div>
       </div>
 
-      <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] w-auto max-w-[98vw] -translate-x-1/2 rounded-2xl border border-gray-200 bg-white/95 shadow-xl backdrop-blur">
+      <div className="toolbar-container pointer-events-auto absolute left-1/2 top-6 z-[1200] w-auto max-w-[98vw] -translate-x-1/2 rounded-2xl border border-gray-200 bg-white/95 shadow-xl backdrop-blur overflow-visible">
         <div className={`flex items-center gap-2 px-3 py-2 text-[0.7rem] sm:text-[0.75rem] md:text-sm ${
           isColorMenuOpen || isWidthMenuOpen
             ? 'overflow-visible'
-            : 'max-xl:overflow-x-auto max-xl:scrollbar-thin max-xl:scrollbar-thumb-gray-300 max-xl:scrollbar-track-transparent'
+            : 'max-xl:overflow-x-auto max-xl:overflow-y-visible max-xl:pr-6 max-xl:scrollbar-thin max-xl:scrollbar-thumb-gray-300 max-xl:scrollbar-track-transparent'
         }`}>
         <div className="flex flex-shrink-0 items-center gap-1.5">
           {drawingsUrl && (
