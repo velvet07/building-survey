@@ -147,7 +147,7 @@ export default function ProjectDashboardPage() {
         </svg>
       ),
       color: 'emerald',
-      href: `/dashboard/projects/${projectId}/forms/aquapol`,
+      href: `/dashboard/projects/${projectIdentifier}/forms/aquapol`,
       available: true,
     },
     {
@@ -165,7 +165,7 @@ export default function ProjectDashboardPage() {
         </svg>
       ),
       color: 'blue',
-      href: `/dashboard/projects/${projectId}/drawings`,
+      href: `/dashboard/projects/${projectIdentifier}/drawings`,
       available: true,
     },
     {
@@ -189,7 +189,7 @@ export default function ProjectDashboardPage() {
         </svg>
       ),
       color: 'green',
-      href: `/dashboard/projects/${projectId}/photos`,
+      href: `/dashboard/projects/${projectIdentifier}/photos`,
       available: true,
     },
   ];
