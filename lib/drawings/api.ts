@@ -43,8 +43,28 @@ export async function getDrawings(projectId: string): Promise<Drawing[]> {
 export async function getDrawing(identifier: string): Promise<Drawing> {
   const supabase = createClient();
 
-  // Try slug first (unless it's clearly a UUID)
-  if (!isUUID(identifier)) {
+  // Determine if identifier is UUID or slug
+  if (isUUID(identifier)) {
+    // It's a UUID, search by id
+    const { data, error } = await supabase
+      .from('drawings')
+      .select('*')
+      .eq('id', identifier)
+      .is('deleted_at', null)
+      .single();
+
+    if (error) {
+      console.error('Error fetching drawing:', error);
+      throw new Error(`Rajz betöltése sikertelen: ${error.message}`, { cause: error });
+    }
+
+    if (!data) {
+      throw new Error('Rajz nem található');
+    }
+
+    return data as Drawing;
+  } else {
+    // It's a slug, search by slug
     const { data, error } = await supabase
       .from('drawings')
       .select('*')
@@ -52,29 +72,17 @@ export async function getDrawing(identifier: string): Promise<Drawing> {
       .is('deleted_at', null)
       .single();
 
-    if (data) {
-      return data as Drawing;
+    if (error) {
+      console.error('Error fetching drawing:', error);
+      throw new Error(`Rajz betöltése sikertelen: ${error.message}`, { cause: error });
     }
+
+    if (!data) {
+      throw new Error('Rajz nem található');
+    }
+
+    return data as Drawing;
   }
-
-  // Fallback to ID-based lookup (for backward compatibility)
-  const { data, error } = await supabase
-    .from('drawings')
-    .select('*')
-    .eq('id', identifier)
-    .is('deleted_at', null)
-    .single();
-
-  if (error) {
-    console.error('Error fetching drawing:', error);
-    throw new Error(`Rajz betöltése sikertelen: ${error.message}`, { cause: error });
-  }
-
-  if (!data) {
-    throw new Error('Rajz nem található');
-  }
-
-  return data as Drawing;
 }
 
 /**
