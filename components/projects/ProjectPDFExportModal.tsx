@@ -402,7 +402,7 @@ export default function ProjectPDFExportModal({
                   onChange={() => togglePhoto(photo.id)}
                 />
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-gray-900">{photo.filename}</p>
+                  <p className="text-sm font-semibold text-gray-900">{photo.file_name}</p>
                   <p className="text-xs text-gray-600">
                     {new Date(photo.created_at).toLocaleDateString('hu-HU')}
                   </p>
