@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { deleteProject } from '@/lib/projects';
+import { deleteProjectAction } from '@/app/actions/projects';
 import { Project } from '@/types/project.types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -23,7 +23,7 @@ export function DeleteProjectModal({ isOpen, onClose, onSuccess, project }: Dele
     setIsLoading(true);
 
     try {
-      const { data, error } = await deleteProject(project.id);
+      const { data, error } = await deleteProjectAction(project.id);
 
       if (error) {
         console.error('Delete error:', error);
