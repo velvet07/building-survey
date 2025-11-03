@@ -8,8 +8,12 @@ export interface Photo {
   project_id: string;
   file_name: string;
   file_path: string;
+  local_file_path?: string; // Local storage filename (new system)
+  thumbnail_path?: string; // Local thumbnail filename (new system)
   file_size: number;
   mime_type: string;
+  width?: number;
+  height?: number;
   caption?: string;
   description?: string;
   uploaded_by: string;
