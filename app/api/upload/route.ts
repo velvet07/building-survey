@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { query } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -79,28 +80,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Verify project access (using Supabase client)
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .select('id, owner_id')
-      .eq('id', projectId)
-      .single();
+    // 4. Verify project access (LOCAL POSTGRESQL)
+    const projectResult = await query(
+      'SELECT id, owner_id FROM public.projects WHERE id = $1',
+      [projectId]
+    );
 
-    if (projectError || !project) {
-      console.error('Project lookup error:', projectError);
+    if (projectResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
       );
     }
 
-    // Check if user has permission (owner or admin)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const project = projectResult.rows[0];
 
+    // Check if user has permission (owner or admin) (LOCAL POSTGRESQL)
+    const profileResult = await query(
+      'SELECT role FROM public.profiles WHERE id = $1',
+      [user.id]
+    );
+
+    const profile = profileResult.rows[0];
     const isAdmin = profile?.role === 'admin';
     const isOwner = project.owner_id === user.id;
 
@@ -149,33 +150,38 @@ export async function POST(request: NextRequest) {
       })
       .toFile(thumbnailPath);
 
-    // 11. Create database record (using Supabase client)
-    const { data: photo, error: insertError } = await supabase
-      .from('photos')
-      .insert({
-        project_id: projectId,
-        file_name: file.name,
-        file_path: '', // Legacy field (empty for local storage)
-        local_file_path: fileName,
-        thumbnail_path: thumbnailName,
-        file_size: file.size,
-        mime_type: file.type,
-        width: width,
-        height: height,
-        caption: caption || null,
-        description: description || null,
-        uploaded_by: user.id,
-      })
-      .select()
-      .single();
+    // 11. Create database record (LOCAL POSTGRESQL)
+    const photoResult = await query(
+      `INSERT INTO public.photos (
+        project_id, file_name, file_path, local_file_path, thumbnail_path,
+        file_size, mime_type, width, height, caption, description, uploaded_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *`,
+      [
+        projectId,
+        file.name,
+        '', // Legacy field (empty for local storage)
+        fileName,
+        thumbnailName,
+        file.size,
+        file.type,
+        width,
+        height,
+        caption || null,
+        description || null,
+        user.id,
+      ]
+    );
 
-    if (insertError || !photo) {
-      console.error('Database insert error:', insertError);
+    if (photoResult.rows.length === 0) {
+      console.error('Database insert error: No rows returned');
       return NextResponse.json(
         { error: 'Failed to save photo metadata' },
         { status: 500 }
       );
     }
+
+    const photo = photoResult.rows[0];
 
     // 12. Return success response
     return NextResponse.json({

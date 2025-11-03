@@ -12,25 +12,18 @@ import { PhotoUpload } from '@/components/photos/PhotoUpload';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { PhotoDetails } from '@/components/photos/PhotoDetails';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { getPhotos, downloadPhoto, downloadPhotos, deletePhoto, deletePhotos, getPhotoUrl } from '@/lib/photos/api';
+import { downloadPhoto, downloadPhotos, getPhotoUrl } from '@/lib/photos/api';
+import { getPhotosAction, deletePhotoAction, deletePhotosAction } from '@/app/actions/photos';
 import type { Photo, PhotoViewMode } from '@/types/photo.types';
 import { useUserRole } from '@/hooks/useUserRole';
-import { createClient } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-
-// Helper to check if string is UUID format
-function isUUID(str: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
-}
 
 export default function PhotosPage() {
   const params = useParams();
   const router = useRouter();
-  const projectIdentifier = params.id as string; // Can be UUID or auto_identifier
+  const projectId = params.id as string;
   const { canCreate, canDelete, isViewer } = useUserRole();
 
-  const [projectId, setProjectId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<PhotoViewMode>('gallery');
@@ -38,41 +31,14 @@ export default function PhotosPage() {
   const [selectedPhotoForPreview, setSelectedPhotoForPreview] = useState<Photo | null>(null);
 
   useEffect(() => {
-    loadProject();
-  }, [projectIdentifier]);
-
-  useEffect(() => {
-    if (projectId) {
-      loadPhotos();
-    }
+    loadPhotos();
   }, [projectId]);
 
-  const loadProject = async () => {
-    try {
-      const supabase = createClient();
-      const isUUIDFormat = isUUID(projectIdentifier);
-      const column = isUUIDFormat ? 'id' : 'auto_identifier';
-
-      const { data, error } = await supabase
-        .from('projects')
-        .select('id')
-        .eq(column, projectIdentifier)
-        .single();
-
-      if (error) throw error;
-      setProjectId(data.id);
-    } catch (error) {
-      console.error('Error loading project:', error);
-      router.push('/dashboard/projects');
-    }
-  };
-
   const loadPhotos = async () => {
-    if (!projectId) return;
-
     try {
-      const data = await getPhotos(projectId);
-      setPhotos(data);
+      const { data, error } = await getPhotosAction(projectId);
+      if (error) throw error;
+      setPhotos(data || []);
     } catch (error) {
       console.error('Error loading photos:', error);
       toast.error('Hiba történt a fotók betöltése során');
@@ -127,10 +93,12 @@ export default function PhotosPage() {
       const photosToDelete = photos.filter((p) => selectedPhotos.includes(p.id));
 
       if (photosToDelete.length === 1) {
-        await deletePhoto(photosToDelete[0]);
+        const { error } = await deletePhotoAction(photosToDelete[0]);
+        if (error) throw error;
         toast.success('Fotó törölve');
       } else {
-        await deletePhotos(photosToDelete);
+        const { error } = await deletePhotosAction(photosToDelete);
+        if (error) throw error;
         toast.success(`${photosToDelete.length} fotó törölve`);
       }
 
@@ -174,7 +142,7 @@ export default function PhotosPage() {
         </div>
 
         {/* Upload Section */}
-        {canCreate && projectId && (
+        {canCreate && (
           <div className="mb-8 bg-white rounded-lg border border-gray-200 p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Új fotók feltöltése</h2>
             <PhotoUpload projectId={projectId} onUploadComplete={loadPhotos} />
