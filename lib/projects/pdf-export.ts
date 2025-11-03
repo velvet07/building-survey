@@ -2,12 +2,14 @@ import jsPDF from 'jspdf';
 import type { Project } from '@/types/project.types';
 import type { FormDefinition, ProjectFormResponse } from '@/lib/forms/types';
 import type { Drawing } from '@/lib/drawings/types';
+import type { Photo } from '@/types/photo.types';
 import { renderDrawingToImage, getPaperDimensionsInMillimeters } from '@/lib/drawings/pdf-export';
 import { ensureHungarianFont, setFont } from '@/lib/pdf/font-utils';
 import { FORM_PAGE_CONFIG, renderFormContent } from '@/lib/forms/pdf-export';
+import { getPhotoUrl } from '@/lib/photos/api';
 
 interface ModuleSelection {
-  id: 'aquapol-form' | 'drawings';
+  id: 'aquapol-form' | 'drawings' | 'photos';
   items?: string[];
 }
 
@@ -21,6 +23,9 @@ interface ExportProjectModulesParams {
   drawings?: {
     data: Drawing[];
   };
+  photos?: {
+    data: Photo[];
+  };
 }
 
 export function exportProjectModulesToPDF({
@@ -28,6 +33,7 @@ export function exportProjectModulesToPDF({
   modules,
   aquapol,
   drawings,
+  photos,
 }: ExportProjectModulesParams) {
   const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
   ensureHungarianFont(pdf);
@@ -104,6 +110,70 @@ export function exportProjectModulesToPDF({
             setFont(pdf, 'bold');
             pdf.setFontSize(16);
             pdf.text('A rajz exportálása sikertelen volt.', 20, 40);
+          }
+
+          hasContent = true;
+        });
+      }
+
+      hasContent = true;
+    }
+
+    if (module.id === 'photos' && photos) {
+      const selectedIds = new Set(module.items ?? []);
+      const filtered = module.items && module.items.length > 0
+        ? photos.data.filter((photo) => selectedIds.has(photo.id))
+        : photos.data;
+
+      if (filtered.length === 0) {
+        pdf.addPage('a4', 'portrait');
+        const cursor = { current: FORM_PAGE_CONFIG.marginTop };
+        setFont(pdf, 'bold');
+        pdf.setFontSize(14);
+        pdf.text('Fotók', FORM_PAGE_CONFIG.marginLeft, cursor.current);
+        cursor.current += FORM_PAGE_CONFIG.lineHeight + 2;
+        setFont(pdf, 'normal');
+        pdf.setFontSize(10);
+        pdf.text('Nincsenek kiválasztott fotók ebben az exportban.', FORM_PAGE_CONFIG.marginLeft, cursor.current);
+      } else {
+        filtered.forEach((photo) => {
+          pdf.addPage('a4', 'portrait');
+
+          setFont(pdf, 'bold');
+          pdf.setFontSize(12);
+          pdf.text(photo.file_name, FORM_PAGE_CONFIG.marginLeft, FORM_PAGE_CONFIG.marginTop);
+
+          try {
+            // Get photo URL
+            const photoUrl = getPhotoUrl(photo);
+
+            // Add photo to PDF
+            pdf.addImage(
+              photoUrl,
+              'JPEG',
+              FORM_PAGE_CONFIG.marginLeft,
+              FORM_PAGE_CONFIG.marginTop + 10,
+              170,
+              0 // Auto height
+            );
+
+            // Add caption if available
+            if (photo.caption || photo.description) {
+              const textY = pdf.internal.pageSize.getHeight() - 30;
+              setFont(pdf, 'normal');
+              pdf.setFontSize(10);
+              if (photo.caption) {
+                pdf.text(photo.caption, FORM_PAGE_CONFIG.marginLeft, textY);
+              }
+              if (photo.description) {
+                pdf.text(photo.description, FORM_PAGE_CONFIG.marginLeft, textY + 5);
+              }
+            }
+          } catch (error) {
+            console.warn('Failed to add photo to PDF:', error);
+            setFont(pdf, 'normal');
+            pdf.setFontSize(10);
+            pdf.text('A fotó exportálása sikertelen volt.', FORM_PAGE_CONFIG.marginLeft, FORM_PAGE_CONFIG.marginTop + 20);
           }
 
           hasContent = true;
