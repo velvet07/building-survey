@@ -6,9 +6,11 @@ import { getProjectFormResponse } from '@/lib/forms/api';
 import { aquapolFormDefinition } from '@/lib/forms/definitions/aquapol';
 import { getDrawings } from '@/lib/drawings/api';
 import type { Drawing } from '@/lib/drawings/types';
+import { getPhotos } from '@/lib/photos/api';
+import type { Photo } from '@/types/photo.types';
 import { exportProjectModulesToPDF } from '@/lib/projects/pdf-export';
 
-type ModuleId = 'aquapol-form' | 'drawings';
+type ModuleId = 'aquapol-form' | 'drawings' | 'photos';
 
 interface ProjectPDFExportModalProps {
   project: Project;
@@ -31,6 +33,11 @@ const moduleOptions: Array<{
     label: 'Rajz modul',
     description: 'Válaszd ki, mely rajzokat szeretnéd az exportba tenni.',
   },
+  {
+    id: 'photos',
+    label: 'Fotók',
+    description: 'Válaszd ki, mely fotókat szeretnéd az exportba tenni.',
+  },
 ];
 
 export default function ProjectPDFExportModal({
@@ -41,12 +48,16 @@ export default function ProjectPDFExportModal({
   const [selectedModules, setSelectedModules] = useState<Record<ModuleId, boolean>>({
     'aquapol-form': true,
     drawings: false,
+    photos: false,
   });
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableDrawings, setAvailableDrawings] = useState<Drawing[]>([]);
   const [drawingsLoading, setDrawingsLoading] = useState(false);
   const [selectedDrawingIds, setSelectedDrawingIds] = useState<string[]>([]);
+  const [availablePhotos, setAvailablePhotos] = useState<Photo[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
   const selectedModulesRef = useRef(selectedModules);
 
   useEffect(() => {
@@ -55,10 +66,12 @@ export default function ProjectPDFExportModal({
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedModules({ 'aquapol-form': true, drawings: false });
+      setSelectedModules({ 'aquapol-form': true, drawings: false, photos: false });
       setSelectedDrawingIds([]);
+      setSelectedPhotoIds([]);
       setError(null);
       void loadDrawings();
+      void loadPhotos();
     }
   }, [isOpen]);
 
@@ -80,11 +93,32 @@ export default function ProjectPDFExportModal({
     }
   };
 
+  const loadPhotos = async (): Promise<Photo[] | undefined> => {
+    try {
+      setPhotosLoading(true);
+      const photos = await getPhotos(project.id);
+      setAvailablePhotos(photos);
+      if (selectedModulesRef.current.photos) {
+        setSelectedPhotoIds(photos.map((photo) => photo.id));
+      }
+      return photos;
+    } catch (err) {
+      console.error('Fotók betöltése az exporthoz sikertelen:', err);
+      setError('Nem sikerült betölteni a fotók listáját.');
+      return undefined;
+    } finally {
+      setPhotosLoading(false);
+    }
+  };
+
   const toggleModule = (moduleId: ModuleId) => {
     setSelectedModules((prev) => {
       const nextValue = !prev[moduleId];
       if (moduleId === 'drawings') {
         setSelectedDrawingIds(nextValue ? availableDrawings.map((drawing) => drawing.id) : []);
+      }
+      if (moduleId === 'photos') {
+        setSelectedPhotoIds(nextValue ? availablePhotos.map((photo) => photo.id) : []);
       }
       return {
         ...prev,
@@ -110,13 +144,30 @@ export default function ProjectPDFExportModal({
     setSelectedDrawingIds([]);
   };
 
+  const togglePhoto = (photoId: string) => {
+    setSelectedPhotoIds((prev) => {
+      if (prev.includes(photoId)) {
+        return prev.filter((id) => id !== photoId);
+      }
+      return [...prev, photoId];
+    });
+  };
+
+  const selectAllPhotos = () => {
+    setSelectedPhotoIds(availablePhotos.map((photo) => photo.id));
+  };
+
+  const clearAllPhotos = () => {
+    setSelectedPhotoIds([]);
+  };
+
   const isModuleSelected = useMemo(
     () => (moduleId: ModuleId) => Boolean(selectedModules[moduleId]),
     [selectedModules]
   );
 
   const handleExport = async () => {
-    const selectedModuleIds = (Object.keys(selectedModules) as Array<'aquapol-form' | 'drawings'>).filter(
+    const selectedModuleIds = (Object.keys(selectedModules) as ModuleId[]).filter(
       (moduleId) => selectedModules[moduleId]
     );
 
@@ -130,15 +181,24 @@ export default function ProjectPDFExportModal({
       return;
     }
 
+    if (selectedModules.photos && selectedPhotoIds.length === 0) {
+      setError('Válassz ki legalább egy fotót az exporthoz.');
+      return;
+    }
+
     setIsExporting(true);
     setError(null);
 
     try {
-      const moduleSelections = selectedModuleIds.map((moduleId) =>
-        moduleId === 'drawings'
-          ? { id: moduleId, items: selectedDrawingIds }
-          : { id: moduleId }
-      );
+      const moduleSelections = selectedModuleIds.map((moduleId) => {
+        if (moduleId === 'drawings') {
+          return { id: moduleId, items: selectedDrawingIds };
+        }
+        if (moduleId === 'photos') {
+          return { id: moduleId, items: selectedPhotoIds };
+        }
+        return { id: moduleId };
+      });
 
       const payload: Parameters<typeof exportProjectModulesToPDF>[0] = {
         project,
@@ -163,6 +223,19 @@ export default function ProjectPDFExportModal({
         }
         payload.drawings = {
           data: drawings,
+        };
+      }
+
+      if (selectedModules.photos) {
+        let photos = availablePhotos;
+        if (!photos.length) {
+          const fresh = await loadPhotos();
+          if (fresh) {
+            photos = fresh;
+          }
+        }
+        payload.photos = {
+          data: photos,
         };
       }
 
@@ -263,6 +336,85 @@ export default function ProjectPDFExportModal({
     );
   };
 
+  const renderPhotoSelection = () => {
+    if (!isModuleSelected('photos')) {
+      return null;
+    }
+
+    if (photosLoading) {
+      return (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-5 text-center text-sm text-gray-600">
+          Fotók betöltése...
+        </div>
+      );
+    }
+
+    if (availablePhotos.length === 0) {
+      return (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-700">
+          Ehhez a projekthez még nem tartozik fotó.
+        </div>
+      );
+    }
+
+    const allSelected = selectedPhotoIds.length === availablePhotos.length;
+
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm font-medium text-gray-700">
+            Kiválasztott fotók: {selectedPhotoIds.length} / {availablePhotos.length}
+          </span>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <button
+              onClick={selectAllPhotos}
+              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-600 transition-colors hover:border-blue-300 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              disabled={allSelected}
+            >
+              Összes kijelölése
+            </button>
+            <button
+              onClick={clearAllPhotos}
+              className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-100"
+              type="button"
+              disabled={selectedPhotoIds.length === 0}
+            >
+              Kijelölés törlése
+            </button>
+          </div>
+        </div>
+
+        <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+          {availablePhotos.map((photo) => {
+            const checked = selectedPhotoIds.includes(photo.id);
+            return (
+              <label
+                key={photo.id}
+                className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
+                  checked ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-blue-200'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={checked}
+                  onChange={() => togglePhoto(photo.id)}
+                />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-gray-900">{photo.filename}</p>
+                  <p className="text-xs text-gray-600">
+                    {new Date(photo.created_at).toLocaleDateString('hu-HU')}
+                  </p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 sm:px-6">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
@@ -311,6 +463,7 @@ export default function ProjectPDFExportModal({
                 </div>
 
                 {module.id === 'drawings' && renderDrawingSelection()}
+                {module.id === 'photos' && renderPhotoSelection()}
               </div>
             </label>
           ))}
