@@ -10,6 +10,7 @@
 
 import { query, getCurrentUserId } from '@/lib/db';
 import { createClient } from '@/lib/supabase';
+import { isUUID } from '@/lib/drawings/slug-utils';
 import type { Photo, PhotoUploadInput, PhotoUpdateInput } from '@/types/photo.types';
 
 const STORAGE_BUCKET = 'project-photos';
@@ -17,15 +18,22 @@ const STORAGE_BUCKET = 'project-photos';
 /**
  * Get all photos for a project
  * Összes fotó lekérése egy projekthez
+ * Supports both project UUID and auto_identifier
  */
-export async function getPhotos(projectId: string): Promise<Photo[]> {
+export async function getPhotos(projectIdentifier: string): Promise<Photo[]> {
   try {
-    const result = await query<Photo>(
-      `SELECT * FROM public.photos
-       WHERE project_id = $1
-       ORDER BY created_at DESC`,
-      [projectId]
-    );
+    // If identifier is a UUID, search directly by project_id
+    // If it's an auto_identifier, join with projects table
+    const queryText = isUUID(projectIdentifier)
+      ? `SELECT ph.* FROM public.photos ph
+         WHERE ph.project_id = $1
+         ORDER BY ph.created_at DESC`
+      : `SELECT ph.* FROM public.photos ph
+         JOIN public.projects p ON ph.project_id = p.id
+         WHERE p.auto_identifier = $1
+         ORDER BY ph.created_at DESC`;
+
+    const result = await query<Photo>(queryText, [projectIdentifier]);
 
     const photos = result.rows;
 

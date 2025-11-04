@@ -7,6 +7,7 @@
  */
 
 import { query, getCurrentUserId } from '@/lib/db';
+import { isUUID } from './slug-utils';
 import type {
   Drawing,
   CreateDrawingInput,
@@ -18,15 +19,22 @@ import type {
 /**
  * Get all drawings for a project
  * Összes rajz lekérése egy projekthez
+ * Supports both project UUID and auto_identifier
  */
-export async function getDrawings(projectId: string): Promise<Drawing[]> {
+export async function getDrawings(projectIdentifier: string): Promise<Drawing[]> {
   try {
-    const result = await query<Drawing>(
-      `SELECT * FROM public.drawings
-       WHERE project_id = $1 AND deleted_at IS NULL
-       ORDER BY created_at DESC`,
-      [projectId]
-    );
+    // If identifier is a UUID, search directly by project_id
+    // If it's an auto_identifier, join with projects table
+    const queryText = isUUID(projectIdentifier)
+      ? `SELECT d.* FROM public.drawings d
+         WHERE d.project_id = $1 AND d.deleted_at IS NULL
+         ORDER BY d.created_at DESC`
+      : `SELECT d.* FROM public.drawings d
+         JOIN public.projects p ON d.project_id = p.id
+         WHERE p.auto_identifier = $1 AND d.deleted_at IS NULL
+         ORDER BY d.created_at DESC`;
+
+    const result = await query<Drawing>(queryText, [projectIdentifier]);
 
     return result.rows;
   } catch (error) {
@@ -87,6 +95,7 @@ export async function getDrawingBySlug(
 /**
  * Create a new drawing
  * Új rajz létrehozása
+ * Supports both project UUID and auto_identifier
  */
 export async function createDrawing(input: CreateDrawingInput): Promise<Drawing> {
   try {
@@ -95,6 +104,19 @@ export async function createDrawing(input: CreateDrawingInput): Promise<Drawing>
 
     if (!userId) {
       throw new Error('Felhasználó nem található - kérlek jelentkezz be újra');
+    }
+
+    // Resolve project_id: convert auto_identifier to UUID if needed
+    let projectId = input.project_id;
+    if (!isUUID(input.project_id)) {
+      const projectResult = await query<{ id: string }>(
+        `SELECT id FROM public.projects WHERE auto_identifier = $1 AND deleted_at IS NULL`,
+        [input.project_id]
+      );
+      if (projectResult.rows.length === 0) {
+        throw new Error('Projekt nem található');
+      }
+      projectId = projectResult.rows[0].id;
     }
 
     // Calculate canvas dimensions based on orientation
@@ -117,7 +139,7 @@ export async function createDrawing(input: CreateDrawingInput): Promise<Drawing>
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [
-        input.project_id,
+        projectId,
         input.name || 'Alaprajz',
         JSON.stringify(defaultCanvasData),
         input.paper_size || 'a4',

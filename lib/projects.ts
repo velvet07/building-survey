@@ -7,6 +7,7 @@
 
 import { query, getCurrentUserId } from './db';
 import { ProjectStatus, Project } from '@/types/project.types';
+import { isUUID } from './drawings/slug-utils';
 
 /**
  * Get all active projects (not deleted)
@@ -28,15 +29,17 @@ export async function getProjects() {
 }
 
 /**
- * Get a single project by ID
+ * Get a single project by ID or auto_identifier
+ * Supports both UUID (for backward compatibility) and auto_identifier (user-friendly URLs)
  */
-export async function getProjectById(id: string) {
+export async function getProjectById(identifier: string) {
   try {
-    const result = await query<Project>(
-      `SELECT * FROM public.projects
-       WHERE id = $1 AND deleted_at IS NULL`,
-      [id]
-    );
+    // Check if identifier is a UUID or auto_identifier
+    const queryText = isUUID(identifier)
+      ? `SELECT * FROM public.projects WHERE id = $1 AND deleted_at IS NULL`
+      : `SELECT * FROM public.projects WHERE auto_identifier = $1 AND deleted_at IS NULL`;
+
+    const result = await query<Project>(queryText, [identifier]);
 
     if (result.rows.length === 0) {
       return { data: null, error: new Error('Project not found') };

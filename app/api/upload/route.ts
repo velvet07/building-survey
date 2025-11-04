@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { query } from '@/lib/db';
+import { isUUID } from '@/lib/drawings/slug-utils';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -81,8 +82,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Verify project access (LOCAL POSTGRESQL)
+    // Support both UUID and auto_identifier
+    const projectQueryText = isUUID(projectId)
+      ? 'SELECT id, owner_id FROM public.projects WHERE id = $1 AND deleted_at IS NULL'
+      : 'SELECT id, owner_id FROM public.projects WHERE auto_identifier = $1 AND deleted_at IS NULL';
+
     const projectResult = await query(
-      'SELECT id, owner_id FROM public.projects WHERE id = $1',
+      projectQueryText,
       [projectId]
     );
 
@@ -94,6 +100,9 @@ export async function POST(request: NextRequest) {
     }
 
     const project = projectResult.rows[0];
+
+    // Use actual project UUID for file operations (not auto_identifier)
+    const actualProjectId = project.id;
 
     // Check if user has permission (owner or admin) (LOCAL POSTGRESQL)
     const profileResult = await query(
@@ -120,12 +129,12 @@ export async function POST(request: NextRequest) {
       await mkdir(THUMBNAIL_DIR, { recursive: true });
     }
 
-    // 6. Generate unique filename
+    // 6. Generate unique filename (use UUID for file naming)
     const fileExt = path.extname(file.name);
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(7);
-    const fileName = `${projectId}_${timestamp}_${randomStr}${fileExt}`;
-    const thumbnailName = `${projectId}_${timestamp}_${randomStr}_thumb${fileExt}`;
+    const fileName = `${actualProjectId}_${timestamp}_${randomStr}${fileExt}`;
+    const thumbnailName = `${actualProjectId}_${timestamp}_${randomStr}_thumb${fileExt}`;
 
     const filePath = path.join(UPLOAD_DIR, fileName);
     const thumbnailPath = path.join(THUMBNAIL_DIR, thumbnailName);
@@ -150,7 +159,7 @@ export async function POST(request: NextRequest) {
       })
       .toFile(thumbnailPath);
 
-    // 11. Create database record (LOCAL POSTGRESQL)
+    // 11. Create database record (LOCAL POSTGRESQL) - use actual UUID
     const photoResult = await query(
       `INSERT INTO public.photos (
         project_id, file_name, file_path, local_file_path, thumbnail_path,
@@ -158,7 +167,7 @@ export async function POST(request: NextRequest) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
-        projectId,
+        actualProjectId,
         file.name,
         '', // Legacy field (empty for local storage)
         fileName,
