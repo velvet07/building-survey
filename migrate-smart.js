@@ -7,7 +7,8 @@ const { Client } = require('pg');
 
 const SUPABASE_URL = 'https://etpchhopecknyhnjgnor.supabase.co';
 const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0cGNoaG9wZWNrbnlobmpnbm9yIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE1NDc4MCwiZXhwIjoyMDc0NzMwNzgwfQ.vG0oCcjvGJJUgar0Rrph9Y6A5FvFNAaYqN1I-H1eiOo';
-const LOCAL_DB = 'postgresql://postgres:x&P7!r!2K!y6^Z9v@postgres:5432/building_survey';
+// Try localhost first, fallback to postgres hostname (for Docker)
+const LOCAL_DB = process.env.DATABASE_URL || 'postgresql://postgres:x&P7!r!2K!y6^Z9v@localhost:5432/building_survey';
 
 // Order matters for foreign keys!
 const TABLES = ['profiles', 'projects', 'drawings', 'photos'];
@@ -116,14 +117,26 @@ async function migrate() {
                 const placeholders = matchingColumns.map((_, idx) => `$${idx + 1}`).join(',');
 
                 try {
-                    await client.query(
-                        `INSERT INTO public.${table} (${matchingColumns.join(',')}) VALUES (${placeholders})`,
-                        values
-                    );
+                    // For projects table, handle duplicate auto_identifier
+                    let query = `INSERT INTO public.${table} (${matchingColumns.join(',')}) VALUES (${placeholders})`;
+
+                    if (table === 'projects') {
+                        // ON CONFLICT: if auto_identifier exists, update the row instead
+                        const updateSet = matchingColumns
+                            .filter(col => col !== 'id' && col !== 'auto_identifier')
+                            .map(col => `${col} = EXCLUDED.${col}`)
+                            .join(', ');
+                        query += ` ON CONFLICT (auto_identifier) DO UPDATE SET ${updateSet}`;
+                    } else {
+                        // For other tables, skip duplicates
+                        query += ` ON CONFLICT (id) DO NOTHING`;
+                    }
+
+                    await client.query(query, values);
                     success++;
                 } catch (err) {
                     errors++;
-                    if (errors <= 3) {
+                    if (errors <= 5) {
                         console.log(`   ⚠️  Error on row ${i + 1}: ${err.message}`);
                     }
                 }
