@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone', // Enable standalone build for Docker
+
+  // Explicitly mark pg as external package for server components
+  experimental: {
+    serverComponentsExternalPackages: ['pg', 'pg-native'],
+  },
+
   webpack: (config, { isServer }) => {
     // Exclude canvas and konva from server-side bundling
     if (isServer) {
@@ -25,6 +31,13 @@ const nextConfig = {
         'pg-native',
         'pg-hstore',
       ];
+
+      // Explicitly prevent importing server-only modules
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@/lib/db': false,
+        'pg': false,
+      };
     }
 
     return config;
