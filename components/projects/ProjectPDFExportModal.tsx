@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '@/types/project.types';
 import { getProjectFormResponse } from '@/lib/forms/api';
 import { aquapolFormDefinition } from '@/lib/forms/definitions/aquapol';
-import { getDrawings } from '@/lib/drawings/api';
+import { getDrawingsAction } from '@/app/actions/drawings';
 import type { Drawing } from '@/lib/drawings/types';
-import { getPhotos } from '@/lib/photos/api';
+import { getPhotosAction } from '@/app/actions/photos';
 import type { Photo } from '@/types/photo.types';
 import { exportProjectModulesToPDF } from '@/lib/projects/pdf-export';
 
@@ -78,7 +78,10 @@ export default function ProjectPDFExportModal({
   const loadDrawings = async (): Promise<Drawing[] | undefined> => {
     try {
       setDrawingsLoading(true);
-      const drawings = await getDrawings(project.id);
+      const { data: drawings, error } = await getDrawingsAction(project.id);
+      if (error || !drawings) {
+        throw error || new Error('Failed to load drawings');
+      }
       setAvailableDrawings(drawings);
       if (selectedModulesRef.current.drawings) {
         setSelectedDrawingIds(drawings.map((drawing) => drawing.id));
@@ -96,7 +99,10 @@ export default function ProjectPDFExportModal({
   const loadPhotos = async (): Promise<Photo[] | undefined> => {
     try {
       setPhotosLoading(true);
-      const photos = await getPhotos(project.id);
+      const { data: photos, error } = await getPhotosAction(project.id);
+      if (error || !photos) {
+        throw error || new Error('Failed to load photos');
+      }
       setAvailablePhotos(photos);
       if (selectedModulesRef.current.photos) {
         setSelectedPhotoIds(photos.map((photo) => photo.id));

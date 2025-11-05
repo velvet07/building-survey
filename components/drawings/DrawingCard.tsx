@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { deleteDrawing, updateDrawing } from '@/lib/drawings/api';
+import { deleteDrawingAction, updateDrawingAction } from '@/app/actions/drawings';
 import { generateThumbnail } from '@/lib/drawings/pdf-export';
 import DeleteDrawingModal from './DeleteDrawingModal';
 import PDFExportModal from './PDFExportModal';
@@ -56,7 +56,8 @@ export default function DrawingCard({
     }
 
     try {
-      await updateDrawing(drawing.id, { name: editedName });
+      const { error } = await updateDrawingAction(drawing.id, { name: editedName });
+      if (error) throw error;
       showSuccess('Név módosítva');
       setIsEditing(false);
       onUpdate();
@@ -69,7 +70,8 @@ export default function DrawingCard({
 
   const handleDelete = async () => {
     try {
-      await deleteDrawing(drawing.id);
+      const { error } = await deleteDrawingAction(drawing.id);
+      if (error) throw error;
       showSuccess('Rajz törölve');
       setShowDeleteModal(false);
       onDelete();
