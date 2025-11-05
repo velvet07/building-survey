@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import type { Project } from '@/types/project.types';
-import { getDrawings } from '@/lib/drawings/api';
+import { getDrawingsAction } from '@/app/actions/drawings';
 import { getProjectByIdAction } from '@/app/actions/projects';
 import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -50,8 +50,10 @@ export default function ProjectDashboardPage() {
 
   const loadDrawingsCount = async () => {
     try {
-      const drawings = await getDrawings(projectId);
-      setDrawingsCount(drawings.length);
+      const { data: drawings, error } = await getDrawingsAction(projectId);
+      if (!error && drawings) {
+        setDrawingsCount(drawings.length);
+      }
     } catch (error) {
       console.error('Error loading drawings count:', error);
     }
