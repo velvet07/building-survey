@@ -2,7 +2,7 @@
 
 import { useState, useRef, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/Button';
-import { uploadPhotos } from '@/lib/photos/api';
+import { uploadPhotos } from '@/lib/photos/client';
 import type { PhotoUploadInput } from '@/types/photo.types';
 import toast from 'react-hot-toast';
 

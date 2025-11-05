@@ -1,7 +1,7 @@
 'use client';
 
 import type { Photo } from '@/types/photo.types';
-import { getPhotoUrl } from '@/lib/photos/api';
+import { getPhotoUrl } from '@/lib/photos/client';
 import { formatDate } from '@/lib/utils';
 
 export interface PhotoDetailsProps {

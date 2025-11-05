@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Photo } from '@/types/photo.types';
-import { getPhotoUrl } from '@/lib/photos/api';
+import { getPhotoUrl } from '@/lib/photos/client';
 import { Button } from '@/components/ui/Button';
 
 export interface PhotoGalleryProps {
