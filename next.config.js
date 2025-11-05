@@ -1,19 +1,32 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
+  output: 'standalone', // Enable standalone build for Docker
   webpack: (config, { isServer }) => {
+    // Exclude canvas and konva from server-side bundling
     if (isServer) {
-      // Exclude canvas and konva from server-side bundling
       config.externals = [...(config.externals || []), 'canvas', 'konva', 'jsdom'];
-    } else {
-      // Exclude server-only modules from client-side bundle
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        'pg': false,
+    }
+
+    // Exclude PostgreSQL and related modules from client-side bundling
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        dns: false,
         'pg-native': false,
       };
+
+      config.externals = [
+        ...(config.externals || []),
+        'pg',
+        'pg-native',
+        'pg-hstore',
+      ];
     }
+
     return config;
   },
 }
