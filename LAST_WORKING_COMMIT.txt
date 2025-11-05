@@ -11,7 +11,7 @@ Date: 2025-11-05
 
 COMMIT INFORMATION:
 -------------------
-Commit: a8c4333 (with documentation)
+Commit: 5afad2ebfb7977306e9589fec64f3f6a51aeb54f (with documentation)
 Based on: 77efd01befe8e1b66cb115482bea3cc7906a0110
 Author: Claude <noreply@anthropic.com>
 Date: Wed Nov 5 21:00:52 2025 +0000
@@ -64,7 +64,7 @@ DOCUMENTATION:
 ============================================================================
 To restore this version:
 git checkout claude/working-baseline-011CUq4FiRzvDweyYrokGmfb
-git reset --hard a8c4333
+git reset --hard 5afad2ebfb7977306e9589fec64f3f6a51aeb54f
 
 Or restore the original working commit without documentation:
 git checkout claude/hybrid-urls-forms-fix-011CUYznPtNcvNApnP9R5bC1
