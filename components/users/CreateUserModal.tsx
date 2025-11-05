@@ -18,10 +18,11 @@ export interface CreateUserModalProps {
 export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<UserRole>('user');
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; passwordConfirm?: string; fullName?: string }>({});
 
   const isPostgrestError = (value: unknown): value is PostgrestError => {
     return Boolean(
@@ -33,7 +34,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
   };
 
   const validate = () => {
-    const newErrors: { email?: string; password?: string; fullName?: string } = {};
+    const newErrors: { email?: string; password?: string; passwordConfirm?: string; fullName?: string } = {};
 
     if (!email.trim()) {
       newErrors.email = 'Az email cím kötelező';
@@ -45,6 +46,12 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
       newErrors.password = 'A jelszó kötelező';
     } else if (password.length < 8) {
       newErrors.password = 'A jelszónak legalább 8 karakter hosszúnak kell lennie';
+    }
+
+    if (!passwordConfirm) {
+      newErrors.passwordConfirm = 'A jelszó megerősítése kötelező';
+    } else if (password !== passwordConfirm) {
+      newErrors.passwordConfirm = 'A két jelszó nem egyezik meg';
     }
 
     // Full name is optional, but if provided, it should be at least 3 characters
@@ -85,6 +92,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
         toast.success('Felhasználó sikeresen létrehozva!');
         setEmail('');
         setPassword('');
+        setPasswordConfirm('');
         setFullName('');
         setRole('user');
         setErrors({});
@@ -102,6 +110,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
   const handleClose = () => {
     setEmail('');
     setPassword('');
+    setPasswordConfirm('');
     setFullName('');
     setRole('user');
     setErrors({});
@@ -151,6 +160,16 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
           onChange={(e) => setPassword(e.target.value)}
           error={errors.password}
           placeholder="Minimum 8 karakter"
+          disabled={isLoading}
+        />
+
+        <Input
+          label="Jelszó mégegyszer"
+          type="password"
+          value={passwordConfirm}
+          onChange={(e) => setPasswordConfirm(e.target.value)}
+          error={errors.passwordConfirm}
+          placeholder="Írd be újra a jelszót"
           disabled={isLoading}
         />
 

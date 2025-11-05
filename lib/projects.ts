@@ -1,77 +1,136 @@
-import { createClient } from './supabase';
+/**
+ * Projects Module - PostgreSQL Direct Connection
+ *
+ * All project data is stored in local PostgreSQL database.
+ * Supabase is only used for authentication.
+ */
+
+import { query, getCurrentUserId } from './db';
 import { ProjectStatus } from '@/types/project.types';
 
+export interface Project {
+  id: string;
+  name: string;
+  status?: ProjectStatus;
+  owner_id: string;
+  auto_identifier: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+/**
+ * Get all active projects (not deleted)
+ * Ordered by creation date (newest first)
+ */
 export async function getProjects() {
-  const supabase = createClient();
+  try {
+    const result = await query<Project>(
+      `SELECT * FROM public.projects
+       WHERE deleted_at IS NULL
+       ORDER BY created_at DESC`
+    );
 
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
-
-  return { data, error };
-}
-
-export async function getProjectById(id: string) {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', id)
-    .is('deleted_at', null)
-    .single();
-
-  return { data, error };
-}
-
-export async function createProject(name: string, status: ProjectStatus = 'active') {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) return { data: null, error: new Error('Unauthorized') };
-
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({ name, owner_id: user.id, status })
-    .select()
-    .single();
-
-  return { data, error };
-}
-
-export async function updateProject(id: string, name: string, status?: ProjectStatus) {
-  const supabase = createClient();
-
-  const updateData: { name: string; status?: ProjectStatus } = { name };
-  if (status) {
-    updateData.status = status;
-  }
-
-  const { data, error } = await supabase
-    .from('projects')
-    .update(updateData)
-    .eq('id', id)
-    .select()
-    .single();
-
-  return { data, error };
-}
-
-export async function deleteProject(id: string) {
-  const supabase = createClient();
-
-  // Use the database function which has SECURITY DEFINER
-  // This bypasses RLS policies
-  const { error } = await supabase.rpc('soft_delete_project', {
-    project_id: id
-  });
-
-  if (error) {
-    console.error('Delete RPC error:', error);
+    return { data: result.rows, error: null };
+  } catch (error: any) {
+    console.error('getProjects error:', error);
     return { data: null, error };
   }
+}
 
-  return { data: { id }, error: null };
+/**
+ * Get a single project by ID
+ */
+export async function getProjectById(id: string) {
+  try {
+    const result = await query<Project>(
+      `SELECT * FROM public.projects
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return { data: null, error: new Error('Project not found') };
+    }
+
+    return { data: result.rows[0], error: null };
+  } catch (error: any) {
+    console.error('getProjectById error:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Create a new project
+ * Requires authenticated user
+ */
+export async function createProject(name: string) {
+  try {
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      return { data: null, error: new Error('Unauthorized - User not authenticated') };
+    }
+
+    const result = await query<Project>(
+      `INSERT INTO public.projects (name, owner_id)
+       VALUES ($1, $2)
+       RETURNING *`,
+      [name, userId]
+    );
+
+    return { data: result.rows[0], error: null };
+  } catch (error: any) {
+    console.error('createProject error:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Update an existing project
+ */
+export async function updateProject(id: string, name: string) {
+  try {
+    const queryText = `UPDATE public.projects
+                 SET name = $1, updated_at = NOW()
+                 WHERE id = $2 AND deleted_at IS NULL
+                 RETURNING *`;
+    const params = [name, id];
+
+    const result = await query<Project>(queryText, params);
+
+    if (result.rows.length === 0) {
+      return { data: null, error: new Error('Project not found or already deleted') };
+    }
+
+    return { data: result.rows[0], error: null };
+  } catch (error: any) {
+    console.error('updateProject error:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Soft delete a project
+ * Sets deleted_at timestamp instead of actually deleting the row
+ */
+export async function deleteProject(id: string) {
+  try {
+    const result = await query(
+      `UPDATE public.projects
+       SET deleted_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING id`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return { data: null, error: new Error('Project not found or already deleted') };
+    }
+
+    return { data: { id: result.rows[0].id }, error: null };
+  } catch (error: any) {
+    console.error('deleteProject error:', error);
+    return { data: null, error };
+  }
 }

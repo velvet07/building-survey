@@ -8,8 +8,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { getDrawing, updateDrawing } from '@/lib/drawings/api';
-import { getProjectById } from '@/lib/projects';
+import { getDrawingAction, getDrawingBySlugAction, updateDrawingAction } from '@/app/actions/drawings';
+import { getProjectByIdAction } from '@/app/actions/projects';
 import type {
   Drawing,
   CanvasData,
@@ -89,8 +89,23 @@ export default function DrawingEditorPage() {
   const loadDrawing = async () => {
     try {
       setLoading(true);
-      const data = await getDrawing(drawingId);
-      setDrawing(data);
+      // Try to load by slug first (new approach)
+      try {
+        const { data, error } = await getDrawingBySlugAction(projectId, drawingId);
+        if (error) throw error;
+        if (data) {
+          setDrawing(data);
+          return;
+        }
+      } catch (slugError) {
+        // If slug fails, try by ID for backward compatibility
+        console.log('Slug lookup failed, trying by ID:', slugError);
+        const { data, error } = await getDrawingAction(drawingId);
+        if (error) throw error;
+        if (data) {
+          setDrawing(data);
+        }
+      }
     } catch (error) {
       showError('Rajz betöltése sikertelen');
       console.error(error);
@@ -103,7 +118,7 @@ export default function DrawingEditorPage() {
 
   const loadProject = async () => {
     try {
-      const { data, error } = await getProjectById(projectId);
+      const { data, error } = await getProjectByIdAction(projectId);
       if (error) throw error;
       setProjectName(data?.name ?? null);
     } catch (error) {
@@ -134,7 +149,7 @@ export default function DrawingEditorPage() {
   }
 
   async function flushPendingSave() {
-    if (!pendingSaveRef.current || isSavingRef.current) {
+    if (!pendingSaveRef.current || isSavingRef.current || !drawing) {
       return;
     }
 
@@ -144,11 +159,14 @@ export default function DrawingEditorPage() {
     setSaving(true);
 
     try {
-      await updateDrawing(drawingId, {
+      // Use drawing.id for database operations, not slug
+      const { error } = await updateDrawingAction(drawing.id, {
         canvas_data: payload.canvasData,
         paper_size: payload.paperSize,
         orientation: payload.orientation,
       });
+
+      if (error) throw error;
 
       setDrawing((prev) =>
         prev

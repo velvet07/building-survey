@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getDrawings, createDrawing } from '@/lib/drawings/api';
+import { getDrawingsAction, createDrawingAction } from '@/app/actions/drawings';
 import type { Drawing } from '@/lib/drawings/types';
 import { showSuccess, showError } from '@/lib/toast';
 import DrawingList from '@/components/drawings/DrawingList';
@@ -30,8 +30,9 @@ export default function DrawingsPage() {
   const loadDrawings = async () => {
     try {
       setLoading(true);
-      const data = await getDrawings(projectId);
-      setDrawings(data);
+      const { data, error } = await getDrawingsAction(projectId);
+      if (error) throw error;
+      setDrawings(data || []);
     } catch (error) {
       showError('Rajzok betöltése sikertelen');
       console.error(error);
@@ -45,9 +46,12 @@ export default function DrawingsPage() {
 
     setCreating(true);
     try {
-      const newDrawing = await createDrawing({ project_id: projectId });
+      const { data: newDrawing, error } = await createDrawingAction({ project_id: projectId });
+      if (error || !newDrawing) throw error;
       showSuccess('Rajz létrehozva!');
-      router.push(`/dashboard/projects/${projectId}/drawings/${newDrawing.id}`);
+      // Use slug if available, fallback to ID for backward compatibility
+      const identifier = newDrawing.slug || newDrawing.id;
+      router.push(`/dashboard/projects/${projectId}/drawings/${identifier}`);
     } catch (error) {
       showError('Rajz létrehozása sikertelen');
       console.error(error);

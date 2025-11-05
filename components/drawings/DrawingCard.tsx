@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { deleteDrawing, updateDrawing } from '@/lib/drawings/api';
+import { deleteDrawingAction, updateDrawingAction } from '@/app/actions/drawings';
 import { generateThumbnail } from '@/lib/drawings/pdf-export';
 import DeleteDrawingModal from './DeleteDrawingModal';
 import PDFExportModal from './PDFExportModal';
@@ -56,7 +56,8 @@ export default function DrawingCard({
     }
 
     try {
-      await updateDrawing(drawing.id, { name: editedName });
+      const { error } = await updateDrawingAction(drawing.id, { name: editedName });
+      if (error) throw error;
       showSuccess('Név módosítva');
       setIsEditing(false);
       onUpdate();
@@ -69,7 +70,8 @@ export default function DrawingCard({
 
   const handleDelete = async () => {
     try {
-      await deleteDrawing(drawing.id);
+      const { error } = await deleteDrawingAction(drawing.id);
+      if (error) throw error;
       showSuccess('Rajz törölve');
       setShowDeleteModal(false);
       onDelete();
@@ -80,7 +82,7 @@ export default function DrawingCard({
 
   const handleCardClick = () => {
     if (!isEditing) {
-      router.push(`/dashboard/projects/${projectId}/drawings/${drawing.id}`);
+      router.push(`/dashboard/projects/${projectId}/drawings/${drawing.slug}`);
     }
   };
 
@@ -184,7 +186,7 @@ export default function DrawingCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                router.push(`/dashboard/projects/${projectId}/drawings/${drawing.id}`);
+                router.push(`/dashboard/projects/${projectId}/drawings/${drawing.slug}`);
               }}
               className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded hover:bg-blue-100 transition-colors"
             >

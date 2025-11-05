@@ -12,7 +12,8 @@ import { PhotoUpload } from '@/components/photos/PhotoUpload';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { PhotoDetails } from '@/components/photos/PhotoDetails';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { getPhotos, downloadPhoto, downloadPhotos, deletePhoto, deletePhotos, getPhotoUrl } from '@/lib/photos/api';
+import { downloadPhoto, downloadPhotos, getPhotoUrl } from '@/lib/photos/api';
+import { getPhotosAction, deletePhotoAction, deletePhotosAction } from '@/app/actions/photos';
 import type { Photo, PhotoViewMode } from '@/types/photo.types';
 import { useUserRole } from '@/hooks/useUserRole';
 import toast from 'react-hot-toast';
@@ -35,8 +36,9 @@ export default function PhotosPage() {
 
   const loadPhotos = async () => {
     try {
-      const data = await getPhotos(projectId);
-      setPhotos(data);
+      const { data, error } = await getPhotosAction(projectId);
+      if (error) throw error;
+      setPhotos(data || []);
     } catch (error) {
       console.error('Error loading photos:', error);
       toast.error('Hiba történt a fotók betöltése során');
@@ -91,10 +93,12 @@ export default function PhotosPage() {
       const photosToDelete = photos.filter((p) => selectedPhotos.includes(p.id));
 
       if (photosToDelete.length === 1) {
-        await deletePhoto(photosToDelete[0]);
+        const { error } = await deletePhotoAction(photosToDelete[0]);
+        if (error) throw error;
         toast.success('Fotó törölve');
       } else {
-        await deletePhotos(photosToDelete);
+        const { error } = await deletePhotosAction(photosToDelete);
+        if (error) throw error;
         toast.success(`${photosToDelete.length} fotó törölve`);
       }
 

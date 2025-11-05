@@ -1,24 +1,23 @@
 'use server';
 
-import { createServerSupabaseClient } from '@/lib/supabase';
-import { cookies } from 'next/headers';
+/**
+ * Server Actions for Projects
+ *
+ * Uses local PostgreSQL database via lib/projects.ts
+ * Supabase is only used for authentication
+ */
+
 import { revalidatePath } from 'next/cache';
+import {
+  createProject,
+  updateProject,
+  deleteProject,
+  getProjects,
+  getProjectById
+} from '@/lib/projects';
 
 export async function createProjectAction(name: string) {
-  const cookieStore = await cookies();
-  const supabase = createServerSupabaseClient(cookieStore);
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { data: null, error: new Error('Unauthorized') };
-  }
-
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({ name, owner_id: user.id })
-    .select()
-    .single();
+  const { data, error } = await createProject(name);
 
   if (!error) {
     revalidatePath('/dashboard/projects');
@@ -28,15 +27,7 @@ export async function createProjectAction(name: string) {
 }
 
 export async function updateProjectAction(id: string, name: string) {
-  const cookieStore = await cookies();
-  const supabase = createServerSupabaseClient(cookieStore);
-
-  const { data, error } = await supabase
-    .from('projects')
-    .update({ name })
-    .eq('id', id)
-    .select()
-    .single();
+  const { data, error } = await updateProject(id, name);
 
   if (!error) {
     revalidatePath('/dashboard/projects');
@@ -46,31 +37,19 @@ export async function updateProjectAction(id: string, name: string) {
 }
 
 export async function deleteProjectAction(id: string) {
-  const cookieStore = await cookies();
-  const supabase = createServerSupabaseClient(cookieStore);
+  const { data, error } = await deleteProject(id);
 
-  const { error } = await supabase.rpc('soft_delete_project', {
-    project_id: id
-  });
-
-  if (error) {
-    console.error('Delete RPC error:', error);
-    return { data: null, error };
+  if (!error) {
+    revalidatePath('/dashboard/projects');
   }
 
-  revalidatePath('/dashboard/projects');
-  return { data: { id }, error: null };
+  return { data, error };
 }
 
 export async function getProjectsAction() {
-  const cookieStore = await cookies();
-  const supabase = createServerSupabaseClient(cookieStore);
+  return await getProjects();
+}
 
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
-
-  return { data, error };
+export async function getProjectByIdAction(id: string) {
+  return await getProjectById(id);
 }

@@ -5,13 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { aquapolFormDefinition } from '@/lib/forms/definitions/aquapol';
 import {
-  getProjectFormResponse,
-  saveProjectFormResponse,
-} from '@/lib/forms/api';
+  getProjectFormResponseAction,
+  saveProjectFormResponseAction,
+} from '@/app/actions/forms';
 import { exportFormToPDF } from '@/lib/forms/pdf-export';
 import type { FormValues } from '@/lib/forms/types';
 import type { Project } from '@/types/project.types';
-import { createClient } from '@/lib/supabase';
+import { getProjectByIdAction } from '@/app/actions/projects';
 import { useUserRole } from '@/hooks/useUserRole';
 
 const FORM_SLUG = 'aquapol-form';
@@ -59,18 +59,13 @@ export default function AquapolFormPage() {
     setLoadingProject(true);
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
+      const { data, error } = await getProjectByIdAction(projectId);
 
-      if (error) {
-        throw error;
+      if (error || !data) {
+        throw new Error(error?.message || 'Projekt nem található');
       }
 
-      setProject(data as Project);
+      setProject(data);
     } catch (error) {
       console.error('Error loading project:', error);
       setStatusMessage('Nem sikerült betölteni a projektet.');
@@ -84,7 +79,12 @@ export default function AquapolFormPage() {
     setLoadingForm(true);
 
     try {
-      const response = await getProjectFormResponse(projectId, FORM_SLUG);
+      const { data: response, error } = await getProjectFormResponseAction(projectId, FORM_SLUG);
+
+      if (error) {
+        throw error;
+      }
+
       if (response) {
         setFormValues({
           ...createInitialValues(),
@@ -136,10 +136,17 @@ export default function AquapolFormPage() {
     resetStatus();
 
     try {
-      const response = await saveProjectFormResponse(projectId, FORM_SLUG, formValues);
-      setLastSavedAt(response.updated_at);
-      setStatusMessage('Űrlap sikeresen mentve.');
-      setStatusType('success');
+      const { data: response, error } = await saveProjectFormResponseAction(projectId, FORM_SLUG, formValues);
+
+      if (error) {
+        throw error;
+      }
+
+      if (response) {
+        setLastSavedAt(response.updated_at);
+        setStatusMessage('Űrlap sikeresen mentve.');
+        setStatusType('success');
+      }
     } catch (error) {
       console.error('Error saving Aquapol form:', error);
       setStatusMessage(
