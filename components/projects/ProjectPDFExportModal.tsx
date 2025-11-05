@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '@/types/project.types';
-import { getProjectFormResponse } from '@/lib/forms/api';
+import { getProjectFormResponseAction } from '@/app/actions/forms';
 import { aquapolFormDefinition } from '@/lib/forms/definitions/aquapol';
 import { getDrawingsAction } from '@/app/actions/drawings';
 import type { Drawing } from '@/lib/drawings/types';
@@ -212,7 +212,7 @@ export default function ProjectPDFExportModal({
       };
 
       if (selectedModules['aquapol-form']) {
-        const response = await getProjectFormResponse(project.id, 'aquapol-form');
+        const { data: response } = await getProjectFormResponseAction(project.id, 'aquapol-form');
         payload.aquapol = {
           definition: aquapolFormDefinition,
           response,
