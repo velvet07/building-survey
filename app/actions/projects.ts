@@ -3,8 +3,7 @@
 /**
  * Server Actions for Projects
  *
- * Uses local PostgreSQL database via lib/projects.ts
- * Supabase is only used for authentication
+ * Uses local MySQL/MariaDB database via lib/projects.ts
  */
 
 import { revalidatePath } from 'next/cache';

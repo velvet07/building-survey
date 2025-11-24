@@ -1,12 +1,12 @@
 /**
- * Projects Module - PostgreSQL Direct Connection
+ * Projects Module - MySQL Direct Connection
  *
- * All project data is stored in local PostgreSQL database.
- * Supabase is only used for authentication.
+ * All project data is stored in local MySQL/MariaDB database.
  */
 
 import { query, getCurrentUserId } from './db';
 import { ProjectStatus } from '@/types/project.types';
+import crypto from 'crypto';
 
 export interface Project {
   id: string;
@@ -26,7 +26,7 @@ export interface Project {
 export async function getProjects() {
   try {
     const result = await query<Project>(
-      `SELECT * FROM public.projects
+      `SELECT * FROM projects
        WHERE deleted_at IS NULL
        ORDER BY created_at DESC`
     );
@@ -44,8 +44,8 @@ export async function getProjects() {
 export async function getProjectById(id: string) {
   try {
     const result = await query<Project>(
-      `SELECT * FROM public.projects
-       WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT * FROM projects
+       WHERE id = ? AND deleted_at IS NULL`,
       [id]
     );
 
@@ -72,11 +72,16 @@ export async function createProject(name: string) {
       return { data: null, error: new Error('Unauthorized - User not authenticated') };
     }
 
+    const projectId = crypto.randomUUID();
+    await query(
+      `INSERT INTO projects (id, name, owner_id)
+       VALUES (?, ?, ?)`,
+      [projectId, name, userId]
+    );
+
     const result = await query<Project>(
-      `INSERT INTO public.projects (name, owner_id)
-       VALUES ($1, $2)
-       RETURNING *`,
-      [name, userId]
+      `SELECT * FROM projects WHERE id = ?`,
+      [projectId]
     );
 
     return { data: result.rows[0], error: null };
@@ -91,13 +96,17 @@ export async function createProject(name: string) {
  */
 export async function updateProject(id: string, name: string) {
   try {
-    const queryText = `UPDATE public.projects
-                 SET name = $1, updated_at = NOW()
-                 WHERE id = $2 AND deleted_at IS NULL
-                 RETURNING *`;
-    const params = [name, id];
+    await query(
+      `UPDATE projects
+       SET name = ?, updated_at = NOW()
+       WHERE id = ? AND deleted_at IS NULL`,
+      [name, id]
+    );
 
-    const result = await query<Project>(queryText, params);
+    const result = await query<Project>(
+      `SELECT * FROM projects WHERE id = ?`,
+      [id]
+    );
 
     if (result.rows.length === 0) {
       return { data: null, error: new Error('Project not found or already deleted') };
@@ -116,11 +125,15 @@ export async function updateProject(id: string, name: string) {
  */
 export async function deleteProject(id: string) {
   try {
-    const result = await query(
-      `UPDATE public.projects
+    await query(
+      `UPDATE projects
        SET deleted_at = NOW()
-       WHERE id = $1 AND deleted_at IS NULL
-       RETURNING id`,
+       WHERE id = ? AND deleted_at IS NULL`,
+      [id]
+    );
+
+    const result = await query(
+      `SELECT id FROM projects WHERE id = ? AND deleted_at IS NOT NULL`,
       [id]
     );
 

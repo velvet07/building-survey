@@ -1,9 +1,8 @@
 /**
- * Drawing Module - PostgreSQL Direct Connection
+ * Drawing Module - MySQL Direct Connection
  * Felmérés Rajzoló Modul - CRUD műveletek
  *
- * All drawing data is stored in local PostgreSQL database.
- * Supabase is only used for authentication.
+ * All drawing data is stored in local MySQL/MariaDB database.
  */
 
 import { query, getCurrentUserId } from '@/lib/db';
@@ -14,6 +13,7 @@ import type {
   CanvasData,
   PaperOrientation,
 } from './types';
+import crypto from 'crypto';
 
 /**
  * Get all drawings for a project
@@ -22,8 +22,8 @@ import type {
 export async function getDrawings(projectId: string): Promise<Drawing[]> {
   try {
     const result = await query<Drawing>(
-      `SELECT * FROM public.drawings
-       WHERE project_id = $1 AND deleted_at IS NULL
+      `SELECT * FROM drawings
+       WHERE project_id = ? AND deleted_at IS NULL
        ORDER BY created_at DESC`,
       [projectId]
     );
@@ -42,8 +42,8 @@ export async function getDrawings(projectId: string): Promise<Drawing[]> {
 export async function getDrawing(drawingId: string): Promise<Drawing> {
   try {
     const result = await query<Drawing>(
-      `SELECT * FROM public.drawings
-       WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT * FROM drawings
+       WHERE id = ? AND deleted_at IS NULL`,
       [drawingId]
     );
 
@@ -68,8 +68,8 @@ export async function getDrawingBySlug(
 ): Promise<Drawing> {
   try {
     const result = await query<Drawing>(
-      `SELECT * FROM public.drawings
-       WHERE project_id = $1 AND slug = $2 AND deleted_at IS NULL`,
+      `SELECT * FROM drawings
+       WHERE project_id = ? AND slug = ? AND deleted_at IS NULL`,
       [projectId, slug]
     );
 
@@ -112,11 +112,12 @@ export async function createDrawing(input: CreateDrawingInput): Promise<Drawing>
       },
     };
 
-    const result = await query<Drawing>(
-      `INSERT INTO public.drawings (project_id, name, canvas_data, paper_size, orientation, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
+    const drawingId = crypto.randomUUID();
+    await query(
+      `INSERT INTO drawings (id, project_id, name, canvas_data, paper_size, orientation, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
+        drawingId,
         input.project_id,
         input.name || 'Alaprajz',
         JSON.stringify(defaultCanvasData),
@@ -124,6 +125,11 @@ export async function createDrawing(input: CreateDrawingInput): Promise<Drawing>
         orientation,
         userId,
       ]
+    );
+
+    const result = await query<Drawing>(
+      `SELECT * FROM drawings WHERE id = ?`,
+      [drawingId]
     );
 
     return result.rows[0];
@@ -145,30 +151,25 @@ export async function updateDrawing(
     // Build dynamic UPDATE query based on provided fields
     const updates: string[] = [];
     const values: any[] = [];
-    let paramIndex = 1;
 
     if (input.name !== undefined) {
-      updates.push(`name = $${paramIndex}`);
+      updates.push(`name = ?`);
       values.push(input.name);
-      paramIndex++;
     }
 
     if (input.canvas_data !== undefined) {
-      updates.push(`canvas_data = $${paramIndex}`);
+      updates.push(`canvas_data = ?`);
       values.push(JSON.stringify(input.canvas_data));
-      paramIndex++;
     }
 
     if (input.paper_size !== undefined) {
-      updates.push(`paper_size = $${paramIndex}`);
+      updates.push(`paper_size = ?`);
       values.push(input.paper_size);
-      paramIndex++;
     }
 
     if (input.orientation !== undefined) {
-      updates.push(`orientation = $${paramIndex}`);
+      updates.push(`orientation = ?`);
       values.push(input.orientation);
-      paramIndex++;
     }
 
     if (updates.length === 0) {
@@ -181,9 +182,9 @@ export async function updateDrawing(
     // Add drawing ID as last parameter
     values.push(drawingId);
 
-    const queryText = `UPDATE public.drawings
+    const queryText = `UPDATE drawings
                        SET ${updates.join(', ')}
-                       WHERE id = $${paramIndex} AND deleted_at IS NULL`;
+                       WHERE id = ? AND deleted_at IS NULL`;
 
     await query(queryText, values);
   } catch (error) {
@@ -199,9 +200,9 @@ export async function updateDrawing(
 export async function deleteDrawing(drawingId: string): Promise<void> {
   try {
     await query(
-      `UPDATE public.drawings
+      `UPDATE drawings
        SET deleted_at = NOW()
-       WHERE id = $1`,
+       WHERE id = ?`,
       [drawingId]
     );
   } catch (error) {

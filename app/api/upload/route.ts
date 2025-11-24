@@ -4,12 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { query } from '@/lib/db';
+import { query, getCurrentUserId } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import crypto from 'crypto';
 
 // Upload directory (Docker volume mount point)
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
@@ -34,10 +34,9 @@ const ALLOWED_MIME_TYPES = [
 export async function POST(request: NextRequest) {
   try {
     // 1. Authentication check
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const userId = await getCurrentUserId();
 
-    if (authError || !user) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized - Please log in' },
         { status: 401 }
@@ -80,9 +79,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Verify project access (LOCAL POSTGRESQL)
+    // 4. Verify project access
     const projectResult = await query(
-      'SELECT id, owner_id FROM public.projects WHERE id = $1',
+      'SELECT id, owner_id FROM projects WHERE id = ?',
       [projectId]
     );
 
@@ -95,15 +94,15 @@ export async function POST(request: NextRequest) {
 
     const project = projectResult.rows[0];
 
-    // Check if user has permission (owner or admin) (LOCAL POSTGRESQL)
+    // Check if user has permission (owner or admin)
     const profileResult = await query(
-      'SELECT role FROM public.profiles WHERE id = $1',
-      [user.id]
+      'SELECT role FROM profiles WHERE id = ?',
+      [userId]
     );
 
     const profile = profileResult.rows[0];
     const isAdmin = profile?.role === 'admin';
-    const isOwner = project.owner_id === user.id;
+    const isOwner = project.owner_id === userId;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -150,14 +149,15 @@ export async function POST(request: NextRequest) {
       })
       .toFile(thumbnailPath);
 
-    // 11. Create database record (LOCAL POSTGRESQL)
-    const photoResult = await query(
-      `INSERT INTO public.photos (
-        project_id, file_name, file_path, local_file_path, thumbnail_path,
+    // 11. Create database record
+    const photoId = crypto.randomUUID();
+    await query(
+      `INSERT INTO photos (
+        id, project_id, file_name, file_path, local_file_path, thumbnail_path,
         file_size, mime_type, width, height, caption, description, uploaded_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING *`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        photoId,
         projectId,
         file.name,
         '', // Legacy field (empty for local storage)
@@ -169,8 +169,13 @@ export async function POST(request: NextRequest) {
         height,
         caption || null,
         description || null,
-        user.id,
+        userId,
       ]
+    );
+
+    const photoResult = await query(
+      `SELECT * FROM photos WHERE id = ?`,
+      [photoId]
     );
 
     if (photoResult.rows.length === 0) {

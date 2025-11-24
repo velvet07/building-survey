@@ -1,44 +1,63 @@
-import { createServerSupabaseClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { query, getCurrentUserId } from '@/lib/db';
+import crypto from 'crypto';
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const supabase = createServerSupabaseClient(cookieStore);
+  try {
+    const userId = await getCurrentUserId();
 
-  // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (!userId) {
+      return NextResponse.json({
+        authenticated: false,
+        error: 'No user',
+      });
+    }
 
-  if (userError || !user) {
+    // Get user profile
+    const profileResult = await query(
+      'SELECT * FROM profiles WHERE id = ?',
+      [userId]
+    );
+
+    const profile = profileResult.rows[0] || null;
+
+    // Try to create a test project
+    let testProject = null;
+    let createError = null;
+
+    try {
+      const projectId = crypto.randomUUID();
+      await query(
+        'INSERT INTO projects (id, name, owner_id) VALUES (?, ?, ?)',
+        [projectId, `Test Project ${Date.now()}`, userId]
+      );
+
+      const result = await query(
+        'SELECT * FROM projects WHERE id = ?',
+        [projectId]
+      );
+
+      testProject = result.rows[0];
+
+      // Clean up
+      await query('DELETE FROM projects WHERE id = ?', [projectId]);
+    } catch (error: any) {
+      createError = error.message;
+    }
+
+    return NextResponse.json({
+      authenticated: true,
+      user: {
+        id: userId,
+      },
+      profile,
+      testProject,
+      createError,
+    });
+  } catch (error: any) {
     return NextResponse.json({
       authenticated: false,
-      error: userError?.message || 'No user',
+      error: error.message || 'Unknown error',
     });
   }
-
-  // Get user profile
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  // Try to create a test project
-  const { data: testProject, error: createError } = await supabase
-    .from('projects')
-    .insert({ name: 'Test Project ' + Date.now(), owner_id: user.id })
-    .select()
-    .single();
-
-  return NextResponse.json({
-    authenticated: true,
-    user: {
-      id: user.id,
-      email: user.email,
-    },
-    profile,
-    profileError: profileError?.message,
-    testProject,
-    createError: createError?.message,
-  });
 }

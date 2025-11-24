@@ -42,7 +42,7 @@ export default function HomePage() {
                 Gyors & Modern
               </h3>
               <p className="text-secondary-600 text-base leading-relaxed">
-                Next.js 14 és Supabase technológiával
+                Next.js 14 és MySQL/MariaDB technológiával
               </p>
             </div>
           </div>
@@ -67,7 +67,7 @@ export default function HomePage() {
             <div className="flex flex-wrap justify-center gap-4 text-sm text-secondary-600">
               <span className="bg-white px-5 py-2.5 rounded-full shadow-md font-medium hover:shadow-lg transition-shadow">Next.js 14</span>
               <span className="bg-white px-5 py-2.5 rounded-full shadow-md font-medium hover:shadow-lg transition-shadow">TypeScript</span>
-              <span className="bg-white px-5 py-2.5 rounded-full shadow-md font-medium hover:shadow-lg transition-shadow">Supabase</span>
+              <span className="bg-white px-5 py-2.5 rounded-full shadow-md font-medium hover:shadow-lg transition-shadow">MySQL</span>
               <span className="bg-white px-5 py-2.5 rounded-full shadow-md font-medium hover:shadow-lg transition-shadow">Tailwind CSS</span>
             </div>
           </div>

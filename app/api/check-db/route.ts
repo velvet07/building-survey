@@ -1,70 +1,70 @@
-import { createServerSupabaseClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { query, getCurrentUserId } from '@/lib/db';
+import crypto from 'crypto';
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const supabase = createServerSupabaseClient(cookieStore);
+  try {
+    const userId = await getCurrentUserId();
 
-  // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (!userId) {
+      return NextResponse.json({
+        error: 'Not authenticated',
+      }, { status: 401 });
+    }
 
-  if (userError || !user) {
+    // Check if profile exists
+    const profileResult = await query(
+      'SELECT * FROM profiles WHERE id = ?',
+      [userId]
+    );
+
+    const profile = profileResult.rows[0] || null;
+
+    // Try to create a test project
+    let testProject = null;
+    let createError = null;
+
+    try {
+      const projectId = crypto.randomUUID();
+      await query(
+        'INSERT INTO projects (id, name, owner_id) VALUES (?, ?, ?)',
+        [projectId, `Debug Test Project ${Date.now()}`, userId]
+      );
+
+      const result = await query(
+        'SELECT * FROM projects WHERE id = ?',
+        [projectId]
+      );
+
+      testProject = result.rows[0];
+
+      // Clean up test project
+      await query('DELETE FROM projects WHERE id = ?', [projectId]);
+    } catch (error: any) {
+      createError = {
+        message: error.message,
+        code: error.code,
+      };
+    }
+
     return NextResponse.json({
-      error: 'Not authenticated',
-      details: userError?.message,
-    }, { status: 401 });
+      user: {
+        id: userId,
+      },
+      profile: profile,
+      testProject: testProject,
+      createError: createError,
+      diagnosis: !profile
+        ? 'HIBA: Nincs profile bejegyzés!'
+        : !testProject && createError
+        ? `HIBA: ${createError.code} - ${createError.message}`
+        : testProject
+        ? 'OK: Minden működik, projekt sikeresen létrehozva!'
+        : 'OK',
+    });
+  } catch (error: any) {
+    return NextResponse.json({
+      error: error.message || 'Unknown error',
+    }, { status: 500 });
   }
-
-  // Check if profile exists
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  // Check triggers existence
-  const { data: triggers, error: triggersError } = await supabase
-    .rpc('get_triggers_info' as any);
-
-  // Try to get detailed error when creating project
-  const { data: testProject, error: createError } = await supabase
-    .from('projects')
-    .insert({
-      name: 'Debug Test Project ' + Date.now(),
-      owner_id: user.id
-    })
-    .select()
-    .single();
-
-  return NextResponse.json({
-    user: {
-      id: user.id,
-      email: user.email,
-      created_at: user.created_at,
-    },
-    profile: profile || null,
-    profileError: profileError ? {
-      message: profileError.message,
-      code: profileError.code,
-      details: profileError.details,
-      hint: profileError.hint,
-    } : null,
-    testProject: testProject || null,
-    createError: createError ? {
-      message: createError.message,
-      code: createError.code,
-      details: createError.details,
-      hint: createError.hint,
-    } : null,
-    diagnosis: !profile
-      ? 'HIBA: Nincs profile bejegyzés! A handle_new_user() trigger nem lett deployolva vagy nem működik.'
-      : !testProject && createError?.code === '23505'
-      ? 'HIBA: Unique constraint violation - valószínűleg auto_identifier duplikáció'
-      : !testProject && createError?.code === '42501'
-      ? 'HIBA: RLS policy tiltja a create műveletet - ellenőrizd a role-t'
-      : testProject
-      ? 'OK: Minden működik, projekt sikeresen létrehozva!'
-      : `HIBA: ${createError?.code} - ${createError?.message}`,
-  });
 }

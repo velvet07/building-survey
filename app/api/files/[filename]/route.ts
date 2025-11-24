@@ -4,8 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { query } from '@/lib/db';
+import { query, getCurrentUserId } from '@/lib/db';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -30,10 +29,9 @@ export async function GET(
     const isThumbnail = searchParams.get('thumbnail') === 'true';
 
     // 1. Authentication check
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const userId = await getCurrentUserId();
 
-    if (authError || !user) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized - Please log in' },
         { status: 401 }
@@ -75,8 +73,8 @@ export async function GET(
 
     // Check if user has access to the project
     const profileResult = await query(
-      'SELECT role FROM public.profiles WHERE id = $1',
-      [user.id]
+      'SELECT role FROM profiles WHERE id = ?',
+      [userId]
     );
 
     const profile = profileResult.rows[0];
@@ -87,13 +85,13 @@ export async function GET(
     if (!isAdmin && !isViewer) {
       // Regular user - check project ownership
       const projectResult = await query(
-        'SELECT owner_id FROM public.projects WHERE id = $1',
+        'SELECT owner_id FROM projects WHERE id = ?',
         [projectId]
       );
 
       const project = projectResult.rows[0];
 
-      if (!project || project.owner_id !== user.id) {
+      if (!project || project.owner_id !== userId) {
         return NextResponse.json(
           { error: 'Forbidden - You do not have access to this file' },
           { status: 403 }

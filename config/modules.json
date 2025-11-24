@@ -1,0 +1,30 @@
+{
+  "projects": {
+    "required": true,
+    "default": true,
+    "name": "Projektek",
+    "description": "Projektek létrehozása és kezelése"
+  },
+  "drawings": {
+    "required": false,
+    "default": true,
+    "name": "Rajzok",
+    "description": "Canvas rajzolás és PDF export",
+    "schema": "database/mysql/schema/05-drawings.sql"
+  },
+  "forms": {
+    "required": false,
+    "default": true,
+    "name": "Űrlapok",
+    "description": "Dinamikus űrlapok kezelése",
+    "schema": "database/mysql/schema/07-forms.sql"
+  },
+  "photos": {
+    "required": false,
+    "default": true,
+    "name": "Fotók",
+    "description": "Fotógaléria és fájlkezelés",
+    "schema": "database/mysql/schema/06-photos.sql"
+  }
+}
+

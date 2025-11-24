@@ -1,10 +1,10 @@
 # 🏗️ Épületfelmérő Rendszer
 
-Moduláris webalkalmazás épületfelméréshez és építési dokumentációhoz. Teljes projektek kezelése, rajzolás, űrlapok és fotók - mindezt Docker konténerben, önálló szerveren futtatható.
+Moduláris webalkalmazás épületfelméréshez és építési dokumentációhoz. Teljes projektek kezelése, rajzolás, űrlapok és fotók - mindezt self-hosted MySQL/MariaDB adatbázissal, cPanel/CWP7 környezetben futtatható.
 
-**Verzió:** 1.3.0
+**Verzió:** 2.0.0
 **Status:** ✅ Production Ready
-**Branch:** `hybrid-URLs-and-local-file-storage-support`
+**Branch:** `self-hosted-mysql-installer`
 
 ---
 
@@ -12,12 +12,13 @@ Moduláris webalkalmazás épületfelméréshez és építési dokumentációhoz
 
 ### 🔐 Felhasználó kezelés
 - **3 szerepkör**: Admin, User, Viewer
-- Email/jelszó alapú bejelentkezés
+- Email/jelszó alapú helyi autentikáció (bcrypt)
+- Session-alapú bejelentkezés
 - Admin panel felhasználó létrehozáshoz/szerkesztéshez
 
 ### 📁 Projektek
 - Projekt létrehozás, szerkesztés, törlés
-- Automatikus azonosító generálás (pl. `proj-20251025-001`)
+- Automatikus azonosító generálás (pl. `PROJ-20251025-001`)
 - Soft delete (visszaállítható törlés)
 
 ### 🖊️ Rajzmodul
@@ -33,230 +34,118 @@ Moduláris webalkalmazás épületfelméréshez és építési dokumentációhoz
 - Megtekintő mód (Viewer role)
 
 ### 📷 Fotógaléria
-- **Lokális file storage** (Docker volume)
+- **Lokális file storage**
 - Automatikus thumbnail generálás
 - Galéria nézet
 - Letöltés, törlés
 
 ---
 
-## 🚀 Gyors telepítés Docker-rel
+## 🚀 Telepítés
 
 ### Előfeltételek
 
-- **Docker** és **Docker Compose** telepítve
-- **Supabase Account** (ingyenes: https://supabase.com)
-- Legalább 2GB RAM és 10GB szabad disk
-- Saját domain vagy IP cím
+- **Node.js 18+** telepítve
+- **MySQL/MariaDB adatbázis** létrehozva a webhosting panelben
+- **Fájl feltöltés** lehetőség (FTP/File Manager)
+- **cPanel vagy CWP7** környezet (opcionális, de ajánlott)
 
 ### Telepítési lépések
 
-**📖 Részletes telepítési útmutató:** [INSTALL.md](./INSTALL.md)
+**📖 Részletes telepítési útmutatók:**
+- **[INSTALL_CPANEL.md](./INSTALL_CPANEL.md)** - cPanel telepítési útmutató
+- **[INSTALL_CWP7.md](./INSTALL_CWP7.md)** - CWP7 telepítési útmutató
 
 **Rövid verzió:**
 
-```bash
-# 1. Repo letöltése
-git clone -b hybrid-URLs-and-local-file-storage-support https://github.com/velvet07/building-survey.git
-cd building-survey
+1. **Fájlok feltöltése** (FTP/File Manager)
+2. **MySQL adatbázis létrehozása** a webhosting panelben
+3. **Node.js beállítása** (cPanel Node.js Selector vagy CWP7)
+4. **Webes installer futtatása**: `https://your-domain.com/install`
+5. **Telepítés befejezése** az installer-ben:
+   - Adatbázis kapcsolódási adatok megadása
+   - Modulok kiválasztása
+   - Admin felhasználó létrehozása
 
-# 2. Környezeti változók beállítása
-cp .env.docker.example .env.docker
-# Szerkeszd a .env.docker fájlt
+**Fontos:** Az adatbázist előre létre kell hozni a webhosting panelben! Az installer csak kapcsolódik a meglévő adatbázishoz.
 
-# 3. Docker indítása
-./start.sh
+---
 
-# 4. Admin user létrehozása (böngészőben)
-http://your-domain.com:8080
+## 🛠️ Technológiai stack
 
-# 5. Készen vagy!
-http://your-domain.com:3000
-```
-
-**Segítő scriptek:**
-```bash
-./start.sh     # Indítás
-./stop.sh      # Leállítás
-./logs.sh      # Logok megtekintése
-./rebuild.sh   # Újraépítés és indítás
-```
+- **Frontend**: Next.js 14 (App Router), React 18, TypeScript
+- **Backend**: Next.js Server Actions, API Routes
+- **Adatbázis**: MySQL/MariaDB
+- **Autentikáció**: Helyi session-alapú (bcrypt)
+- **Styling**: Tailwind CSS
+- **Rajzolás**: Konva.js, React Konva
+- **PDF**: jsPDF
 
 ---
 
 ## 📚 Dokumentáció
 
 ### Telepítés
-- **[INSTALL.md](./INSTALL.md)** - Részletes telepítési útmutató Docker-rel
-
-### Felhasználói dokumentáció
-- **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** - Teljes felhasználói kézikönyv (magyar)
-  - 18,000+ szó, 11 fejezet
-  - Képernyőképekkel és példákkal
-  - Tablet használat és ujjmozdulatok
-  - FAQ és hibaelhárítás
+- **[INSTALL_CPANEL.md](./INSTALL_CPANEL.md)** - cPanel telepítési útmutató
+- **[INSTALL_CWP7.md](./INSTALL_CWP7.md)** - CWP7 telepítési útmutató
 
 ### Fejlesztői dokumentáció
-- **[DEVELOPER.md](./DEVELOPER.md)** - Fejlesztői útmutató
-  - Projekt struktúra
-  - Tech stack
-  - Modulok áttekintése
-  - Új funkció hozzáadása
-  - Debugging
+- **[DEVELOPER.md](./DEVELOPER.md)** - Fejlesztői útmutató (frissítés szükséges)
 
 ---
 
-## 🛠️ Tech Stack
+## 🔧 Konfiguráció
 
-- **Frontend:** Next.js 14, React 18, TypeScript, Tailwind CSS
-- **Backend:** Supabase Auth (cloud) + PostgreSQL 15 (self-hosted)
-- **Canvas:** Konva.js + React-Konva
-- **Image Processing:** Sharp (thumbnails)
-- **PDF Export:** jsPDF
-- **Deployment:** Docker + Docker Compose
+Az alkalmazás a `.env` fájlból olvassa be a konfigurációt:
 
----
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=building_survey
+DB_USER=username
+DB_PASSWORD=password
 
-## 📁 Projekt struktúra
+# Database URL
+DATABASE_URL=mysql://username:password@localhost:3306/building_survey
 
-```
-building-survey/
-├── app/                        # Next.js App Router
-│   ├── api/                    # API routes (upload, files)
-│   ├── dashboard/              # Dashboard pages
-│   └── actions/                # Server Actions
-├── components/                 # React komponensek
-│   ├── drawings/              # Rajzmodul
-│   ├── photos/                # Fotógaléria
-│   ├── forms/                 # Űrlapok
-│   └── users/                 # User management
-├── lib/                       # Utilities és logika
-├── supabase/                  # Database schema
-│   ├── schema.sql            # Fő séma
-│   ├── policies.sql          # RLS policies
-│   └── migrations/           # Migrációk
-├── docker/                    # Docker config
-├── setup/                     # PHP admin setup wizard
-├── docs/                      # Dokumentáció
-│   └── USER_GUIDE.md         # Felhasználói kézikönyv
-├── docker-compose.yml         # Docker services
-├── Dockerfile                 # Next.js container
-├── INSTALL.md                 # Telepítési útmutató
-├── DEVELOPER.md               # Fejlesztői dokumentáció
-└── README.md                  # Ez a fájl
+# App
+NEXT_PUBLIC_APP_URL=http://your-domain.com
+NODE_ENV=production
+
+# Session
+SESSION_SECRET=random-secret-key-here
+
+# File Upload
+UPLOAD_DIR=./uploads
 ```
 
----
-
-## 🔑 Szerepkörök (RBAC)
-
-### 👑 Admin
-- ✅ Teljes hozzáférés minden projekthez
-- ✅ User management
-- ✅ Létrehozás, szerkesztés, törlés
-
-### 👤 User
-- ✅ Saját projektek teljes kezelése
-- ✅ Rajzok, űrlapok, fotók - teljes hozzáférés
-- ❌ Más userek projektjei **nem láthatók**
-- ❌ User management nem elérhető
-
-### 👁️ Viewer
-- ✅ **MINDEN** projekt megtekintése (read-only)
-- ✅ PDF export, fotó letöltés
-- ❌ Szerkesztés, törlés, létrehozás **tiltva**
+**Megjegyzés:** Az installer automatikusan létrehozza a `.env` fájlt a telepítés során.
 
 ---
 
-## 🆕 Mi újság ebben a verzióban?
+## 🔐 Biztonság
 
-### v1.3.0 - Hybrid URLs & Local Storage (2025-10-26)
-
-**Hybrid URL struktúra:**
-- Projektek: `proj-20251025-001` (auto-identifier)
-- Rajzok: `alaprajz-pince` (név-alapú slug)
-- Magyar karakterek kezelése: á→a, é→e, stb.
-
-**Lokális file storage:**
-- Fotók most Docker volume-ban (`/app/uploads`)
-- Automatikus thumbnail generálás (400x400px)
-- Gyorsabb és megbízhatóbb
-
-**Backward compatibility:**
-- Régi UUID-alapú URL-ek továbbra is működnek
-- Supabase Storage fotók továbbra is működnek
+- **Jelszó hashing**: bcrypt (10 salt rounds)
+- **Session kezelés**: HTTP-only cookies
+- **SQL injection védelem**: Paraméterezett lekérdezések
+- **XSS védelem**: Next.js beépített védelem
+- **CSRF védelem**: SameSite cookie policy
 
 ---
 
-## 📦 Használt modulok
-
-- ✅ **Projektek** - Projekt kezelés
-- ✅ **Rajzok** - Canvas rajzolás, PDF export
-- ✅ **Űrlapok** - Dinamikus form builder (Aquapol)
-- ✅ **Fotók** - Galéria, feltöltés, törlés
-- ✅ **Felhasználók** - User management (admin only)
-
----
-
-## 🐛 Hibaelhárítás
-
-### Gyakori problémák
-
-**1. Docker konténer nem indul:**
-```bash
-# Ellenőrizd a logokat
-./logs.sh
-
-# Újraindítás
-./stop.sh
-./start.sh
-```
-
-**2. Adatbázis kapcsolati hiba:**
-```bash
-# Ellenőrizd a PostgreSQL státuszt
-docker-compose ps
-docker-compose logs postgres
-```
-
-**3. Admin user nem jön létre:**
-```bash
-# Manuális létrehozás Supabase Dashboard-on keresztül
-# Vagy futtasd újra a setup wizard-ot:
-docker-compose --profile setup up setup
-```
-
-**További segítség:** [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) - 11. fejezet (FAQ)
-
----
-
-## 🔗 Hasznos linkek
-
-- **Dokumentáció:**
-  - [Telepítési útmutató](./INSTALL.md)
-  - [Felhasználói kézikönyv](./docs/USER_GUIDE.md)
-  - [Fejlesztői dokumentáció](./DEVELOPER.md)
-
-- **External:**
-  - [Next.js Docs](https://nextjs.org/docs)
-  - [Supabase Docs](https://supabase.com/docs)
-  - [Docker Docs](https://docs.docker.com)
-
----
-
-## 🤝 Support
-
-- **Issues:** [GitHub Issues](https://github.com/velvet07/building-survey/issues)
-- **Email:** [support email]
-- **Dokumentáció:** Lásd [docs/](./docs/) mappát
-
----
-
-## 📄 License
+## 📝 Licenc
 
 ISC
 
 ---
 
-**Készítette:** Claude Code
-**Generated with:** [Claude Code](https://claude.com/claude-code)
+## 🤝 Közreműködés
+
+Pull requesteket szívesen fogadunk! Nagyobb változtatások esetén kérjük, először nyiss egy issue-t a változtatás leírásával.
+
+---
+
+## 📞 Támogatás
+
+Problémák esetén nyiss egy issue-t a GitHub-on.

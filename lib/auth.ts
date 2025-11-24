@@ -1,53 +1,84 @@
-import { createClient } from './supabase';
+/**
+ * Authentication API
+ * 
+ * Client-side authentication functions
+ */
 
-export async function signUp(email: string, password: string) {
-  const supabase = createClient();
-
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+export async function signUp(email: string, password: string, fullName?: string) {
+  const response = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify({ email, password, fullName }),
   });
 
-  return { data, error };
+  const data = await response.json();
+
+  if (!response.ok) {
+    return { data: null, error: data.error || 'Regisztrációs hiba' };
+  }
+
+  return { data, error: null };
 }
 
 export async function signIn(email: string, password: string) {
-  const supabase = createClient();
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
   });
 
-  return { data, error };
+  const data = await response.json();
+
+  if (!response.ok) {
+    return { data: null, error: data.error || 'Bejelentkezési hiba' };
+  }
+
+  return { data, error: null };
 }
 
 export async function signOut() {
-  const supabase = createClient();
-  const { error } = await supabase.auth.signOut();
-  return { error };
+  const response = await fetch('/api/auth/logout', {
+    method: 'POST',
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    return { error: data.error || 'Kijelentkezési hiba' };
+  }
+
+  return { error: null };
 }
 
 export async function getCurrentUser() {
-  const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  return { user, error };
+  const response = await fetch('/api/auth/me');
+
+  if (!response.ok) {
+    return { user: null, error: 'Nincs aktív munkamenet' };
+  }
+
+  const data = await response.json();
+  return { user: data.user, error: null };
 }
 
 export async function getUserRole() {
-  const { query, getCurrentUserId } = await import('./db');
+  const { query } = await import('@/lib/db');
+  const { getSession } = await import('@/lib/auth/local');
 
   try {
-    const userId = await getCurrentUserId();
+    const session = await getSession();
 
-    if (!userId) return null;
+    if (!session) {
+      return null;
+    }
 
     const result = await query(
-      'SELECT role FROM public.profiles WHERE id = $1',
-      [userId]
+      'SELECT role FROM profiles WHERE id = ?',
+      [session.userId]
     );
 
     if (result.rows.length === 0) {

@@ -1,13 +1,13 @@
 /**
- * Forms Module - PostgreSQL Direct Connection
+ * Forms Module - MySQL Direct Connection
  * Űrlapok Modul - CRUD műveletek
  *
- * All form response data is stored in local PostgreSQL database.
- * Supabase is only used for authentication.
+ * All form response data is stored in local MySQL/MariaDB database.
  */
 
 import { query, getCurrentUserId } from '@/lib/db';
 import type { FormValues, ProjectFormResponse } from './types';
+import crypto from 'crypto';
 
 function isMissingTableError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -39,8 +39,8 @@ export async function getProjectFormResponse(
 ): Promise<ProjectFormResponse | null> {
   try {
     const result = await query<ProjectFormResponse>(
-      `SELECT * FROM public.project_form_responses
-       WHERE project_id = $1 AND form_slug = $2`,
+      `SELECT * FROM project_form_responses
+       WHERE project_id = ? AND form_slug = ?`,
       [projectId, formSlug]
     );
 
@@ -82,8 +82,8 @@ export async function saveProjectFormResponse(
 
     // Check if response already exists
     const checkResult = await query<{ id: string }>(
-      `SELECT id FROM public.project_form_responses
-       WHERE project_id = $1 AND form_slug = $2`,
+      `SELECT id FROM project_form_responses
+       WHERE project_id = ? AND form_slug = ?`,
       [projectId, formSlug]
     );
 
@@ -92,23 +92,32 @@ export async function saveProjectFormResponse(
     if (checkResult.rows.length > 0) {
       // Update existing response
       const existingId = checkResult.rows[0].id;
-      const result = await query<ProjectFormResponse>(
-        `UPDATE public.project_form_responses
-         SET data = $1, updated_by = $2, submitted_at = $3
-         WHERE id = $4
-         RETURNING *`,
+      await query(
+        `UPDATE project_form_responses
+         SET data = ?, updated_by = ?, submitted_at = ?
+         WHERE id = ?`,
         [JSON.stringify(values), userId, submittedAt, existingId]
+      );
+
+      const result = await query<ProjectFormResponse>(
+        `SELECT * FROM project_form_responses WHERE id = ?`,
+        [existingId]
       );
 
       return result.rows[0];
     } else {
       // Insert new response
+      const responseId = crypto.randomUUID();
+      await query(
+        `INSERT INTO project_form_responses
+         (id, project_id, form_slug, data, created_by, updated_by, submitted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [responseId, projectId, formSlug, JSON.stringify(values), userId, userId, submittedAt]
+      );
+
       const result = await query<ProjectFormResponse>(
-        `INSERT INTO public.project_form_responses
-         (project_id, form_slug, data, created_by, updated_by, submitted_at)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [projectId, formSlug, JSON.stringify(values), userId, userId, submittedAt]
+        `SELECT * FROM project_form_responses WHERE id = ?`,
+        [responseId]
       );
 
       return result.rows[0];

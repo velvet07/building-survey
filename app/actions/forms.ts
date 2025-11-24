@@ -3,8 +3,7 @@
 /**
  * Server Actions for Form Responses
  *
- * Uses local PostgreSQL database via lib/forms/api.ts
- * Supabase is only used for authentication
+ * Uses local MySQL/MariaDB database via lib/forms/api.ts
  */
 
 import { revalidatePath } from 'next/cache';

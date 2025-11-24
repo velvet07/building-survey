@@ -1,18 +1,13 @@
 /**
- * Photos Module - PostgreSQL Direct Connection
+ * Photos Module - MySQL Direct Connection
  * Fotók modul - CRUD műveletek és storage kezelés
  *
- * All photo metadata is stored in local PostgreSQL database.
+ * All photo metadata is stored in local MySQL/MariaDB database.
  * Photo files are stored locally via /api/upload endpoint.
- * Supabase is only used for authentication.
- * Legacy Supabase Storage photos are still supported for backward compatibility.
  */
 
 import { query, getCurrentUserId } from '@/lib/db';
-import { createClient } from '@/lib/supabase';
 import type { Photo, PhotoUploadInput, PhotoUpdateInput } from '@/types/photo.types';
-
-const STORAGE_BUCKET = 'project-photos';
 
 /**
  * Get all photos for a project
@@ -21,41 +16,13 @@ const STORAGE_BUCKET = 'project-photos';
 export async function getPhotos(projectId: string): Promise<Photo[]> {
   try {
     const result = await query<Photo>(
-      `SELECT * FROM public.photos
-       WHERE project_id = $1
+      `SELECT * FROM photos
+       WHERE project_id = ?
        ORDER BY created_at DESC`,
       [projectId]
     );
 
-    const photos = result.rows;
-
-    // For local storage, no need to generate signed URLs
-    // For legacy Supabase Storage photos, generate signed URLs if needed
-    const photosWithUrls = await Promise.all(
-      photos.map(async (photo) => {
-        // Skip signed URL generation for local files
-        if (photo.local_file_path) {
-          return photo;
-        }
-
-        // Generate signed URLs for legacy Supabase Storage photos
-        if (photo.file_path) {
-          const supabase = createClient();
-          const { data: urlData } = await supabase.storage
-            .from(STORAGE_BUCKET)
-            .createSignedUrl(photo.file_path, 3600); // 1 hour expiry
-
-          return {
-            ...photo,
-            signedUrl: urlData?.signedUrl || '',
-          };
-        }
-
-        return photo;
-      })
-    );
-
-    return photosWithUrls;
+    return result.rows;
   } catch (error) {
     console.error('Error fetching photos:', error);
     throw new Error(`Fotók betöltése sikertelen: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -69,7 +36,7 @@ export async function getPhotos(projectId: string): Promise<Photo[]> {
 export async function getPhoto(photoId: string): Promise<Photo> {
   try {
     const result = await query<Photo>(
-      `SELECT * FROM public.photos WHERE id = $1`,
+      `SELECT * FROM photos WHERE id = ?`,
       [photoId]
     );
 
@@ -151,19 +118,15 @@ export function getPhotoUrl(photo: Photo | string, thumbnail = false): string {
     return photo.signedUrl;
   }
 
-  // Legacy: Fallback to Supabase Storage public URL (for old photos)
-  const supabase = createClient();
-  const filePath = typeof photo === 'string' ? photo : photo.file_path;
+  // For local files, use file serving endpoint
+  const filePath = typeof photo === 'string' ? photo : (photo.local_file_path || photo.file_path);
 
   if (!filePath) {
     return '';
   }
 
-  const { data } = supabase.storage
-    .from(STORAGE_BUCKET)
-    .getPublicUrl(filePath);
-
-  return data.publicUrl;
+  // Use local file serving endpoint
+  return `/api/files/${encodeURIComponent(filePath)}`;
 }
 
 /**
@@ -184,26 +147,14 @@ export async function downloadPhoto(photo: Photo): Promise<void> {
     return;
   }
 
-  // Legacy: Download from Supabase Storage
-  const supabase = createClient();
-
-  const { data, error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .download(photo.file_path);
-
-  if (error) {
-    console.error('Download error:', error);
-    throw new Error(`Fotó letöltése sikertelen: ${error.message}`);
-  }
-
-  // Create download link
-  const url = window.URL.createObjectURL(data);
+  // Use local file serving endpoint
+  const url = getPhotoUrl(photo);
   const a = document.createElement('a');
   a.href = url;
   a.download = photo.file_name;
+  a.target = '_blank';
   document.body.appendChild(a);
   a.click();
-  window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
 }
 
@@ -229,9 +180,9 @@ export async function updatePhoto(
 ): Promise<void> {
   try {
     await query(
-      `UPDATE public.photos
-       SET caption = $1, description = $2, updated_at = NOW()
-       WHERE id = $3`,
+      `UPDATE photos
+       SET caption = ?, description = ?, updated_at = NOW()
+       WHERE id = ?`,
       [input.caption, input.description, photoId]
     );
   } catch (error) {
@@ -264,25 +215,9 @@ export async function deletePhoto(photo: Photo): Promise<void> {
       }
     }
 
-    // Delete legacy Supabase Storage file if exists
-    if (photo.file_path && !photo.local_file_path) {
-      try {
-        const supabase = createClient();
-        const { error: storageError } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .remove([photo.file_path]);
-
-        if (storageError) {
-          console.warn('Failed to delete Supabase Storage file:', storageError);
-        }
-      } catch (storageError) {
-        console.warn('Error deleting Supabase Storage file:', storageError);
-        // Continue with database deletion even if storage deletion fails
-      }
-    }
 
     // Delete from database
-    await query(`DELETE FROM public.photos WHERE id = $1`, [photo.id]);
+    await query(`DELETE FROM photos WHERE id = ?`, [photo.id]);
   } catch (error) {
     console.error('Database delete error:', error);
     throw new Error(`Fotó törlése sikertelen: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -295,13 +230,12 @@ export async function deletePhoto(photo: Photo): Promise<void> {
  */
 export async function deletePhotos(photos: Photo[]): Promise<void> {
   try {
-    // Separate local and legacy photos
-    const localPhotos = photos.filter(p => p.local_file_path);
-    const legacyPhotos = photos.filter(p => p.file_path && !p.local_file_path);
+    // Get photo IDs
     const photoIds = photos.map(p => p.id);
 
     // Delete local files
-    for (const photo of localPhotos) {
+    for (const photo of photos) {
+      if (!photo.local_file_path) continue;
       try {
         const response = await fetch('/api/files/delete', {
           method: 'POST',
@@ -318,28 +252,11 @@ export async function deletePhotos(photos: Photo[]): Promise<void> {
       }
     }
 
-    // Delete legacy Supabase Storage files
-    if (legacyPhotos.length > 0) {
-      try {
-        const supabase = createClient();
-        const legacyFilePaths = legacyPhotos.map(p => p.file_path);
-        const { error: storageError } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .remove(legacyFilePaths);
-
-        if (storageError) {
-          console.warn('Bulk storage delete error:', storageError);
-        }
-      } catch (storageError) {
-        console.warn('Error deleting Supabase Storage files:', storageError);
-        // Continue with database deletion
-      }
-    }
 
     // Delete from database
     await query(
-      `DELETE FROM public.photos WHERE id = ANY($1::uuid[])`,
-      [photoIds]
+      `DELETE FROM photos WHERE id IN (${photoIds.map(() => '?').join(',')})`,
+      photoIds
     );
   } catch (error) {
     console.error('Bulk database delete error:', error);

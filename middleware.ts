@@ -1,59 +1,43 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { getSession } from '@/lib/auth/local';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  const { pathname } = request.nextUrl;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-        },
-        remove(name: string, options: any) {
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-        },
-      },
+  // Check if installation is complete
+  const installLockPath = join(process.cwd(), 'app', 'install', 'INSTALL_LOCK');
+  const isInstalled = existsSync(installLockPath);
+
+  // Protect /install route - only accessible if not installed
+  if (pathname.startsWith('/install')) {
+    if (isInstalled) {
+      return NextResponse.redirect(new URL('/', request.url));
     }
-  );
+    return NextResponse.next();
+  }
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // Get session
+  const session = await getSession();
 
   // Protected routes
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+  if (pathname.startsWith('/dashboard')) {
     if (!session) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
   // Auth routes (already logged in)
-  if (request.nextUrl.pathname.startsWith('/login') ||
-      request.nextUrl.pathname.startsWith('/register')) {
+  if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
     if (session) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/login', '/register', '/install/:path*'],
 };
