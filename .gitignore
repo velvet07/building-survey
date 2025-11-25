@@ -9,6 +9,9 @@ node_modules/
 # Next.js
 /.next/
 /out/
+/deploy/.next/
+/deploy/out/
+/deploy/node_modules/
 
 # Production
 /build
@@ -28,6 +31,8 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+/deploy/.env
+/deploy/.env.local
 
 # Vercel
 .vercel
@@ -43,6 +48,7 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~

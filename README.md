@@ -53,12 +53,15 @@ Moduláris webalkalmazás épületfelméréshez és építési dokumentációhoz
 ### Telepítési lépések
 
 **📖 Részletes telepítési útmutatók:**
+- **[INSTALL.md](./INSTALL.md)** - Docker telepítési útmutató
 - **[INSTALL_CPANEL.md](./INSTALL_CPANEL.md)** - cPanel telepítési útmutató
 - **[INSTALL_CWP7.md](./INSTALL_CWP7.md)** - CWP7 telepítési útmutató
 
+**⚠️ FONTOS:** A telepítendő fájlok a `deploy/` mappában találhatók!
+
 **Rövid verzió:**
 
-1. **Fájlok feltöltése** (FTP/File Manager)
+1. **Fájlok feltöltése**: Másold a `deploy/` mappa **tartalmát** a szerverre (FTP/File Manager/SCP)
 2. **MySQL adatbázis létrehozása** a webhosting panelben
 3. **Node.js beállítása** (cPanel Node.js Selector vagy CWP7)
 4. **Webes installer futtatása**: `https://your-domain.com/install`
@@ -85,12 +88,17 @@ Moduláris webalkalmazás épületfelméréshez és építési dokumentációhoz
 
 ## 📚 Dokumentáció
 
+### Projekt struktúra
+- **[PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)** - Részletes mappastruktúra leírás
+
 ### Telepítés
+- **[INSTALL.md](./INSTALL.md)** - Docker telepítési útmutató
 - **[INSTALL_CPANEL.md](./INSTALL_CPANEL.md)** - cPanel telepítési útmutató
 - **[INSTALL_CWP7.md](./INSTALL_CWP7.md)** - CWP7 telepítési útmutató
+- **[deploy/README.md](./deploy/README.md)** - Telepítendő verzió leírása
 
 ### Fejlesztői dokumentáció
-- **[DEVELOPER.md](./DEVELOPER.md)** - Fejlesztői útmutató (frissítés szükséges)
+- **[DEVELOPER.md](./DEVELOPER.md)** - Fejlesztői útmutató
 
 ---
 

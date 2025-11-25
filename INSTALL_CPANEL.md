@@ -12,7 +12,13 @@ Ez az útmutató segít a Building Survey alkalmazás telepítésében cPanel k�
 
 ### 1. Fájlok feltöltése
 
-Töltsd fel az összes fájlt a webhosting könyvtáradba (pl. `public_html` vagy `subdomain` könyvtár).
+**FONTOS:** A projekt `deploy/` mappájában található az összes telepítendő fájl.
+
+Töltsd fel a `deploy/` mappa **tartalmát** (nem a mappát magát!) a webhosting könyvtáradba (pl. `public_html` vagy `subdomain` könyvtár).
+
+**Példa:**
+- Helyi: `building-survey/deploy/*`
+- Szerver: `public_html/` vagy `subdomain/`
 
 ### 2. MySQL adatbázis létrehozása
 

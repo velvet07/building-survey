@@ -145,6 +145,8 @@ A Building Survey Supabase Auth-ot használ a felhasználói bejelentkezéshez (
 
 ### 1. Fájlok feltöltése
 
+**FONTOS:** A projekt `deploy/` mappájában található az összes telepítendő fájl.
+
 **SSH-val (ajánlott):**
 
 ```bash
@@ -155,17 +157,18 @@ ssh -p 3241 user@your-server.com
 mkdir -p ~/building-survey
 cd ~/building-survey
 
-# Fájlok feltöltése (pl. SCP-vel vagy git clone)
-# Ha van GitHub repo:
-git clone https://github.com/youruser/building-survey.git .
+# Fájlok feltöltése - csak a deploy/ mappa tartalma!
+# SCP-vel saját gépről:
+scp -P 3241 -r /path/to/building-survey/deploy/* user@your-server.com:~/building-survey/
 
-# Vagy SCP-vel saját gépről:
-# scp -P 3241 -r /path/to/building-survey/* user@your-server.com:~/building-survey/
+# Vagy ha git clone-oztad:
+cd building-survey/deploy
+# Most már a deploy/ mappában vagy, innen másold a fájlokat
 ```
 
 **FTP-vel:**
 - Csatlakozz FTP klienssel (FileZilla, WinSCP)
-- Töltsd fel az összes fájlt egy könyvtárba (pl. `~/building-survey`)
+- Töltsd fel a `deploy/` mappa **tartalmát** (nem a mappát magát!) egy könyvtárba (pl. `~/building-survey`)
 
 ### 2. Environment fájl konfigurálása
 
