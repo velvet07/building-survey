@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import type { PostgrestError } from '@supabase/supabase-js';
+// Error type for database errors
+type DatabaseError = { code?: string; message: string; details?: string };
 import { createUserAction } from '@/app/actions/users';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
@@ -24,13 +25,10 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; passwordConfirm?: string; fullName?: string }>({});
 
-  const isPostgrestError = (value: unknown): value is PostgrestError => {
-    return Boolean(
-      value &&
-      typeof value === 'object' &&
-      'code' in value &&
-      typeof (value as Record<string, unknown>).code === 'string'
-    );
+  const isDatabaseError = (value: unknown): value is DatabaseError => {
+    if (!value || typeof value !== 'object') return false;
+    const err = value as Record<string, unknown>;
+    return 'code' in err && typeof err.code === 'string';
   };
 
   const validate = () => {
@@ -77,16 +75,11 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
         console.error('Create error:', createError);
 
         // Handle specific error codes
-        if (isPostgrestError(createError) && createError.code === '23505') {
+        const errorMessage = createError instanceof Error ? createError.message : String(createError);
+        if (errorMessage.includes('duplicate') || errorMessage.includes('already exists') || errorMessage.includes('23505')) {
           toast.error('Már létezik felhasználó ezzel az email címmel!');
-        } else if ('message' in createError && typeof createError.message === 'string') {
-          if (createError.message.includes('duplicate') || createError.message.includes('already exists')) {
-            toast.error('Már létezik felhasználó ezzel az email címmel!');
-          } else {
-            toast.error(`Hiba történt: ${createError.message}`);
-          }
         } else {
-          toast.error('Hiba történt a felhasználó létrehozása során');
+          toast.error(`Hiba történt: ${errorMessage}`);
         }
       } else {
         toast.success('Felhasználó sikeresen létrehozva!');

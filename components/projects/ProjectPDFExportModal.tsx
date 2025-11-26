@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '@/types/project.types';
-import { getProjectFormResponse } from '@/lib/forms/api';
+import { getProjectFormResponseAction } from '@/app/actions/forms';
 import { aquapolFormDefinition } from '@/lib/forms/definitions/aquapol';
-import { getDrawings } from '@/lib/drawings/api';
+import { getDrawingsAction } from '@/app/actions/drawings';
 import type { Drawing } from '@/lib/drawings/types';
 import { exportProjectModulesToPDF } from '@/lib/projects/pdf-export';
 
@@ -65,7 +65,10 @@ export default function ProjectPDFExportModal({
   const loadDrawings = async (): Promise<Drawing[] | undefined> => {
     try {
       setDrawingsLoading(true);
-      const drawings = await getDrawings(project.id);
+      const { data: drawings, error } = await getDrawingsAction(project.id);
+      if (error || !drawings) {
+        throw error || new Error('Rajzok betöltése sikertelen');
+      }
       setAvailableDrawings(drawings);
       if (selectedModulesRef.current.drawings) {
         setSelectedDrawingIds(drawings.map((drawing) => drawing.id));
@@ -146,10 +149,13 @@ export default function ProjectPDFExportModal({
       };
 
       if (selectedModules['aquapol-form']) {
-        const response = await getProjectFormResponse(project.id, 'aquapol-form');
+        const { data: response, error } = await getProjectFormResponseAction(project.id, 'aquapol-form');
+        if (error) {
+          throw error;
+        }
         payload.aquapol = {
           definition: aquapolFormDefinition,
-          response,
+          response: response || null,
         };
       }
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import type { PostgrestError } from '@supabase/supabase-js';
+// Error type for database errors
+type DatabaseError = { code?: string; message: string; details?: string };
 import { createProjectAction } from '@/app/actions/projects';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
@@ -19,13 +20,10 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const isPostgrestError = (value: unknown): value is PostgrestError => {
-    return Boolean(
-      value &&
-      typeof value === 'object' &&
-      'code' in value &&
-      typeof (value as Record<string, unknown>).code === 'string'
-    );
+  const isDatabaseError = (value: unknown): value is DatabaseError => {
+    if (!value || typeof value !== 'object') return false;
+    const err = value as Record<string, unknown>;
+    return 'code' in err && typeof err.code === 'string';
   };
 
   const validate = () => {
@@ -59,16 +57,11 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
         console.error('Create error:', createError);
 
         // Handle specific error codes
-        if (isPostgrestError(createError) && createError.code === '23505') {
-          // Unique constraint violation
-          toast.error('Már létezik projekt ezzel a névvel!');
-        } else if ('message' in createError && typeof createError.message === 'string' && createError.message.includes('duplicate')) {
+        const errorMessage = createError instanceof Error ? createError.message : String(createError);
+        if (errorMessage.includes('duplicate') || errorMessage.includes('already exists') || errorMessage.includes('23505')) {
           toast.error('Már létezik projekt ezzel a névvel!');
         } else {
-          const message = 'message' in createError && typeof createError.message === 'string'
-            ? createError.message
-            : 'Ismeretlen hiba';
-          toast.error(`Hiba történt: ${message}`);
+          toast.error(`Hiba történt: ${errorMessage}`);
         }
       } else {
         toast.success('Projekt sikeresen létrehozva!');

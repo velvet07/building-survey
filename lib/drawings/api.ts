@@ -5,7 +5,8 @@
  * All drawing data is stored in local MySQL/MariaDB database.
  */
 
-import { query, getCurrentUserId } from '@/lib/db';
+import { query } from '@/lib/db';
+import { getSession } from '@/lib/auth/local';
 import type {
   Drawing,
   CreateDrawingInput,
@@ -91,7 +92,8 @@ export async function getDrawingBySlug(
 export async function createDrawing(input: CreateDrawingInput): Promise<Drawing> {
   try {
     // Get current authenticated user
-    const userId = await getCurrentUserId();
+    const session = await getSession();
+    const userId = session?.userId || null;
 
     if (!userId) {
       throw new Error('Felhasználó nem található - kérlek jelentkezz be újra');

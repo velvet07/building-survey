@@ -4,7 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { query, getCurrentUserId } from '@/lib/db';
+import { query } from '@/lib/db';
+import { getSession } from '@/lib/auth/local';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -29,7 +30,8 @@ export async function GET(
     const isThumbnail = searchParams.get('thumbnail') === 'true';
 
     // 1. Authentication check
-    const userId = await getCurrentUserId();
+    const session = await getSession();
+    const userId = session?.userId || null;
 
     if (!userId) {
       return NextResponse.json(

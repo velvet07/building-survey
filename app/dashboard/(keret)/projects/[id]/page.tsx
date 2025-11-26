@@ -8,8 +8,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import type { Project } from '@/types/project.types';
-import { getDrawings } from '@/lib/drawings/api';
+// Drawings are loaded via Server Actions, not direct API import
 import { getProjectByIdAction } from '@/app/actions/projects';
+import { getDrawingsAction } from '@/app/actions/drawings';
 import ProjectPDFExportModal from '@/components/projects/ProjectPDFExportModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import toast from 'react-hot-toast';
@@ -50,8 +51,8 @@ export default function ProjectDashboardPage() {
 
   const loadDrawingsCount = async () => {
     try {
-      const drawings = await getDrawings(projectId);
-      setDrawingsCount(drawings.length);
+      const { data: drawings } = await getDrawingsAction(projectId);
+      setDrawingsCount(drawings?.length || 0);
     } catch (error) {
       console.error('Error loading drawings count:', error);
     }

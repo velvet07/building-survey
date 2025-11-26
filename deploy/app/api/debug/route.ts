@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { query, getCurrentUserId } from '@/lib/db';
+import { query } from '@/lib/db';
+import { getSession } from '@/lib/auth/local';
 import crypto from 'crypto';
 
 export async function GET() {
   try {
-    const userId = await getCurrentUserId();
+    const session = await getSession();
+    const userId = session?.userId || null;
 
     if (!userId) {
       return NextResponse.json({

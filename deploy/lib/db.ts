@@ -183,13 +183,7 @@ export async function closePool(): Promise<void> {
  * Helper: Get authenticated user ID from session
  * This will be implemented in the auth module
  */
-export async function getCurrentUserId(): Promise<string | null> {
-  // This will be implemented in lib/auth/local.ts
-  // For now, return null to avoid breaking existing code
-  const { getSession } = await import('@/lib/auth/local');
-  const session = await getSession();
-  return session?.userId || null;
-}
+// getCurrentUserId removed - use getSession() from @/lib/auth/local directly
 
 /**
  * Helper: Get user profile from local database

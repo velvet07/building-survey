@@ -13,25 +13,37 @@ A projekt két fő részre van osztva:
 ```
 building-survey/
 ├── deploy/                    # ⭐ TELEPÍTENDŐ FÁJLOK (lásd alább)
+├── app/                       # Next.js App Router (fejlesztési verzió)
+├── components/                # React komponensek (fejlesztési verzió)
+├── lib/                       # Könyvtárak és utility-k (fejlesztési verzió)
+├── hooks/                     # Custom React hookok
+├── types/                     # TypeScript típusok
+├── config/                    # Konfigurációs fájlok
+├── translations/              # Fordítások
+├── database/                  # MySQL adatbázis sémák
 ├── docs/                      # Dokumentációk
 │   ├── USER_GUIDE.md
 │   ├── USER_GUIDE.html
-│   ├── SQL_AUDIT_REPORT.md
-│   └── SUPABASE_USAGE_AUDIT.md
+│   └── generate-pdf.sh        # PDF generáló script
 ├── e2e/                       # End-to-end tesztek
 │   └── drawing-module.spec.ts
-├── .cursor/                   # Cursor IDE beállítások
+├── public/                    # Statikus fájlok
+├── .cursor/                   # Cursor IDE beállítások (gitignore)
 ├── DEVELOPER.md              # Fejlesztői dokumentáció
 ├── INSTALL.md                # Docker telepítési útmutató
 ├── INSTALL_CPANEL.md         # cPanel telepítési útmutató
 ├── INSTALL_CWP7.md           # CWP7 telepítési útmutató
+├── PROJECT_STRUCTURE.md      # Projekt struktúra dokumentáció (ez a fájl)
 ├── README.md                 # Fő README
 ├── TODO.md                   # TODO lista
-├── LAST_WORKING_COMMIT.txt   # Utolsó működő commit
-├── DEPLOY_WORKING.sh         # Fejlesztői deployment script
-├── deploy-update.sh          # Fejlesztői update script
 ├── playwright.config.ts      # Playwright teszt konfiguráció
-├── netlify.toml              # Netlify konfiguráció (ha használod)
+├── package.json             # NPM függőségek
+├── package-lock.json        # NPM lock fájl
+├── next.config.js           # Next.js konfiguráció
+├── tsconfig.json            # TypeScript konfiguráció
+├── tailwind.config.ts       # Tailwind CSS konfiguráció
+├── postcss.config.js        # PostCSS konfiguráció
+├── middleware.ts            # Next.js middleware
 └── .gitignore                # Git ignore szabályok
 ```
 
@@ -49,10 +61,8 @@ deploy/
 ├── config/                   # Konfigurációs fájlok
 ├── translations/            # Fordítások
 ├── database/                 # MySQL adatbázis sémák
-├── docker/                   # Docker konfigurációk
-│   └── postgres/            # PostgreSQL init scriptek
-├── setup/                    # PHP setup script
-├── supabase/                 # Supabase sémák (ha használod)
+├── docker/                   # Docker konfigurációk (opcionális)
+├── setup/                    # PHP setup script (webes installer)
 ├── public/                   # Statikus fájlok
 ├── package.json             # NPM függőségek
 ├── package-lock.json        # NPM lock fájl

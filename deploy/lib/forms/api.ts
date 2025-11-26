@@ -5,7 +5,8 @@
  * All form response data is stored in local MySQL/MariaDB database.
  */
 
-import { query, getCurrentUserId } from '@/lib/db';
+import { query } from '@/lib/db';
+import { getSession } from '@/lib/auth/local';
 import type { FormValues, ProjectFormResponse } from './types';
 import crypto from 'crypto';
 
@@ -74,7 +75,8 @@ export async function saveProjectFormResponse(
 ): Promise<ProjectFormResponse> {
   try {
     // Get current authenticated user
-    const userId = await getCurrentUserId();
+    const session = await getSession();
+    const userId = session?.userId || null;
 
     if (!userId) {
       throw new Error('Felhasználó nem található - kérlek jelentkezz be újra');

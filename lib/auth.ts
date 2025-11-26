@@ -66,26 +66,15 @@ export async function getCurrentUser() {
 }
 
 export async function getUserRole() {
-  const { query } = await import('@/lib/db');
-  const { getSession } = await import('@/lib/auth/local');
-
+  // This function should only be called from server components
+  // For client components, use the API route /api/auth/me
   try {
-    const session = await getSession();
-
-    if (!session) {
+    const response = await fetch('/api/auth/me');
+    if (!response.ok) {
       return null;
     }
-
-    const result = await query(
-      'SELECT role FROM profiles WHERE id = ?',
-      [session.userId]
-    );
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return result.rows[0].role || null;
+    const data = await response.json();
+    return data.user?.role || null;
   } catch (error) {
     console.error('Error getting user role:', error);
     return null;

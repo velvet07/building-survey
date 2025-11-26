@@ -3,6 +3,8 @@ const nextConfig = {
   reactStrictMode: true,
   // Enable standalone output for Docker deployment
   output: 'standalone',
+  // Build output directory
+  distDir: '.next',
   webpack: (config, { isServer }) => {
     // Exclude canvas and konva from server-side bundling
     if (isServer) {

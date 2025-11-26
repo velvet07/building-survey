@@ -12,7 +12,7 @@ import { PhotoUpload } from '@/components/photos/PhotoUpload';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { PhotoDetails } from '@/components/photos/PhotoDetails';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { downloadPhoto, downloadPhotos, getPhotoUrl } from '@/lib/photos/api';
+import { downloadPhoto, downloadPhotos, getPhotoUrl } from '@/lib/photos/client';
 import { getPhotosAction, deletePhotoAction, deletePhotosAction } from '@/app/actions/photos';
 import type { Photo, PhotoViewMode } from '@/types/photo.types';
 import { useUserRole } from '@/hooks/useUserRole';

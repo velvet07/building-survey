@@ -12,6 +12,7 @@ node_modules/
 /deploy/.next/
 /deploy/out/
 /deploy/node_modules/
+/dist/
 
 # Production
 /build

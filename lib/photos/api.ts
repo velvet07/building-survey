@@ -6,7 +6,7 @@
  * Photo files are stored locally via /api/upload endpoint.
  */
 
-import { query, getCurrentUserId } from '@/lib/db';
+import { query } from '@/lib/db';
 import type { Photo, PhotoUploadInput, PhotoUpdateInput } from '@/types/photo.types';
 
 /**

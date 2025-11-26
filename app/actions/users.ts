@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { query, getCurrentUserId } from '@/lib/db';
+import { query } from '@/lib/db';
+import { getSession } from '@/lib/auth/local';
 import { createUser, hashPassword } from '@/lib/auth/local';
 
 /**
@@ -10,7 +11,8 @@ import { createUser, hashPassword } from '@/lib/auth/local';
  */
 export async function getCurrentUserRoleAction() {
   try {
-    const userId = await getCurrentUserId();
+    const session = await getSession();
+    const userId = session?.userId || null;
 
     if (!userId) {
       return { role: null, error: null };
@@ -34,7 +36,8 @@ export async function getCurrentUserRoleAction() {
 
 // Helper function to check if user is admin
 async function isAdmin() {
-  const userId = await getCurrentUserId();
+  const session = await getSession();
+  const userId = session?.userId || null;
 
   if (!userId) {
     return false;
@@ -178,7 +181,8 @@ export async function deleteUserAction(userId: string) {
   }
 
   // Check self-deletion
-  const currentUserId = await getCurrentUserId();
+  const session = await getSession();
+  const currentUserId = session?.userId || null;
   const isSelfDeletion = currentUserId === userId;
 
   try {

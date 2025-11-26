@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { deleteUserAction } from '@/app/actions/users';
-import { createClient } from '@/lib/supabase';
+import { getCurrentUser } from '@/lib/auth';
 import { User } from '@/types/user.types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -21,12 +21,11 @@ export function DeleteUserModal({ isOpen, onClose, onSuccess, user }: DeleteUser
 
   // Get current user ID
   React.useEffect(() => {
-    const getCurrentUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+    const loadCurrentUser = async () => {
+      const { user } = await getCurrentUser();
       setCurrentUserId(user?.id || null);
     };
-    getCurrentUser();
+    loadCurrentUser();
   }, []);
 
   const isSelfDeletion = user?.id === currentUserId;
@@ -91,7 +90,7 @@ export function DeleteUserModal({ isOpen, onClose, onSuccess, user }: DeleteUser
         </p>
       )}
       <p className="text-sm text-danger-700 mt-4 p-3 bg-danger-50 border border-danger-200 rounded-lg">
-        <strong>⚠️ Figyelem:</strong> Ez a művelet nem visszavonható! A felhasználó véglegesen törlődik mind a Supabase-ből, mind a helyi adatbázisból.
+        <strong>⚠️ Figyelem:</strong> Ez a művelet nem visszavonható! A felhasználó véglegesen törlődik az adatbázisból.
       </p>
     </Modal>
   );

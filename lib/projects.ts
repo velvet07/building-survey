@@ -4,7 +4,8 @@
  * All project data is stored in local MySQL/MariaDB database.
  */
 
-import { query, getCurrentUserId } from './db';
+import { query } from './db';
+import { getSession } from './auth/local';
 import { ProjectStatus } from '@/types/project.types';
 import crypto from 'crypto';
 
@@ -66,7 +67,8 @@ export async function getProjectById(id: string) {
  */
 export async function createProject(name: string) {
   try {
-    const userId = await getCurrentUserId();
+    const session = await getSession();
+    const userId = session?.userId || null;
 
     if (!userId) {
       return { data: null, error: new Error('Unauthorized - User not authenticated') };
