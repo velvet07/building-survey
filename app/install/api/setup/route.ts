@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import mysql from 'mysql2/promise';
-import { createUser } from '@/lib/auth/local';
+import { hashPassword } from '@/lib/auth/local';
 import modulesConfig from '@/config/modules.json';
 import crypto from 'crypto';
 
@@ -329,10 +329,17 @@ export async function POST(request: NextRequest) {
         await executeSchema(connection, seed);
       }
 
-      // Create admin user
-      const adminUserId = await createUser(adminEmail, adminPassword, adminFullName);
+      // Create admin user (using installer's own connection, not lib/db which doesn't have .env yet)
+      const adminUserId = crypto.randomUUID();
+      const passwordHash = await hashPassword(adminPassword);
 
-      // Set admin role
+      await connection.query(
+        'INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)',
+        [adminUserId, adminEmail, passwordHash, adminFullName || null]
+      );
+
+      // Profile is created automatically by trigger_create_profile_on_user
+      // Now set admin role
       await connection.query(
         'UPDATE profiles SET role = ? WHERE id = ?',
         ['admin', adminUserId]
