@@ -119,61 +119,68 @@ export async function POST(request: NextRequest) {
               [moduleKey]
             );
 
-            // Create triggers for modules
+            // Create triggers for modules (ignore errors if trigger already exists)
             if (moduleKey === 'photos') {
-              await connection.query(`
-                DROP TRIGGER IF EXISTS trigger_generate_photo_id
-              `);
-              await connection.query(`
-                CREATE TRIGGER trigger_generate_photo_id
-                BEFORE INSERT ON photos
-                FOR EACH ROW
-                BEGIN
-                  IF NEW.id IS NULL OR NEW.id = '' THEN
-                    SET NEW.id = UUID();
-                  END IF;
-                END
-              `);
+              try {
+                await connection.query(`DROP TRIGGER IF EXISTS trigger_generate_photo_id`);
+                await connection.query(`
+                  CREATE TRIGGER trigger_generate_photo_id
+                  BEFORE INSERT ON photos
+                  FOR EACH ROW
+                  BEGIN
+                    IF NEW.id IS NULL OR NEW.id = '' THEN
+                      SET NEW.id = UUID();
+                    END IF;
+                  END
+                `);
+              } catch (triggerError: any) {
+                // Ignore trigger creation errors (trigger may already exist)
+                console.log(`Photos trigger warning: ${triggerError.message}`);
+              }
             }
 
             if (moduleKey === 'drawings') {
-              await connection.query(`
-                DROP TRIGGER IF EXISTS trigger_generate_drawing_id
-              `);
-              await connection.query(`
-                CREATE TRIGGER trigger_generate_drawing_id
-                BEFORE INSERT ON drawings
-                FOR EACH ROW
-                BEGIN
-                  IF NEW.id IS NULL OR NEW.id = '' THEN
-                    SET NEW.id = UUID();
-                  END IF;
-                END
-              `);
-
-              await connection.query(`
-                DROP TRIGGER IF EXISTS auto_name_drawing
-              `);
-              await connection.query(`
-                CREATE TRIGGER auto_name_drawing
-                BEFORE INSERT ON drawings
-                FOR EACH ROW
-                BEGIN
-                  DECLARE drawing_count INT;
-
-                  IF NEW.name = 'Alaprajz' THEN
-                    SELECT COUNT(*) INTO drawing_count
-                    FROM drawings
-                    WHERE project_id = NEW.project_id AND deleted_at IS NULL;
-
-                    IF drawing_count = 0 THEN
-                      SET NEW.name = 'Alaprajz';
-                    ELSE
-                      SET NEW.name = CONCAT('Alaprajz ', drawing_count + 1);
+              try {
+                await connection.query(`DROP TRIGGER IF EXISTS trigger_generate_drawing_id`);
+                await connection.query(`
+                  CREATE TRIGGER trigger_generate_drawing_id
+                  BEFORE INSERT ON drawings
+                  FOR EACH ROW
+                  BEGIN
+                    IF NEW.id IS NULL OR NEW.id = '' THEN
+                      SET NEW.id = UUID();
                     END IF;
-                  END IF;
-                END
-              `);
+                  END
+                `);
+              } catch (triggerError: any) {
+                console.log(`Drawing ID trigger warning: ${triggerError.message}`);
+              }
+
+              try {
+                await connection.query(`DROP TRIGGER IF EXISTS auto_name_drawing`);
+                await connection.query(`
+                  CREATE TRIGGER auto_name_drawing
+                  BEFORE INSERT ON drawings
+                  FOR EACH ROW
+                  BEGIN
+                    DECLARE drawing_count INT;
+
+                    IF NEW.name = 'Alaprajz' THEN
+                      SELECT COUNT(*) INTO drawing_count
+                      FROM drawings
+                      WHERE project_id = NEW.project_id AND deleted_at IS NULL;
+
+                      IF drawing_count = 0 THEN
+                        SET NEW.name = 'Alaprajz';
+                      ELSE
+                        SET NEW.name = CONCAT('Alaprajz ', drawing_count + 1);
+                      END IF;
+                    END IF;
+                  END
+                `);
+              } catch (triggerError: any) {
+                console.log(`Auto name trigger warning: ${triggerError.message}`);
+              }
             }
           }
         }
