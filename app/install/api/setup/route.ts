@@ -60,11 +60,20 @@ export async function POST(request: NextRequest) {
           schemaFile
         );
         const schema = readFileSync(schemaPath, 'utf-8');
-        // Execute schema (split by semicolons, but handle DELIMITER for functions)
-        const statements = schema
+
+        // Remove comment lines before splitting
+        const cleanedSchema = schema
+          .split('\n')
+          .filter(line => {
+            const trimmed = line.trim();
+            return trimmed.length > 0 && !trimmed.startsWith('--');
+          })
+          .join('\n');
+
+        const statements = cleanedSchema
           .split(';')
           .map((s) => s.trim())
-          .filter((s) => s.length > 0 && !s.startsWith('--'));
+          .filter((s) => s.length > 0);
 
         for (const statement of statements) {
           if (statement.trim()) {
@@ -80,10 +89,20 @@ export async function POST(request: NextRequest) {
           const schemaPath = join(process.cwd(), module.schema);
           if (existsSync(schemaPath)) {
             const schema = readFileSync(schemaPath, 'utf-8');
-            const statements = schema
+
+            // Remove comment lines before splitting
+            const cleanedSchema = schema
+              .split('\n')
+              .filter(line => {
+                const trimmed = line.trim();
+                return trimmed.length > 0 && !trimmed.startsWith('--');
+              })
+              .join('\n');
+
+            const statements = cleanedSchema
               .split(';')
               .map((s) => s.trim())
-              .filter((s) => s.length > 0 && !s.startsWith('--'));
+              .filter((s) => s.length > 0);
 
             for (const statement of statements) {
               if (statement.trim()) {
@@ -135,10 +154,20 @@ export async function POST(request: NextRequest) {
       );
       if (existsSync(seedPath)) {
         const seed = readFileSync(seedPath, 'utf-8');
-        const statements = seed
+
+        // Remove comment lines before splitting
+        const cleanedSeed = seed
+          .split('\n')
+          .filter(line => {
+            const trimmed = line.trim();
+            return trimmed.length > 0 && !trimmed.startsWith('--');
+          })
+          .join('\n');
+
+        const statements = cleanedSeed
           .split(';')
           .map((s) => s.trim())
-          .filter((s) => s.length > 0 && !s.startsWith('--'));
+          .filter((s) => s.length > 0);
 
         for (const statement of statements) {
           if (statement.trim()) {
