@@ -104,6 +104,133 @@ export async function POST(request: NextRequest) {
         await executeSchema(connection, schema);
       }
 
+      // Create core functions and triggers
+      try {
+        // Function: Generate project identifier
+        await connection.query(`DROP PROCEDURE IF EXISTS generate_project_identifier`);
+        await connection.query(`
+          CREATE PROCEDURE generate_project_identifier(OUT new_identifier VARCHAR(50))
+          BEGIN
+            DECLARE today_date VARCHAR(8);
+            DECLARE today_count INT;
+
+            SET today_date = DATE_FORMAT(CURRENT_DATE, '%Y%m%d');
+
+            SELECT COUNT(*) INTO today_count
+            FROM projects
+            WHERE auto_identifier LIKE CONCAT('PROJ-', today_date, '-%');
+
+            SET today_count = today_count + 1;
+            SET new_identifier = CONCAT('PROJ-', today_date, '-', LPAD(today_count, 3, '0'));
+          END
+        `);
+
+        // Trigger: Auto-generate project identifier
+        await connection.query(`DROP TRIGGER IF EXISTS trigger_set_project_auto_identifier`);
+        await connection.query(`
+          CREATE TRIGGER trigger_set_project_auto_identifier
+          BEFORE INSERT ON projects
+          FOR EACH ROW
+          BEGIN
+            IF NEW.auto_identifier IS NULL OR NEW.auto_identifier = '' THEN
+              CALL generate_project_identifier(NEW.auto_identifier);
+            END IF;
+
+            IF NEW.id IS NULL OR NEW.id = '' THEN
+              SET NEW.id = UUID();
+            END IF;
+          END
+        `);
+
+        // Trigger: Auto-generate UUIDs for core tables
+        await connection.query(`DROP TRIGGER IF EXISTS trigger_generate_user_id`);
+        await connection.query(`
+          CREATE TRIGGER trigger_generate_user_id
+          BEFORE INSERT ON users
+          FOR EACH ROW
+          BEGIN
+            IF NEW.id IS NULL OR NEW.id = '' THEN
+              SET NEW.id = UUID();
+            END IF;
+          END
+        `);
+
+        await connection.query(`DROP TRIGGER IF EXISTS trigger_generate_session_id`);
+        await connection.query(`
+          CREATE TRIGGER trigger_generate_session_id
+          BEFORE INSERT ON sessions
+          FOR EACH ROW
+          BEGIN
+            IF NEW.id IS NULL OR NEW.id = '' THEN
+              SET NEW.id = UUID();
+            END IF;
+          END
+        `);
+
+        await connection.query(`DROP TRIGGER IF EXISTS trigger_generate_module_id`);
+        await connection.query(`
+          CREATE TRIGGER trigger_generate_module_id
+          BEFORE INSERT ON modules
+          FOR EACH ROW
+          BEGIN
+            IF NEW.id IS NULL OR NEW.id = '' THEN
+              SET NEW.id = UUID();
+            END IF;
+          END
+        `);
+
+        await connection.query(`DROP TRIGGER IF EXISTS trigger_generate_activation_id`);
+        await connection.query(`
+          CREATE TRIGGER trigger_generate_activation_id
+          BEFORE INSERT ON user_module_activations
+          FOR EACH ROW
+          BEGIN
+            IF NEW.id IS NULL OR NEW.id = '' THEN
+              SET NEW.id = UUID();
+            END IF;
+          END
+        `);
+
+        await connection.query(`DROP TRIGGER IF EXISTS trigger_generate_installed_module_id`);
+        await connection.query(`
+          CREATE TRIGGER trigger_generate_installed_module_id
+          BEFORE INSERT ON installed_modules
+          FOR EACH ROW
+          BEGIN
+            IF NEW.id IS NULL OR NEW.id = '' THEN
+              SET NEW.id = UUID();
+            END IF;
+          END
+        `);
+
+        await connection.query(`DROP TRIGGER IF EXISTS trigger_generate_form_response_id`);
+        await connection.query(`
+          CREATE TRIGGER trigger_generate_form_response_id
+          BEFORE INSERT ON project_form_responses
+          FOR EACH ROW
+          BEGIN
+            IF NEW.id IS NULL OR NEW.id = '' THEN
+              SET NEW.id = UUID();
+            END IF;
+          END
+        `);
+
+        // Trigger: Auto-create profile on user creation
+        await connection.query(`DROP TRIGGER IF EXISTS trigger_create_profile_on_user`);
+        await connection.query(`
+          CREATE TRIGGER trigger_create_profile_on_user
+          AFTER INSERT ON users
+          FOR EACH ROW
+          BEGIN
+            INSERT INTO profiles (id, email, role)
+            VALUES (NEW.id, NEW.email, 'user')
+            ON DUPLICATE KEY UPDATE email = NEW.email;
+          END
+        `);
+      } catch (coreTriggersError: any) {
+        console.log(`Core triggers warning: ${coreTriggersError.message}`);
+      }
+
       // Install selected module schemas
       for (const moduleKey of selectedModules) {
         const module = (modulesConfig as any)[moduleKey];
@@ -186,18 +313,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Install functions/triggers (08-functions.sql)
-      const functionsPath = join(
-        process.cwd(),
-        'database',
-        'mysql',
-        'schema',
-        '08-functions.sql'
-      );
-      if (existsSync(functionsPath)) {
-        const functions = readFileSync(functionsPath, 'utf-8');
-        await executeSchema(connection, functions);
-      }
+      // Note: Functions and triggers are now created programmatically above
+      // 08-functions.sql is kept for documentation purposes only
 
       // Install seed data (09-seed.sql)
       const seedPath = join(
