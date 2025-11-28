@@ -4,20 +4,6 @@
 -- Drawing module schema
 -- =============================================================================
 
--- Paper size enum
-CREATE TABLE IF NOT EXISTS paper_size_enum (
-  value ENUM('a4', 'a3') NOT NULL PRIMARY KEY
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT IGNORE INTO paper_size_enum (value) VALUES ('a4'), ('a3');
-
--- Paper orientation enum
-CREATE TABLE IF NOT EXISTS paper_orientation_enum (
-  value ENUM('portrait', 'landscape') NOT NULL PRIMARY KEY
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT IGNORE INTO paper_orientation_enum (value) VALUES ('portrait'), ('landscape');
-
 -- Drawings table
 CREATE TABLE IF NOT EXISTS drawings (
   id CHAR(36) PRIMARY KEY,
