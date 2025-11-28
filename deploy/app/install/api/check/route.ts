@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { readFileSync, accessSync, constants } from 'fs';
 import { join } from 'path';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const checks = {
     nodejs: false,

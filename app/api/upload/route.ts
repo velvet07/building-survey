@@ -14,8 +14,8 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-// Upload directory (Docker volume mount point)
-const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
+// Upload directory (configurable via environment)
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
 const THUMBNAIL_DIR = path.join(UPLOAD_DIR, 'thumbnails');
 
 // Maximum file size: 20MB
