@@ -27,3 +27,22 @@ CREATE TABLE IF NOT EXISTS photos (
   FOREIGN KEY (uploaded_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =============================================================================
+-- PHOTOS TRIGGERS
+-- =============================================================================
+
+DELIMITER //
+
+-- Trigger: Auto-generate photo UUID
+DROP TRIGGER IF EXISTS trigger_generate_photo_id //
+CREATE TRIGGER trigger_generate_photo_id
+BEFORE INSERT ON photos
+FOR EACH ROW
+BEGIN
+  IF NEW.id IS NULL OR NEW.id = '' THEN
+    SET NEW.id = UUID();
+  END IF;
+END //
+
+DELIMITER ;
+
