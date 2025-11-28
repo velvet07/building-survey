@@ -8,6 +8,47 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+// Helper function to execute SQL schema with DELIMITER support
+async function executeSchema(connection: any, schema: string) {
+  // Check if schema contains DELIMITER
+  if (schema.includes('DELIMITER')) {
+    // Handle DELIMITER for MySQL stored procedures/triggers
+    const parts = schema.split('DELIMITER');
+    for (let i = 1; i < parts.length; i += 2) {
+      const delimiter = parts[i].trim().split('\n')[0];
+      const content = parts[i].substring(parts[i].indexOf('\n')).trim();
+      const statements = content.split(delimiter);
+      for (const statement of statements) {
+        const trimmed = statement.trim();
+        if (trimmed && !trimmed.startsWith('--')) {
+          await connection.query(trimmed);
+        }
+      }
+    }
+  } else {
+    // Normal SQL without DELIMITER
+    // Remove comment lines before splitting
+    const cleanedSchema = schema
+      .split('\n')
+      .filter(line => {
+        const trimmed = line.trim();
+        return trimmed.length > 0 && !trimmed.startsWith('--');
+      })
+      .join('\n');
+
+    const statements = cleanedSchema
+      .split(';')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    for (const statement of statements) {
+      if (statement.trim()) {
+        await connection.query(statement);
+      }
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -60,26 +101,7 @@ export async function POST(request: NextRequest) {
           schemaFile
         );
         const schema = readFileSync(schemaPath, 'utf-8');
-
-        // Remove comment lines before splitting
-        const cleanedSchema = schema
-          .split('\n')
-          .filter(line => {
-            const trimmed = line.trim();
-            return trimmed.length > 0 && !trimmed.startsWith('--');
-          })
-          .join('\n');
-
-        const statements = cleanedSchema
-          .split(';')
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
-
-        for (const statement of statements) {
-          if (statement.trim()) {
-            await connection.query(statement);
-          }
-        }
+        await executeSchema(connection, schema);
       }
 
       // Install selected module schemas
@@ -89,26 +111,7 @@ export async function POST(request: NextRequest) {
           const schemaPath = join(process.cwd(), module.schema);
           if (existsSync(schemaPath)) {
             const schema = readFileSync(schemaPath, 'utf-8');
-
-            // Remove comment lines before splitting
-            const cleanedSchema = schema
-              .split('\n')
-              .filter(line => {
-                const trimmed = line.trim();
-                return trimmed.length > 0 && !trimmed.startsWith('--');
-              })
-              .join('\n');
-
-            const statements = cleanedSchema
-              .split(';')
-              .map((s) => s.trim())
-              .filter((s) => s.length > 0);
-
-            for (const statement of statements) {
-              if (statement.trim()) {
-                await connection.query(statement);
-              }
-            }
+            await executeSchema(connection, schema);
 
             // Mark module as installed
             await connection.query(
@@ -129,19 +132,7 @@ export async function POST(request: NextRequest) {
       );
       if (existsSync(functionsPath)) {
         const functions = readFileSync(functionsPath, 'utf-8');
-        // Handle DELIMITER for MySQL stored procedures
-        const parts = functions.split('DELIMITER');
-        for (let i = 1; i < parts.length; i += 2) {
-          const delimiter = parts[i].trim().split('\n')[0];
-          const content = parts[i].substring(parts[i].indexOf('\n')).trim();
-          const statements = content.split(delimiter);
-          for (const statement of statements) {
-            const trimmed = statement.trim();
-            if (trimmed && !trimmed.startsWith('--')) {
-              await connection.query(trimmed);
-            }
-          }
-        }
+        await executeSchema(connection, functions);
       }
 
       // Install seed data (09-seed.sql)
@@ -154,26 +145,7 @@ export async function POST(request: NextRequest) {
       );
       if (existsSync(seedPath)) {
         const seed = readFileSync(seedPath, 'utf-8');
-
-        // Remove comment lines before splitting
-        const cleanedSeed = seed
-          .split('\n')
-          .filter(line => {
-            const trimmed = line.trim();
-            return trimmed.length > 0 && !trimmed.startsWith('--');
-          })
-          .join('\n');
-
-        const statements = cleanedSeed
-          .split(';')
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
-
-        for (const statement of statements) {
-          if (statement.trim()) {
-            await connection.query(statement);
-          }
-        }
+        await executeSchema(connection, seed);
       }
 
       // Create admin user
