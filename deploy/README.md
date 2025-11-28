@@ -56,6 +56,7 @@ chmod +x SERVER_COMPLETE_FIX.sh
 
 #### 💻 Automatikus telepítő scriptek
 - `SERVER_COMPLETE_FIX.sh` - Automatikus telepítő script
+- `CHECK_BUILD.sh` - Build diagnosztika (ha 400 hibát kapsz)
 - `RESTART_APP.sh` - Újraindító script
 - `STOP_APP.sh` - Leállító script
 - `DEPLOY_COMPLETE_GUIDE.md` - Teljes SSH útmutató
@@ -95,6 +96,7 @@ chmod +x SERVER_COMPLETE_FIX.sh
 3. **[RESTART_INSTRUCTIONS.md](RESTART_INSTRUCTIONS.md)** - Újraindítás
 
 ### Hibaelhárítás
+- **400 hiba az /install oldalon** → Futtasd: `chmod +x CHECK_BUILD.sh && ./CHECK_BUILD.sh`
 - Minden hiba → [DEPLOY_COMPLETE_GUIDE.md](DEPLOY_COMPLETE_GUIDE.md#hibaelhárítás)
 - Build hibák → [DEPLOY_COMPLETE_GUIDE.md](DEPLOY_COMPLETE_GUIDE.md#build-hibák)
 - Port foglalt → [DEPLOY_COMPLETE_GUIDE.md](DEPLOY_COMPLETE_GUIDE.md#port-foglalt)
