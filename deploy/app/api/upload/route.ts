@@ -12,6 +12,8 @@ import path from 'path';
 import sharp from 'sharp';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // Upload directory (Docker volume mount point)
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
 const THUMBNAIL_DIR = path.join(UPLOAD_DIR, 'thumbnails');

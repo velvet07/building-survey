@@ -3,6 +3,8 @@ import { query } from '@/lib/db';
 import { getSession } from '@/lib/auth/local';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const session = await getSession();

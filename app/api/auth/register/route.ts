@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createUser, createSession } from '@/lib/auth/local';
 import { queryOne } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password, fullName } = await request.json();

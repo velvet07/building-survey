@@ -10,6 +10,8 @@ import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 // Upload directory (Docker volume mount point)
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
 const THUMBNAIL_DIR = path.join(UPLOAD_DIR, 'thumbnails');
