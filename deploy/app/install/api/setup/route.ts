@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { host, port, name, username, password } = database;
+    const { host, port, database: dbName, username, password } = database;
 
     // Connect to database
     const connection = await mysql.createConnection({
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       port: parseInt(port, 10),
       user: username,
       password,
-      database: name,
+      database: dbName,
     });
 
     try {
@@ -160,12 +160,12 @@ export async function POST(request: NextRequest) {
       const envContent = `# Database
 DB_HOST=${host}
 DB_PORT=${port}
-DB_NAME=${name}
+DB_NAME=${dbName}
 DB_USER=${username}
 DB_PASSWORD=${password}
 
 # Database URL
-DATABASE_URL=mysql://${username}:${password}@${host}:${port}/${name}
+DATABASE_URL=mysql://${username}:${password}@${host}:${port}/${dbName}
 
 # App
 NEXT_PUBLIC_APP_URL=${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}

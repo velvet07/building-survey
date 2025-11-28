@@ -8,14 +8,14 @@ interface DatabaseConfigProps {
   onNext: (config: {
     host: string;
     port: string;
-    name: string;
+    database: string;
     username: string;
     password: string;
   }) => void;
   onTest: (config: {
     host: string;
     port: string;
-    name: string;
+    database: string;
     username: string;
     password: string;
   }) => Promise<boolean>;
@@ -35,61 +35,17 @@ export function DatabaseConfig({ onNext, onTest }: DatabaseConfigProps) {
     setTestResult(null);
 
     try {
-      // Validate inputs before sending
-      if (!host || !port || !name || !username || !password) {
-        setTestResult({
-          success: false,
-          message: 'Kérjük, töltsd ki az összes mezőt!',
-        });
-        setTesting(false);
-        return;
-      }
-
-      const response = await fetch('/install/api/test-db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host, port, name, username, password }),
+      const success = await onTest({ host, port, database: name, username, password });
+      setTestResult({
+        success,
+        message: success
+          ? 'Adatbázis kapcsolat sikeres'
+          : 'Adatbázis kapcsolódási hiba',
       });
-
-      // Check if response is ok
-      if (!response.ok) {
-        // Try to parse error response
-        try {
-          const errorData = await response.json();
-          setTestResult({
-            success: false,
-            message: errorData.error || errorData.message || `Hiba (${response.status}): ${response.statusText}`,
-          });
-        } catch (e) {
-          setTestResult({
-            success: false,
-            message: `Hiba (${response.status}): ${response.statusText}`,
-          });
-        }
-        setTesting(false);
-        return;
-      }
-
-      const data = await response.json();
-      
-      // Check for successful response
-      if (response.ok && data.success === true) {
-        setTestResult({
-          success: true,
-          message: data.message || 'Adatbázis kapcsolat sikeres',
-        });
-      } else {
-        // Handle error response
-        setTestResult({
-          success: false,
-          message: data.error || data.message || 'Adatbázis kapcsolódási hiba',
-        });
-      }
     } catch (error: any) {
-      console.error('Database test error:', error);
       setTestResult({
         success: false,
-        message: error.message || 'Hiba történt az adatbázis tesztelése során. Ellenőrizd a hálózati kapcsolatot.',
+        message: error.message || 'Hiba történt',
       });
     } finally {
       setTesting(false);
@@ -97,7 +53,7 @@ export function DatabaseConfig({ onNext, onTest }: DatabaseConfigProps) {
   };
 
   const handleNext = () => {
-    onNext({ host, port, name, username, password });
+    onNext({ host, port, database: name, username, password });
   };
 
   return (
