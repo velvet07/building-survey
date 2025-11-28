@@ -8,14 +8,14 @@ interface DatabaseConfigProps {
   onNext: (config: {
     host: string;
     port: string;
-    name: string;
+    database: string;
     username: string;
     password: string;
   }) => void;
   onTest: (config: {
     host: string;
     port: string;
-    name: string;
+    database: string;
     username: string;
     password: string;
   }) => Promise<boolean>;
@@ -35,7 +35,7 @@ export function DatabaseConfig({ onNext, onTest }: DatabaseConfigProps) {
     setTestResult(null);
 
     try {
-      const success = await onTest({ host, port, name, username, password });
+      const success = await onTest({ host, port, database: name, username, password });
       setTestResult({
         success,
         message: success
@@ -53,7 +53,7 @@ export function DatabaseConfig({ onNext, onTest }: DatabaseConfigProps) {
   };
 
   const handleNext = () => {
-    onNext({ host, port, name, username, password });
+    onNext({ host, port, database: name, username, password });
   };
 
   return (
