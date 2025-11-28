@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Authentication API
  * 
@@ -65,29 +67,5 @@ export async function getCurrentUser() {
   return { user: data.user, error: null };
 }
 
-export async function getUserRole() {
-  const { query } = await import('@/lib/db');
-  const { getSession } = await import('@/lib/auth/local');
-
-  try {
-    const session = await getSession();
-
-    if (!session) {
-      return null;
-    }
-
-    const result = await query(
-      'SELECT role FROM profiles WHERE id = ?',
-      [session.userId]
-    );
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return result.rows[0].role || null;
-  } catch (error) {
-    console.error('Error getting user role:', error);
-    return null;
-  }
-}
+// getUserRole() függvény eltávolítva - Server Component kód volt,
+// helyette használd a getCurrentUserRoleAction Server Action-t az app/actions/users.ts-ből

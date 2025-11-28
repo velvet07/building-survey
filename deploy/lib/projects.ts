@@ -5,7 +5,7 @@
  */
 
 import { query } from './db';
-import { getSession } from './auth/local';
+import { getSession } from '@/lib/auth/local';
 import { ProjectStatus } from '@/types/project.types';
 import crypto from 'crypto';
 

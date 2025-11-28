@@ -22,8 +22,14 @@ export function InstallWizard() {
       });
 
       const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Database test failed:', data.error || data.message);
+        return false;
+      }
+      
       return data.success === true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Database test error:', error);
       return false;
     }
