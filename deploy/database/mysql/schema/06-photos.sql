@@ -27,3 +27,9 @@ CREATE TABLE IF NOT EXISTS photos (
   FOREIGN KEY (uploaded_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =============================================================================
+-- PHOTOS TRIGGERS
+-- =============================================================================
+-- Note: These triggers will be created programmatically by the installer
+-- to avoid DELIMITER issues with mysql2 library
+

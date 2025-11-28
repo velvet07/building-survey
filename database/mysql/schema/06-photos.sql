@@ -30,19 +30,6 @@ CREATE TABLE IF NOT EXISTS photos (
 -- =============================================================================
 -- PHOTOS TRIGGERS
 -- =============================================================================
-
-DELIMITER //
-
--- Trigger: Auto-generate photo UUID
-DROP TRIGGER IF EXISTS trigger_generate_photo_id //
-CREATE TRIGGER trigger_generate_photo_id
-BEFORE INSERT ON photos
-FOR EACH ROW
-BEGIN
-  IF NEW.id IS NULL OR NEW.id = '' THEN
-    SET NEW.id = UUID();
-  END IF;
-END //
-
-DELIMITER ;
+-- Note: These triggers will be created programmatically by the installer
+-- to avoid DELIMITER issues with mysql2 library
 
