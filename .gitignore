@@ -66,3 +66,8 @@ playwright-report/
 
 # Netlify
 .netlify/
+
+# PM2 logs
+logs/
+*.log
+.pm2/

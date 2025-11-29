@@ -97,12 +97,17 @@ export async function createUserAction(
     const userId = await createUser(email, password, fullName);
 
     // Update role in profiles table
-    const result = await query(
+    await query(
       `UPDATE profiles
        SET role = ?, full_name = ?
-       WHERE id = ?
-       RETURNING *`,
+       WHERE id = ?`,
       [role, fullName, userId]
+    );
+
+    // Fetch the updated profile (MySQL doesn't support RETURNING)
+    const result = await query(
+      'SELECT * FROM profiles WHERE id = ?',
+      [userId]
     );
 
     revalidatePath('/dashboard/users');
@@ -124,12 +129,17 @@ export async function updateUserAction(
   }
 
   try {
-    const result = await query(
+    await query(
       `UPDATE profiles
        SET full_name = ?, role = ?, updated_at = NOW()
-       WHERE id = ?
-       RETURNING *`,
+       WHERE id = ?`,
       [fullName, role, userId]
+    );
+
+    // Fetch the updated profile (MySQL doesn't support RETURNING)
+    const result = await query(
+      'SELECT * FROM profiles WHERE id = ?',
+      [userId]
     );
 
     if (result.rows.length === 0) {
@@ -154,12 +164,17 @@ export async function updateUserRoleAction(
   }
 
   try {
-    const result = await query(
+    await query(
       `UPDATE profiles
        SET role = ?, updated_at = NOW()
-       WHERE id = ?
-       RETURNING *`,
+       WHERE id = ?`,
       [role, userId]
+    );
+
+    // Fetch the updated profile (MySQL doesn't support RETURNING)
+    const result = await query(
+      'SELECT * FROM profiles WHERE id = ?',
+      [userId]
     );
 
     if (result.rows.length === 0) {
@@ -186,11 +201,9 @@ export async function deleteUserAction(userId: string) {
   const isSelfDeletion = currentUserId === userId;
 
   try {
-    // Delete from profiles (CASCADE will handle related data)
+    // First fetch the profile before deletion (MySQL doesn't support RETURNING)
     const result = await query(
-      `DELETE FROM profiles
-       WHERE id = ?
-       RETURNING *`,
+      'SELECT * FROM profiles WHERE id = ?',
       [userId]
     );
 
@@ -198,11 +211,13 @@ export async function deleteUserAction(userId: string) {
       return { data: null, error: new Error('User not found') };
     }
 
-    // Also delete from users table
+    const deletedProfile = result.rows[0];
+
+    // Delete from users table (CASCADE will handle profiles via foreign key)
     await query('DELETE FROM users WHERE id = ?', [userId]);
 
     revalidatePath('/dashboard/users');
-    return { data: result.rows[0], error: null };
+    return { data: deletedProfile, error: null };
   } catch (error) {
     console.error('deleteUserAction error:', error);
     return { data: null, error: error instanceof Error ? error : new Error('Unknown error') };

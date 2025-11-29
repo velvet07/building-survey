@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Authentication API
  * 
@@ -67,5 +65,5 @@ export async function getCurrentUser() {
   return { user: data.user, error: null };
 }
 
-// getUserRole() függvény eltávolítva - Server Component kód volt,
-// helyette használd a getCurrentUserRoleAction Server Action-t az app/actions/users.ts-ből
+// Note: For server-side user role checking, use getCurrentUserRoleAction() from app/actions/users.ts
+// This file is for client-side auth functions only
