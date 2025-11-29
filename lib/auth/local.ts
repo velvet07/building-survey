@@ -59,7 +59,7 @@ export async function createSession(userId: string): Promise<string> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // Set to false for reverse proxy setups where Node.js runs on HTTP
     sameSite: 'lax',
     maxAge: SESSION_DURATION_MS / 1000,
     path: '/',
