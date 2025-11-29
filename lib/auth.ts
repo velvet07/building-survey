@@ -65,18 +65,5 @@ export async function getCurrentUser() {
   return { user: data.user, error: null };
 }
 
-export async function getUserRole() {
-  // This function should only be called from server components
-  // For client components, use the API route /api/auth/me
-  try {
-    const response = await fetch('/api/auth/me');
-    if (!response.ok) {
-      return null;
-    }
-    const data = await response.json();
-    return data.user?.role || null;
-  } catch (error) {
-    console.error('Error getting user role:', error);
-    return null;
-  }
-}
+// Note: For server-side user role checking, use getCurrentUserRoleAction() from app/actions/users.ts
+// This file is for client-side auth functions only

@@ -240,11 +240,19 @@ export async function POST(request: NextRequest) {
             const schema = readFileSync(schemaPath, 'utf-8');
             await executeSchema(connection, schema);
 
-            // Mark module as installed
-            await connection.query(
-              'INSERT INTO installed_modules (id, module_slug) VALUES (UUID(), ?)',
-              [moduleKey]
-            );
+            // Mark module as installed (ignore if already exists)
+            try {
+              await connection.query(
+                'INSERT INTO installed_modules (id, module_slug) VALUES (UUID(), ?)',
+                [moduleKey]
+              );
+            } catch (moduleInsertError: any) {
+              // Ignore duplicate entry errors (module already installed)
+              if (!moduleInsertError.message.includes('Duplicate entry')) {
+                throw moduleInsertError;
+              }
+              console.log(`Module ${moduleKey} already installed, skipping`);
+            }
 
             // Create triggers for modules (ignore errors if trigger already exists)
             if (moduleKey === 'photos') {
@@ -333,17 +341,48 @@ export async function POST(request: NextRequest) {
       const adminUserId = crypto.randomUUID();
       const passwordHash = await hashPassword(adminPassword);
 
-      await connection.query(
-        'INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)',
-        [adminUserId, adminEmail, passwordHash, adminFullName || null]
-      );
+      try {
+        await connection.query(
+          'INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)',
+          [adminUserId, adminEmail, passwordHash, adminFullName || null]
+        );
 
-      // Profile is created automatically by trigger_create_profile_on_user
-      // Now set admin role
-      await connection.query(
-        'UPDATE profiles SET role = ? WHERE id = ?',
-        ['admin', adminUserId]
-      );
+        // Profile is created automatically by trigger_create_profile_on_user
+        // Now set admin role
+        await connection.query(
+          'UPDATE profiles SET role = ? WHERE id = ?',
+          ['admin', adminUserId]
+        );
+      } catch (userError: any) {
+        // If user already exists, just update the password and role
+        if (userError.message.includes('Duplicate entry')) {
+          console.log(`Admin user ${adminEmail} already exists, updating password and role`);
+
+          // Get existing user ID
+          const [existingUser] = await connection.query(
+            'SELECT id FROM users WHERE email = ?',
+            [adminEmail]
+          );
+
+          if (existingUser && (existingUser as any)[0]) {
+            const existingUserId = (existingUser as any)[0].id;
+
+            // Update password
+            await connection.query(
+              'UPDATE users SET password_hash = ?, full_name = ? WHERE id = ?',
+              [passwordHash, adminFullName || null, existingUserId]
+            );
+
+            // Update role to admin
+            await connection.query(
+              'UPDATE profiles SET role = ? WHERE id = ?',
+              ['admin', existingUserId]
+            );
+          }
+        } else {
+          throw userError;
+        }
+      }
 
       // Generate .env file
       const envContent = `# Database
