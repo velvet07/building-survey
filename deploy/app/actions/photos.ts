@@ -3,7 +3,7 @@
 /**
  * Server Actions for Photos
  *
- * Wraps photo API functions that require server-side PostgreSQL access
+ * Wraps photo API functions that require server-side MySQL/MariaDB access
  */
 
 import { revalidatePath } from 'next/cache';

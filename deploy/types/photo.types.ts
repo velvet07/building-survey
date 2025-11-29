@@ -7,8 +7,8 @@ export interface Photo {
   id: string;
   project_id: string;
   file_name: string;
-  file_path: string; // Legacy: Supabase Storage path
-  local_file_path?: string; // New: Local Docker volume path
+  file_path: string; // Legacy field for backwards compatibility
+  local_file_path?: string; // Local file storage path (primary)
   thumbnail_path?: string; // Thumbnail path (local storage only)
   file_size: number;
   mime_type: string;
@@ -19,7 +19,7 @@ export interface Photo {
   uploaded_by: string;
   created_at: string;
   updated_at: string;
-  signedUrl?: string; // Temporary signed URL for private bucket access (legacy)
+  signedUrl?: string; // Legacy field for backwards compatibility
 }
 
 export interface PhotoUploadInput {

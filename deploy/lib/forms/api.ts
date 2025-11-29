@@ -15,15 +15,15 @@ function isMissingTableError(error: unknown): boolean {
     return false;
   }
 
-  const candidate = error as { code?: string; message?: string };
+  const candidate = error as { code?: string; message?: string; errno?: number };
   const code = candidate.code?.toUpperCase();
   const message = candidate.message?.toLowerCase() ?? '';
+  const errno = candidate.errno;
 
   return (
-    code === 'PGRST116' ||
-    code === '42P01' ||
-    message.includes('could not find the table') ||
-    (message.includes('relation') && message.includes('does not exist'))
+    errno === 1146 || // MySQL/MariaDB "Table doesn't exist"
+    code === 'ER_NO_SUCH_TABLE' ||
+    message.includes('table') && message.includes('doesn\'t exist')
   );
 }
 

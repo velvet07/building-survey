@@ -3,7 +3,7 @@
 /**
  * Server Actions for Drawings
  *
- * Uses local PostgreSQL database via lib/drawings/api.ts
+ * Uses local MySQL/MariaDB database via lib/drawings/api.ts
  */
 
 import { revalidatePath } from 'next/cache';
