@@ -5,6 +5,12 @@ const nextConfig = {
   output: 'standalone',
   // Build output directory
   distDir: '.next',
+  // Fix for reverse proxy duplicating x-forwarded-host header
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['felmeres.wpmuhely.com'],
+    },
+  },
   webpack: (config, { isServer }) => {
     // Exclude canvas and konva from server-side bundling
     if (isServer) {

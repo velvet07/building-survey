@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 export const metadata: Metadata = {
   title: 'Épületfelmérő Rendszer',
   description: 'Moduláris épületfelmérő és dokumentációs rendszer',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
